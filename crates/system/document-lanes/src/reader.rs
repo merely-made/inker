@@ -360,6 +360,22 @@ impl ReaderDocumentSession {
     pub fn source_document(&self) -> Arc<EngineDocument> {
         self.source.document.clone()
     }
+
+    /// The last viewport supplied by the host frame.
+    ///
+    /// This is an observation only: it neither lays out the document nor
+    /// changes this appearance's retained presentation.
+    pub fn viewport(&self) -> (u32, u32) {
+        self.viewport
+    }
+
+    /// Current vertical viewport offset for this appearance, in document
+    /// pixels. Each appearance owns this value even when its source document
+    /// packet is shared with another appearance.
+    pub fn scroll_y(&self) -> f32 {
+        self.doc.scroll_y()
+    }
+
     pub fn document(&self) -> &EngineDocument {
         self.doc.document()
     }

@@ -374,6 +374,14 @@ impl SmolwebDocument {
         }
     }
 
+    /// Current vertical viewport offset, in laid-out document pixels.
+    ///
+    /// Hosts use this read-only value to observe independent document
+    /// appearances. It does not force layout or change scroll state.
+    pub fn scroll_y(&self) -> f32 {
+        self.scroll_y
+    }
+
     /// Full laid-out content height, floored to the viewport height.
     pub fn content_height(&mut self, width: u32, height: u32) -> u32 {
         self.ensure_layout(width, height);
