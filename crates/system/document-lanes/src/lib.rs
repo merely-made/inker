@@ -15,12 +15,20 @@
 //! `2026-09-02_platform_boundary_and_repository_topology_plan.md`, P1). It
 //! lives in genet only until that plan moves it to Mere.
 
+#[cfg(feature = "eidetic-bridge")]
+pub mod eidetic_bridge;
 pub mod reader;
 mod remote;
 #[cfg(feature = "smolweb")]
 mod session;
 pub mod smolweb;
 
+#[cfg(feature = "eidetic-bridge")]
+pub use eidetic_bridge::{
+    CaptureIdentity, ExternalWebResource, FLEECE_ANNOTATION_SCHEMA_REF, FleeceAnnotationRecord,
+    FleeceExtractionRecord, ReaderExtractionEvidence, WebAnnotationEnvelope, WebAnnotationTarget,
+    bootstrap_fleece_annotation_schema, load_fleece_annotation, save_fleece_annotation,
+};
 pub use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};
 pub use reader::{
     ReaderAccessibilityLink, ReaderAccessibilitySnapshot, ReaderDocumentSession,
