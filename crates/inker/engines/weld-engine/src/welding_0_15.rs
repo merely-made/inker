@@ -303,7 +303,7 @@ impl WeldSurface for WeldingSurface {
             HttpAuthenticationAnswer::Credentials(credentials) => {
                 self.producer
                     .answer_auth(id, &credentials.username, &credentials.password)
-            }
+            },
             HttpAuthenticationAnswer::Cancel => self.producer.cancel_auth(id),
         }
         .map_err(map_error)
@@ -363,7 +363,7 @@ pub fn map_pixel_format(format: NativeFramePixelFormat) -> SurfaceTextureFormat 
         NativeFramePixelFormat::Bgra8UnormSrgb => SurfaceTextureFormat::Bgra8UnormSrgb,
         NativeFramePixelFormat::Unsupported => {
             SurfaceTextureFormat::Other("unsupported Welding native-frame format".into())
-        }
+        },
         _ => SurfaceTextureFormat::Other("unknown Welding native-frame format".into()),
     }
 }
@@ -372,7 +372,7 @@ pub fn map_error(error: WeldError) -> SurfaceError {
     match error {
         WeldError::PlatformUnsupported(reason) | WeldError::FeatureRequired(reason) => {
             SurfaceError::Unsupported(reason.into())
-        }
+        },
         WeldError::BrowserOp(reason) => SurfaceError::NavigationFailed(reason),
         WeldError::Import(error) => SurfaceError::FrameAcquisitionFailed(error.to_string()),
         other => SurfaceError::SpawnFailed(other.to_string()),
@@ -448,7 +448,7 @@ pub fn map_mouse(event: InkerMouseEvent) -> Result<WeldingMouseEvent, SurfaceErr
             return Err(SurfaceError::Unsupported(
                 "Welding's mouse vocabulary has no browser-button variant".into(),
             ));
-        }
+        },
     };
     let action = match event.kind {
         MouseEventKind::Moved => MouseAction::Moved,
@@ -480,12 +480,12 @@ pub fn map_pointer(event: PointerEvent) -> Result<TouchInput, SurfaceError> {
             return Err(SurfaceError::Unsupported(
                 "mouse pointers must use Inker's mouse input path for Welding".into(),
             ));
-        }
+        },
         PointerType::Unknown => {
             return Err(SurfaceError::Unsupported(
                 "Welding cannot dispatch an unidentified pointer type".into(),
             ));
-        }
+        },
     };
     Ok(TouchInput {
         id: event.pointer_id,
@@ -542,13 +542,13 @@ pub fn map_drag(event: InkerDragEvent) -> DragInput {
                 path, display_name, ..
             } => {
                 payload.files.push(DragFile { path, display_name });
-            }
+            },
             DataTransferItem::String { mime_type, data } if mime_type == "text/html" => {
                 payload.fragment_html = Some(data);
-            }
+            },
             DataTransferItem::String { mime_type, data } if mime_type == "text/uri-list" => {
                 payload.link_url = Some(data);
-            }
+            },
             DataTransferItem::String { data, .. } => payload.fragment_text = Some(data),
         }
     }
@@ -636,7 +636,7 @@ fn map_navigation_event(
         Event::LoadStart { url } => WebSurfaceEvent::Navigation(NavigationEvent::Started { url }),
         Event::LoadEnd { url, .. } => {
             WebSurfaceEvent::Navigation(NavigationEvent::Finished { url, title: None })
-        }
+        },
         Event::LoadError {
             url,
             error_code,
@@ -815,15 +815,15 @@ fn map_permissions(permissions: Vec<PermissionKind>) -> Vec<PermissionDescriptor
             PermissionKind::StorageAccess => PermissionDescriptor::StorageAccess,
             PermissionKind::ProtectedMediaIdentifier => {
                 PermissionDescriptor::ProtectedMediaIdentifier
-            }
+            },
             PermissionKind::DesktopAudioCapture => {
                 desktop_audio = true;
                 continue;
-            }
+            },
             PermissionKind::DesktopVideoCapture => {
                 desktop_video = true;
                 continue;
-            }
+            },
             PermissionKind::Other(raw) => PermissionDescriptor::Other(format!("cef:{raw:#x}")),
             _ => PermissionDescriptor::Other(format!("welding:{permission:?}")),
         };

@@ -62,7 +62,7 @@ impl SurfaceProducer for ScryingProducer {
                 self.empty_polls = 0;
                 self.stall_threshold = INITIAL_EMPTY_POLL_STALL_THRESHOLD;
                 Ok(map_frame(frame, self.fence_handle))
-            }
+            },
             None => {
                 self.empty_polls = self.empty_polls.saturating_add(1);
                 if self.empty_polls >= self.stall_threshold {
@@ -76,7 +76,7 @@ impl SurfaceProducer for ScryingProducer {
                         .min(MAX_EMPTY_POLL_STALL_THRESHOLD);
                 }
                 Ok(None)
-            }
+            },
         }
     }
 
