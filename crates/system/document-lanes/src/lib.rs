@@ -17,6 +17,7 @@
 
 pub mod reader;
 mod remote;
+#[cfg(feature = "smolweb")]
 mod session;
 pub mod smolweb;
 

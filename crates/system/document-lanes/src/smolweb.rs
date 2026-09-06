@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::sync::Arc;
 
 use document_canvas::{
     ColorVocabulary, DecodedImage, DocumentStyleSheet, InteractionKind, LaidOutDocument, Rect,
@@ -92,7 +93,7 @@ impl Default for SmolwebInlineMediaPolicy {
 
 /// A retained engine document, its document-canvas layout, and host viewport.
 pub struct SmolwebDocument {
-    document: EngineDocument,
+    document: Arc<EngineDocument>,
     style: DocumentStyleSheet,
     background: [f32; 4],
     images: HashMap<String, DecodedImage>,
@@ -194,8 +195,28 @@ impl SmolwebDocument {
         Self::from_document(document, style, background)
     }
 
+    /// Retain a shared portable packet while keeping this appearance's layout,
+    /// viewport, scroll and inline-media cache independent.
+    pub fn from_shared_document_with_theme(
+        document: Arc<EngineDocument>,
+        theme: SmolwebTheme,
+    ) -> Self {
+        let (style, background) =
+            style_for_theme(&theme, &document.address, &document.content_type);
+        Self::from_shared_document(document, style, background, SmolwebInlineMediaPolicy::default())
+    }
+
     fn from_document_with_media_policy(
         document: EngineDocument,
+        style: DocumentStyleSheet,
+        background: [f32; 4],
+        inline_media: SmolwebInlineMediaPolicy,
+    ) -> Self {
+        Self::from_shared_document(Arc::new(document), style, background, inline_media)
+    }
+
+    fn from_shared_document(
+        document: Arc<EngineDocument>,
         style: DocumentStyleSheet,
         background: [f32; 4],
         inline_media: SmolwebInlineMediaPolicy,
@@ -233,7 +254,7 @@ impl SmolwebDocument {
                 |block| matches!(block, Block::Image { url: image_url, .. } if image_url == url),
             )
         });
-        self.document = document;
+        self.document = Arc::new(document);
         self.layout = None;
         self.presented = false;
     }

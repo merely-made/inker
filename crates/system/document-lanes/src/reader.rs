@@ -8,6 +8,7 @@
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use fleece::{Article, ExtractionLineage, Inline, RootSelector};
 use inker::{
@@ -286,21 +287,23 @@ impl SessionEngine<Scene> for ReaderSessionEngine {
                 ));
             },
         };
-        let lineage = article.lineage.clone();
-        let document = lower_article(&request.address, &article);
-        let doc = SmolwebDocument::from_document_with_theme(document, self.theme.clone());
-        Ok(Box::new(ReaderDocumentSession {
-            doc,
-            viewport: request.viewport,
-            lineage,
-            accessibility_revision: 1,
-            accessibility_nodes: RefCell::new(ReaderAccessibilityNodeMap::default()),
-        }))
+        let source = Arc::new(ReaderDocumentSource {
+            document: Arc::new(lower_article(&request.address, &article)),
+            lineage: article.lineage.clone(),
+            theme: self.theme.clone(),
+        });
+        Ok(Box::new(ReaderDocumentSession::from_source(
+            source,
+            request.viewport,
+        )))
     }
 }
 
 /// Retained reader rendering plus the fleece derivation that made it.
 pub struct ReaderDocumentSession {
+    /// Durable, renderer-neutral content. Appearances retain this by `Arc`;
+    /// their document-canvas state below is deliberately not shared.
+    source: Arc<ReaderDocumentSource>,
     doc: SmolwebDocument,
     viewport: (u32, u32),
     lineage: ExtractionLineage,
@@ -314,6 +317,14 @@ pub struct ReaderDocumentSession {
     accessibility_nodes: RefCell<ReaderAccessibilityNodeMap>,
 }
 
+/// The immutable Reader content shared by each visible appearance of one
+/// document. It has no viewport, scroll, retained layout, or focus state.
+struct ReaderDocumentSource {
+    document: Arc<EngineDocument>,
+    lineage: ExtractionLineage,
+    theme: SmolwebTheme,
+}
+
 #[derive(Default)]
 struct ReaderAccessibilityNodeMap {
     ids: HashMap<document_canvas::SemanticInteractionId, DocumentA11yNodeId>,
@@ -321,6 +332,34 @@ struct ReaderAccessibilityNodeMap {
 }
 
 impl ReaderDocumentSession {
+    fn from_source(source: Arc<ReaderDocumentSource>, viewport: (u32, u32)) -> Self {
+        let doc = SmolwebDocument::from_shared_document_with_theme(
+            source.document.clone(),
+            source.theme.clone(),
+        );
+        let lineage = source.lineage.clone();
+        Self {
+            source,
+            doc,
+            viewport,
+            lineage,
+            accessibility_revision: 1,
+            accessibility_nodes: RefCell::new(ReaderAccessibilityNodeMap::default()),
+        }
+    }
+
+    /// Create an independently scrollable and laid-out presentation of this
+    /// document. The source packet is shared; all viewport-dependent state is
+    /// fresh for the new appearance.
+    pub fn new_appearance(&self, viewport: (u32, u32)) -> Self {
+        Self::from_source(self.source.clone(), viewport)
+    }
+
+    /// Identity receipt for hosts which need to prove two appearances share
+    /// document content without reaching into private parser state.
+    pub fn source_document(&self) -> Arc<EngineDocument> {
+        self.source.document.clone()
+    }
     pub fn document(&self) -> &EngineDocument {
         self.doc.document()
     }
@@ -668,6 +707,43 @@ mod tests {
             ),
             Err(SessionError::Unsupported(message)) if message.contains("post-JS DOM")
         ));
+    }
+
+    #[test]
+    fn reader_appearances_share_content_but_keep_viewport_and_scroll_independent() {
+        let html = "<html><head><title>Shared reader</title></head><body><main>\
+            <h1>Shared reader</h1><p>This deliberately long paragraph gives two reader \
+            appearances enough vertical content to scroll independently while retaining \
+            the same portable article source for each retained presentation.</p>\
+            <p>Second paragraph with a <a href='/target'>target link</a>.</p></main></body></html>";
+        let mut first = reader_session(html, 180, 90);
+        let first = first
+            .as_any()
+            .downcast_mut::<ReaderDocumentSession>()
+            .expect("reader session type");
+        let mut second = first.new_appearance((420, 240));
+
+        first.frame(180, 90);
+        second.frame(420, 240);
+        assert!(Arc::ptr_eq(
+            &first.source_document(),
+            &second.source_document()
+        ));
+        assert!(std::ptr::eq(first.document(), second.document()));
+        assert_ne!(
+            first.content_height(180, 90),
+            second.content_height(420, 240),
+            "each appearance lays out at its own viewport width"
+        );
+
+        let second_before = second.links();
+        assert!(first.scroll_by(0.0, 80.0), "the narrow appearance scrolls");
+        assert_ne!(first.links(), second_before, "first appearance moved");
+        assert_eq!(
+            second.links(),
+            second_before,
+            "second appearance retains its own viewport scroll"
+        );
     }
 
     #[test]
