@@ -19,7 +19,9 @@ netfetch = ["dep:netfetcher", "dep:tokio", "dep:bytes"]
 smolweb = ["dep:errand", "dep:nematic", "dep:tokio"]
 # Preserve Fleece-derived reading evidence through Eidetic without making the
 # document lane's ordinary reader/session consumers take a storage dependency.
-eidetic-bridge = ["dep:eidetic", "dep:serde", "dep:serde_json"]
+eidetic-bridge = ["fleece/wire", "dep:eidetic", "dep:serde", "dep:serde_json"]
+# Project Fleece-preserved JSON-LD blocks through Mere's RDF authority.
+fleece-json-ld = ["dep:linked-data"]
 
 [dependencies]
 document-session-api = { workspace = true }
@@ -40,6 +42,7 @@ netfetcher = { workspace = true, optional = true }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"], optional = true }
 bytes = { version = "1", optional = true }
 eidetic = { workspace = true, optional = true }
+linked-data = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 

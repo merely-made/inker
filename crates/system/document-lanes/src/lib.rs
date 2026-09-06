@@ -23,12 +23,20 @@ mod remote;
 mod session;
 pub mod smolweb;
 
+#[cfg(feature = "fleece-json-ld")]
+pub mod structured_data;
+
 #[cfg(feature = "eidetic-bridge")]
 pub use eidetic_bridge::{
     CaptureIdentity, ExternalWebResource, FLEECE_ANNOTATION_SCHEMA_REF, FleeceAnnotationRecord,
-    FleeceExtractionRecord, ReaderExtractionEvidence, WebAnnotationEnvelope, WebAnnotationTarget,
+    FleeceExtractionRecord, WebAnnotationEnvelope, WebAnnotationTarget,
     bootstrap_fleece_annotation_schema, load_fleece_annotation, save_fleece_annotation,
 };
+#[cfg(feature = "fleece-json-ld")]
+pub use structured_data::{
+    JsonLdBlockProjection, JsonLdProjectionOutcome, json_ld_contributions, project_json_ld_blocks,
+};
+
 pub use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};
 pub use reader::{
     ReaderAccessibilityLink, ReaderAccessibilitySnapshot, ReaderDocumentSession,

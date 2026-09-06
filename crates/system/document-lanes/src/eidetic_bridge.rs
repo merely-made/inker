@@ -15,12 +15,12 @@ use eidetic::{
     BlobManifest, BlobSource, Hash, ManifestId, ModerationState, PrivacyClass, ProvenanceOrigin,
     ProvenanceRecord, Result, SchemaRef, Timestamp, TrustEnvelope, TrustLevel, TypedPayload,
 };
-use fleece::{ExtractedDocument, RootSelector, TextAnchor};
+use fleece::{
+    CanonicalTextRecordV1, CanonicalTextSelectorProjection, ExtractedDocument, TextAnchor,
+};
 use serde::{Deserialize, Serialize};
 
-/// The exact Fleece text normalization named by the stored position selectors.
-pub const FLEECE_DOM_TEXT_V1: &str = "FleeceDomTextV1";
-const RFC_5147: &str = "https://www.rfc-editor.org/rfc/rfc5147";
+const RFC_5147: &str = fleece::RFC5147_CONFORMS_TO;
 
 /// Canonical bytes of the schema codicil describing this bridge's typed payload.
 const FLEECE_ANNOTATION_SCHEMA_PAYLOAD: &[u8] = br#"{"format":"mere-native","schema_id":"mere.document-lanes.FleeceAnnotation/v1","body":{"version":1,"description":"A caller-identified Fleece extraction with a W3C Web Annotation target over its canonical DOM text.","required":["extraction","target","annotation"],"fields":{"extraction":{"type":"object"},"target":{"type":"object"},"annotation":{"type":"object"}}}}"#;
@@ -50,40 +50,11 @@ pub struct CaptureIdentity {
 impl CaptureIdentity {
     pub fn new(canonical_source: impl Into<String>, capture_hash: Hash) -> Result<Self> {
         let canonical_source = canonical_source.into();
-        if canonical_source.trim().is_empty() {
-            return Err(eidetic::Error::new(
-                "canonical source URI must not be empty",
-            ));
-        }
+        validate_canonical_source(&canonical_source)?;
         Ok(Self {
             canonical_source,
             capture_hash,
         })
-    }
-}
-
-/// Reader-mode evidence retained when Fleece found a readable article.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ReaderExtractionEvidence {
-    pub root_selector: String,
-    pub candidate_score: Option<i32>,
-    pub block_count: usize,
-}
-
-impl ReaderExtractionEvidence {
-    fn from_root_selector(root_selector: &RootSelector, block_count: usize) -> Self {
-        match root_selector {
-            RootSelector::Main => Self {
-                root_selector: "main".to_owned(),
-                candidate_score: None,
-                block_count,
-            },
-            RootSelector::ScoredCandidate { tag, score } => Self {
-                root_selector: tag.clone(),
-                candidate_score: Some(*score),
-                block_count,
-            },
-        }
     }
 }
 
@@ -92,72 +63,49 @@ impl ReaderExtractionEvidence {
 pub struct FleeceExtractionRecord {
     /// Caller-owned resolved source and capture evidence.
     pub capture: CaptureIdentity,
-    /// Fleece's `PageExtract::text`, in `FleeceDomTextV1` order.
-    pub canonical_text: String,
-    /// Hash of `canonical_text`, checked before an annotation is accepted.
+    /// Eidetic's BLAKE3 hash of Fleece's preserved canonical text, checked
+    /// before an annotation is accepted.
+    ///
+    /// This is Eidetic's BLAKE3 content hash. It is deliberately distinct from
+    /// Fleece's SHA-256 `canonical_text_iri` in [`Self::canonical_text_record`].
     pub canonical_text_hash: Hash,
-    pub title: Option<String>,
-    pub main_text: Option<String>,
-    /// Fleece crate version supplied by the host's extraction path.
-    pub fleece_version: String,
-    pub text_normalization: String,
-    pub reader: Option<ReaderExtractionEvidence>,
+    /// Fleece's stable preservation contract, including the canonical-text
+    /// resource identity, profile, normalization, language/direction evidence,
+    /// and reader anchors.
+    pub canonical_text_record: CanonicalTextRecordV1,
 }
 
 impl FleeceExtractionRecord {
     /// Preserve the Fleece result together with facts Fleece intentionally does
-    /// not own. `fleece_version` should be the producing `Article` lineage
-    /// version where available.
-    pub fn from_fleece(
-        capture: CaptureIdentity,
-        document: &ExtractedDocument,
-        fleece_version: impl Into<String>,
-    ) -> Result<Self> {
-        let fleece_version = fleece_version.into();
-        if fleece_version.trim().is_empty() {
-            return Err(eidetic::Error::new("Fleece version must not be empty"));
-        }
-        let reader = document.article.as_ref().map(|article| {
-            ReaderExtractionEvidence::from_root_selector(
-                &article.lineage.root_selector,
-                article.lineage.block_count,
-            )
-        });
+    /// not own. The Fleece preservation record supplies the extraction profile,
+    /// normalization, and canonical-text resource identity.
+    pub fn from_fleece(capture: CaptureIdentity, document: &ExtractedDocument) -> Result<Self> {
+        let canonical_text_record = CanonicalTextRecordV1::from_document(document);
+        canonical_text_record.validate().map_err(|error| {
+            eidetic::Error::new(format!("invalid Fleece extraction record: {error}"))
+        })?;
         let record = Self {
             capture,
-            canonical_text: document.page.text.clone(),
-            canonical_text_hash: Hash::of(document.page.text.as_bytes()),
-            title: document.page.title.clone(),
-            main_text: document.page.main_text.clone(),
-            fleece_version,
-            text_normalization: FLEECE_DOM_TEXT_V1.to_owned(),
-            reader,
+            canonical_text_hash: Hash::of(canonical_text_record.canonical_text.as_bytes()),
+            canonical_text_record,
         };
         record.validate_integrity()?;
         Ok(record)
     }
 
     pub fn validate_integrity(&self) -> Result<()> {
-        if self.capture.canonical_source.trim().is_empty() {
-            return Err(eidetic::Error::new(
-                "canonical source URI must not be empty",
-            ));
-        }
-        if self.canonical_text.is_empty() {
+        validate_canonical_source(&self.capture.canonical_source)?;
+        if self.canonical_text_record.canonical_text.is_empty() {
             return Err(eidetic::Error::new(
                 "canonical Fleece text must not be empty",
             ));
         }
-        if self.fleece_version.trim().is_empty() {
-            return Err(eidetic::Error::new("Fleece version must not be empty"));
-        }
-        if self.text_normalization != FLEECE_DOM_TEXT_V1 {
-            return Err(eidetic::Error::new(format!(
-                "unsupported Fleece text normalization `{}`",
-                self.text_normalization
-            )));
-        }
-        let actual = Hash::of(self.canonical_text.as_bytes());
+        self.canonical_text_record.validate().map_err(|error| {
+            eidetic::Error::new(format!(
+                "invalid preserved Fleece extraction record: {error}"
+            ))
+        })?;
+        let actual = Hash::of(self.canonical_text_record.canonical_text.as_bytes());
         if actual != self.canonical_text_hash {
             return Err(eidetic::Error::new(format!(
                 "canonical Fleece text hash mismatch: expected {}, got {}",
@@ -166,6 +114,12 @@ impl FleeceExtractionRecord {
         }
         Ok(())
     }
+}
+
+fn validate_canonical_source(source: &str) -> Result<()> {
+    url::Url::parse(source).map(|_| ()).map_err(|error| {
+        eidetic::Error::new(format!("canonical source must be an absolute IRI: {error}"))
+    })
 }
 
 /// W3C Web Annotation's `TextPositionSelector` projection.
@@ -225,29 +179,41 @@ pub struct ExternalWebResource {
 }
 
 impl WebAnnotationTarget {
-    fn from_anchor(extraction: &FleeceExtractionRecord, anchor: &TextAnchor) -> Result<Self> {
-        validate_anchor(&extraction.canonical_text, anchor)?;
+    fn from_projection(
+        extraction: &FleeceExtractionRecord,
+        projection: CanonicalTextSelectorProjection,
+    ) -> Result<Self> {
+        if !projection.resolves_against(&extraction.canonical_text_record.canonical_text) {
+            return Err(eidetic::Error::new(
+                "Fleece selector projection does not resolve against canonical text",
+            ));
+        }
+        if projection.resource_iri != extraction.canonical_text_record.canonical_text_iri {
+            return Err(eidetic::Error::new(
+                "Fleece selector projection names a different canonical-text resource",
+            ));
+        }
         let fragment = FragmentSelector {
             selector_type: "FragmentSelector".to_owned(),
-            value: format!("char={},{}", anchor.position.start, anchor.position.end),
+            value: projection.fragment.value(),
             conforms_to: RFC_5147.to_owned(),
         };
         let position = TextPositionSelector {
             selector_type: "TextPositionSelector".to_owned(),
-            start: anchor.position.start,
-            end: anchor.position.end,
+            start: projection.position.start,
+            end: projection.position.end,
         };
         let quote = TextQuoteSelector {
             selector_type: "TextQuoteSelector".to_owned(),
-            exact: anchor.quote.exact.clone(),
-            prefix: anchor.quote.prefix.clone(),
-            suffix: anchor.quote.suffix.clone(),
+            exact: projection.quote.exact,
+            prefix: projection.quote.prefix,
+            suffix: projection.quote.suffix,
         };
         Ok(Self {
             target_type: "SpecificResource".to_owned(),
             source: ExternalWebResource {
-                id: canonical_text_uri(extraction.canonical_text_hash),
-                format: "text/plain; charset=utf-8".to_owned(),
+                id: projection.resource_iri,
+                format: extraction.canonical_text_record.media_type.clone(),
             },
             scope: extraction.capture.canonical_source.clone(),
             selector: vec![
@@ -315,11 +281,13 @@ impl FleeceAnnotationRecord {
     pub fn from_fleece(
         capture: CaptureIdentity,
         document: &ExtractedDocument,
-        fleece_version: impl Into<String>,
         anchor: &TextAnchor,
     ) -> Result<Self> {
-        let extraction = FleeceExtractionRecord::from_fleece(capture, document, fleece_version)?;
-        let target = WebAnnotationTarget::from_anchor(&extraction, anchor)?;
+        let extraction = FleeceExtractionRecord::from_fleece(capture, document)?;
+        let target = WebAnnotationTarget::from_projection(
+            &extraction,
+            document.selector_projection(anchor),
+        )?;
         let annotation = WebAnnotationEnvelope::from_target(target.clone());
         let record = Self {
             extraction,
@@ -335,8 +303,8 @@ impl FleeceAnnotationRecord {
     pub fn validate_integrity(&self) -> Result<()> {
         self.extraction.validate_integrity()?;
         if self.target.target_type != "SpecificResource"
-            || self.target.source.id != canonical_text_uri(self.extraction.canonical_text_hash)
-            || self.target.source.format != "text/plain; charset=utf-8"
+            || self.target.source.id != self.extraction.canonical_text_record.canonical_text_iri
+            || self.target.source.format != self.extraction.canonical_text_record.media_type
             || self.target.scope != self.extraction.capture.canonical_source
             || self.target.capture_hash != self.extraction.capture.capture_hash
             || self.target.canonical_text_hash != self.extraction.canonical_text_hash
@@ -346,7 +314,13 @@ impl FleeceAnnotationRecord {
             ));
         }
         let anchor = anchor_from_target(&self.target)?;
-        validate_anchor(&self.extraction.canonical_text, &anchor)?;
+        let projection =
+            fleece::CanonicalTextSelectorProjection::from_anchor(&self.target.source.id, &anchor);
+        if !projection.resolves_against(&self.extraction.canonical_text_record.canonical_text) {
+            return Err(eidetic::Error::new(
+                "annotation selectors do not resolve against stored canonical text",
+            ));
+        }
         let expected = WebAnnotationEnvelope::from_target(self.target.clone());
         if self.annotation != expected {
             return Err(eidetic::Error::new(
@@ -479,8 +453,9 @@ fn anchor_from_target(target: &WebAnnotationTarget) -> Result<TextAnchor> {
             "annotation target has unsupported selector types",
         ));
     }
-    let (fragment_start, fragment_end) = parse_rfc_5147_range(&fragment.value)?;
-    if fragment_start != position.start || fragment_end != position.end {
+    let fragment = fleece::FragmentSelector::parse(&fragment.value)
+        .ok_or_else(|| eidetic::Error::new("fragment selector must use an RFC 5147 char range"))?;
+    if fragment.start != position.start || fragment.end != position.end {
         return Err(eidetic::Error::new(
             "fragment and text-position selectors disagree",
         ));
@@ -505,57 +480,6 @@ fn target_position(target: &WebAnnotationTarget) -> (u64, u64) {
         .and_then(|value| serde_json::from_value::<TextPositionSelector>(value.clone()).ok())
         .map(|position| (position.start, position.end))
         .unwrap_or((0, 0))
-}
-
-fn parse_rfc_5147_range(value: &str) -> Result<(u64, u64)> {
-    let Some(range) = value.strip_prefix("char=") else {
-        return Err(eidetic::Error::new(
-            "fragment selector must use RFC 5147 char range",
-        ));
-    };
-    let Some((start, end)) = range.split_once(',') else {
-        return Err(eidetic::Error::new(
-            "fragment selector must have a start and end",
-        ));
-    };
-    let start = start
-        .parse()
-        .map_err(|_| eidetic::Error::new("fragment selector has an invalid start"))?;
-    let end = end
-        .parse()
-        .map_err(|_| eidetic::Error::new("fragment selector has an invalid end"))?;
-    Ok((start, end))
-}
-
-fn canonical_text_uri(hash: Hash) -> String {
-    format!("urn:eidetic:fleece-text:{hash}")
-}
-
-fn validate_anchor(text: &str, anchor: &TextAnchor) -> Result<()> {
-    let codepoints: Vec<char> = text.chars().collect();
-    let start = usize::try_from(anchor.position.start)
-        .map_err(|_| eidetic::Error::new("selector start exceeds platform size"))?;
-    let end = usize::try_from(anchor.position.end)
-        .map_err(|_| eidetic::Error::new("selector end exceeds platform size"))?;
-    if start >= end || end > codepoints.len() {
-        return Err(eidetic::Error::new(
-            "text-position selector is outside canonical text",
-        ));
-    }
-    let exact: String = codepoints[start..end].iter().collect();
-    if exact != anchor.quote.exact {
-        return Err(eidetic::Error::new(
-            "text-position and text-quote selectors disagree with canonical text",
-        ));
-    }
-    let prefix: String = codepoints[..start].iter().collect();
-    let suffix: String = codepoints[end..].iter().collect();
-    if !prefix.ends_with(&anchor.quote.prefix) || !suffix.starts_with(&anchor.quote.suffix) {
-        return Err(eidetic::Error::new(
-            "text-quote context disagrees with canonical text",
-        ));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -706,26 +630,16 @@ mod tests {
         // Fleece positions are Unicode code points, not UTF-8 byte offsets.
         let start = document.page.text[..start as usize].chars().count() as u64;
         let end = start + exact.chars().count() as u64;
-        let prefix: String = document.page.text.chars().take(start as usize).collect();
-        let suffix: String = document.page.text.chars().skip(end as usize).collect();
-        let anchor = TextAnchor {
-            position: fleece::TextPositionSelector { start, end },
-            quote: fleece::TextQuoteSelector {
-                exact: exact.to_owned(),
-                prefix,
-                suffix,
-            },
-        };
-        let version = document
-            .article
-            .as_ref()
-            .map(|article| article.lineage.fleece_version.clone())
-            .unwrap_or_else(|| "0.4.0".to_owned());
+        let anchor = fleece::anchor_for_range(
+            &document.page.text,
+            fleece::TextPositionSelector { start, end },
+            document.contract.quote_context,
+        )
+        .expect("fixture anchor");
         FleeceAnnotationRecord::from_fleece(
             CaptureIdentity::new("https://example.test/story", Hash::of(html.as_bytes()))
                 .expect("capture identity"),
             &document,
-            version,
             &anchor,
         )
         .expect("Fleece annotation record")
@@ -1075,11 +989,22 @@ mod tests {
             assert_eq!(json["target"]["type"], "SpecificResource");
             assert_eq!(
                 json["target"]["source"]["id"],
-                canonical_text_uri(loaded.extraction.canonical_text_hash)
+                loaded.extraction.canonical_text_record.canonical_text_iri
+            );
+            assert!(
+                loaded
+                    .extraction
+                    .canonical_text_record
+                    .canonical_text_iri
+                    .starts_with("urn:sha256:")
+            );
+            assert_ne!(
+                loaded.extraction.canonical_text_record.canonical_text_iri,
+                loaded.extraction.canonical_text_hash.to_string()
             );
             assert_eq!(
                 json["target"]["source"]["format"],
-                "text/plain; charset=utf-8"
+                loaded.extraction.canonical_text_record.media_type
             );
             assert_eq!(json["target"]["scope"], "https://example.test/story");
             assert_eq!(
@@ -1109,10 +1034,26 @@ mod tests {
     }
 
     #[test]
+    fn capture_identity_rejects_relative_or_malformed_sources() {
+        let capture_hash = Hash::of(b"capture");
+        assert!(CaptureIdentity::new("relative/path", capture_hash).is_err());
+        assert!(CaptureIdentity::new("not a URL", capture_hash).is_err());
+        assert!(CaptureIdentity::new("gemini://example.test/page", capture_hash).is_ok());
+
+        let mut record = fixture();
+        record.extraction.capture.canonical_source = "relative/path".to_owned();
+        assert!(record.validate_integrity().is_err());
+    }
+
+    #[test]
     fn changed_text_or_selector_is_rejected_before_reopen_accepts_it() {
         pollster::block_on(async {
             let mut record = fixture();
-            record.extraction.canonical_text.push('!');
+            record
+                .extraction
+                .canonical_text_record
+                .canonical_text
+                .push('!');
             let mut store = eidetic::MemoryBackend::default();
             let id = eidetic::save_typed(
                 &mut store,
