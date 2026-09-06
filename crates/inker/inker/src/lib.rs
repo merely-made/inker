@@ -18,8 +18,9 @@
 //! The contracts an engine implements to be hosted (session traits, the
 //! accessibility projection, capabilities, page capture, the engine-id
 //! namespace) are `document-session-api`, re-exported here.
-//! (*Verso* names the engine-flip / compatibility-view seam — see
-//! `design_docs/verso_docs/` — not a pipeline stage below platen.)
+//! The engine flip (re-presenting one address through another engine with
+//! the session carried across) lives in [`flip`]; `design_docs/verso_docs/`
+//! is its charter.
 //!
 //! ## Status
 //!
@@ -49,6 +50,9 @@ pub mod surface_engine;
 
 /// Content-type sniffing for unlabelled byte streams.
 pub mod sniff;
+
+/// The engine flip — carry a session between engines (was `verso-tile`).
+pub mod flip;
 
 /// Statement extraction — the pure walk collecting knot `rel` links. The
 /// graph-side apply lives in mere's `linked-data` crate (kernel-free split).

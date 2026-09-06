@@ -23,7 +23,16 @@ publish = true
 [lib]
 path = "src/lib.rs"
 
+[features]
+# The glass-box genet donor (`src/flip/genet.rs`): bridges genet's scripted DOM
+# (DOM + form layers) plus host-fed runtime/session state to PortableViewState.
+# Off by default so the flip contracts stay engine-free for black-box implementors.
+genet-donor = ["dep:genet-scripted-dom", "dep:layout-dom-api"]
+
 [dependencies]
+# Root-workspace genet.git pins, used only by the `genet-donor` flip feature.
+genet-scripted-dom = { workspace = true, optional = true }
+layout-dom-api = { workspace = true, optional = true }
 # The engine-facing contract half, split out under the platform boundary plan.
 document-session-api = { workspace = true }
 # Kernel-free by design (the seiche precedent): routing context takes petgraph's

@@ -8,7 +8,7 @@
 //!
 //! genet is a glass-box primary: a flip *out of* genet can export the full live
 //! view-state (charter §3, asymmetric fidelity). This adapter bridges genet's
-//! engine APIs to [`crate::api::PortableViewState`]. It reaches three sources, by
+//! engine APIs to [`crate::flip::api::PortableViewState`]. It reaches three sources, by
 //! layer:
 //!
 //! * DOM + FORM come straight from the scripted DOM (`ScriptedDom::outer_html`,
@@ -20,11 +20,11 @@
 //!
 //! The last three are not DOM-derivable, so the host feeds them in via the
 //! `with_*` setters. That keeps this module depending only on `genet-scripted-dom`
-//! and the [`crate::api`] contract (never the runtime or the GPU layer), and mirrors
-//! how the [`crate::scry`] receiver is host-fed. The [`crate::flip`] orchestrator builds a donor at
+//! and the [`crate::flip::api`] contract (never the runtime or the GPU layer), and mirrors
+//! how the [`crate::flip::scry`] receiver is host-fed. The [`crate::flip::orchestrator`] orchestrator builds a donor at
 //! flip time, calls [`capture`](FlipDonor::capture) once, and drops it.
 
-use crate::api::{Cookie, FlipDonor, FormValues, FrameHandle, LayerSet, PortableViewState};
+use crate::flip::api::{Cookie, FlipDonor, FormValues, FrameHandle, LayerSet, PortableViewState};
 use genet_scripted_dom::ScriptedDom;
 use layout_dom_api::LayoutDom;
 

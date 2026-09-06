@@ -12,7 +12,7 @@
 //! This module is the engine-agnostic carrier: it pairs a [`FlipDonor`] with a
 //! [`FlipReceiver`] (forward) or a [`FlipBack`] source with a primary receiver
 //! (back), masks the view-state down to the layers *both* sides support, and hands
-//! the receiver the result. It owns no engine and no GPU layer (it reaches only [`crate::api`]), so a heavy engine only ever lands in the host variant that asked
+//! the receiver the result. It owns no engine and no GPU layer (it reaches only [`crate::flip::api`]), so a heavy engine only ever lands in the host variant that asked
 //! for it, never here.
 //!
 //! Two invariants live in the type signatures, not in runtime checks:
@@ -25,7 +25,7 @@
 //!   secondary never implements `FlipDonor`, so there is no type path to forward a
 //!   document from one secondary to another. A flip is always primary ↔ secondary.
 
-use crate::api::{
+use crate::flip::api::{
     BackState, Carry, FlipBack, FlipDonor, FlipReceiver, LayerSet, PortableViewState,
 };
 
@@ -107,7 +107,7 @@ pub fn flip_back(source: &dyn FlipBack, primary: &mut dyn FlipReceiver) -> bool 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::{Cookie, FormValues};
+    use crate::flip::api::{Cookie, FormValues};
 
     struct MockDonor {
         layers: LayerSet,

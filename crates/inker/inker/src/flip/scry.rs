@@ -30,7 +30,7 @@
 //! seam and translates its nav-event stream into [`NavSignal`]s, so this module stays
 //! free of the platform WebView dep and is unit-testable on its own.
 
-use crate::api::{Carry, Cookie, FlipReceiver, FormValues, LayerSet, PortableViewState};
+use crate::flip::api::{Carry, Cookie, FlipReceiver, FormValues, LayerSet, PortableViewState};
 
 /// The handful of WebView operations a forward flip needs, abstracted so this crate
 /// does not depend on the concrete (Windows-only) producer. The host implements it

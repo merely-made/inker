@@ -198,7 +198,7 @@ impl fmt::Display for SurfaceError {
             Self::Unsupported(reason) => write!(f, "unsupported: {reason}"),
             Self::HostMigrationIndeterminate(reason) => {
                 write!(f, "host migration indeterminate: {reason}")
-            }
+            },
         }
     }
 }

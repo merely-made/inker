@@ -11,8 +11,8 @@
 //! `verso_docs/technical_architecture/2026-06-10_compatibility_view_charter.md`).
 //! This module is the engine-agnostic contract: the portable view-state moved across
 //! a flip, plus the donor / back / receiver traits. It depends on no engine and no
-//! GPU layer. Per-engine adapters ([`crate::scry`], [`crate::genet`], ...) bridge concrete
-//! engines to these traits; the [`crate::flip`] orchestrator pairs a donor with a
+//! GPU layer. Per-engine adapters ([`crate::flip::scry`], [`crate::flip::genet`], ...) bridge concrete
+//! engines to these traits; the [`crate::flip::orchestrator`] orchestrator pairs a donor with a
 //! receiver and runs the flip choreography.
 
 /// Which layers of view-state a carrier moves. Layers degrade, never block: a
