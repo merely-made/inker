@@ -56,3 +56,9 @@ pollster = "0.4"
 tempfile = "3"
 oxjsonld = "0.2"
 oxrdf = "0.3"
+transport = { package = "mere-transport", path = "../../murm/transport" }
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time"] }
+
+[[test]]
+name = "eidetic_peer_transfer"
+required-features = ["eidetic-bridge"]
