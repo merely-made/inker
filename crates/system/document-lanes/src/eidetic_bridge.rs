@@ -45,16 +45,205 @@ pub struct CaptureIdentity {
     pub canonical_source: String,
     /// Caller-supplied identity of the acquired immutable capture.
     pub capture_hash: Hash,
+    /// Versioned caller-owned facts about the acquisition that Fleece cannot
+    /// infer from its DOM input. `None` only represents a record serialized
+    /// before capture evidence existed and is explicitly non-authoritative for
+    /// the absent facts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<CaptureEvidenceV1>,
+    /// Binds the evidence fields together and into the annotation target.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_hash: Option<Hash>,
 }
 
 impl CaptureIdentity {
     pub fn new(canonical_source: impl Into<String>, capture_hash: Hash) -> Result<Self> {
-        let canonical_source = canonical_source.into();
-        validate_canonical_source(&canonical_source)?;
+        Self::from_evidence(CaptureEvidenceV1::legacy(canonical_source, capture_hash)?)
+    }
+
+    /// Preserve acquisition evidence from the host response without importing
+    /// its fetch policy, cache, or transport into Fleece.
+    pub fn from_resource_response(
+        response: &genet_host_api::ResourceResponse,
+        captured_at: Timestamp,
+        dom_mode: CaptureDomMode,
+        raw_manifest: Option<ManifestId>,
+        replay_manifest: Option<ManifestId>,
+    ) -> Result<Self> {
+        Self::from_evidence(CaptureEvidenceV1::from_resource_response(
+            response,
+            captured_at,
+            dom_mode,
+            raw_manifest,
+            replay_manifest,
+        )?)
+    }
+
+    /// Construct an identity from all caller-owned acquisition facts.
+    pub fn from_evidence(evidence: CaptureEvidenceV1) -> Result<Self> {
+        evidence.validate_integrity()?;
+        let evidence_hash = evidence.integrity_hash()?;
         Ok(Self {
+            canonical_source: evidence.final_source.clone(),
+            capture_hash: evidence.capture_hash,
+            evidence: Some(evidence),
+            evidence_hash: Some(evidence_hash),
+        })
+    }
+
+    fn validate_integrity(&self) -> Result<()> {
+        validate_canonical_source(&self.canonical_source)?;
+        match (&self.evidence, self.evidence_hash) {
+            (None, None) => Ok(()),
+            (Some(evidence), Some(evidence_hash)) => {
+                evidence.validate_integrity()?;
+                if evidence.integrity_hash()? != evidence_hash
+                    || evidence.final_source != self.canonical_source
+                    || evidence.capture_hash != self.capture_hash
+                {
+                    return Err(eidetic::Error::new(
+                        "capture identity does not bind its retained evidence",
+                    ));
+                }
+                Ok(())
+            },
+            _ => Err(eidetic::Error::new(
+                "capture evidence and its integrity hash must be retained together",
+            )),
+        }
+    }
+}
+
+/// Which DOM representation Fleece received from its caller.
+///
+/// This records an extraction input, not a policy for producing one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureDomMode {
+    /// Fleece received a DOM made directly from the acquired source bytes.
+    Source,
+    /// Fleece received a DOM after a caller-owned rendering or scripting pass.
+    Rendered,
+    /// A caller supplied a DOM whose construction is outside this bridge.
+    CallerSupplied,
+    /// Legacy `CaptureIdentity::new` data has no DOM-mode observation.
+    Unspecified,
+}
+
+/// Versioned caller-owned facts about one acquired document representation.
+///
+/// The optional manifest identities name durable raw and replay material when
+/// a caller has saved it. They never direct fetching, replay, or cache policy.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaptureEvidenceV1 {
+    pub version: u8,
+    pub final_source: String,
+    pub capture_hash: Hash,
+    pub captured_at: Timestamp,
+    pub response_content_type: Option<String>,
+    pub dom_mode: CaptureDomMode,
+    pub raw_manifest: Option<ManifestId>,
+    pub replay_manifest: Option<ManifestId>,
+}
+
+impl CaptureEvidenceV1 {
+    pub const VERSION: u8 = 1;
+
+    /// Derive the source and capture identity from Genet's bounded host
+    /// response surface. The caller supplies time, DOM provenance, and any
+    /// durable manifest identities because those are outside the fetch seam.
+    pub fn from_resource_response(
+        response: &genet_host_api::ResourceResponse,
+        captured_at: Timestamp,
+        dom_mode: CaptureDomMode,
+        raw_manifest: Option<ManifestId>,
+        replay_manifest: Option<ManifestId>,
+    ) -> Result<Self> {
+        Self::new(
+            response.final_url.clone(),
+            Hash::of(&response.bytes),
+            captured_at,
+            response.content_type.clone(),
+            dom_mode,
+            raw_manifest,
+            replay_manifest,
+        )
+    }
+
+    pub fn new(
+        final_source: impl Into<String>,
+        capture_hash: Hash,
+        captured_at: Timestamp,
+        response_content_type: Option<String>,
+        dom_mode: CaptureDomMode,
+        raw_manifest: Option<ManifestId>,
+        replay_manifest: Option<ManifestId>,
+    ) -> Result<Self> {
+        let evidence = Self {
+            version: Self::VERSION,
+            final_source: final_source.into(),
+            capture_hash,
+            captured_at,
+            response_content_type,
+            dom_mode,
+            raw_manifest,
+            replay_manifest,
+        };
+        evidence.validate_integrity()?;
+        Ok(evidence)
+    }
+
+    fn legacy(canonical_source: impl Into<String>, capture_hash: Hash) -> Result<Self> {
+        Self::new(
             canonical_source,
             capture_hash,
-        })
+            Timestamp::ZERO,
+            None,
+            CaptureDomMode::Unspecified,
+            None,
+            None,
+        )
+    }
+
+    /// Whether every non-derived V1 fact was observed by the caller. Legacy
+    /// constructor output retains source and hash only; its timestamp and DOM
+    /// mode must not be interpreted as a capture observation.
+    pub fn has_authoritative_acquisition_context(&self) -> bool {
+        self.captured_at != Timestamp::ZERO && self.dom_mode != CaptureDomMode::Unspecified
+    }
+
+    fn validate_integrity(&self) -> Result<()> {
+        if self.version != Self::VERSION {
+            return Err(eidetic::Error::new(format!(
+                "unsupported capture evidence version: {}",
+                self.version
+            )));
+        }
+        validate_canonical_source(&self.final_source)?;
+        if self
+            .response_content_type
+            .as_deref()
+            .is_some_and(|content_type| content_type.trim().is_empty())
+        {
+            return Err(eidetic::Error::new(
+                "capture response content type must not be empty when retained",
+            ));
+        }
+        if self
+            .raw_manifest
+            .is_some_and(|raw_manifest| raw_manifest != ManifestId::from_hash(self.capture_hash))
+        {
+            return Err(eidetic::Error::new(
+                "raw capture manifest must identify the retained capture bytes",
+            ));
+        }
+        Ok(())
+    }
+
+    fn integrity_hash(&self) -> Result<Hash> {
+        serde_json::to_vec(self)
+            .map(|bytes| Hash::of(&bytes))
+            .map_err(|error| eidetic::Error::new(format!("capture evidence serialize: {error}")))
     }
 }
 
@@ -94,7 +283,7 @@ impl FleeceExtractionRecord {
     }
 
     pub fn validate_integrity(&self) -> Result<()> {
-        validate_canonical_source(&self.capture.canonical_source)?;
+        self.capture.validate_integrity()?;
         if self.canonical_text_record.canonical_text.is_empty() {
             return Err(eidetic::Error::new(
                 "canonical Fleece text must not be empty",
@@ -165,6 +354,14 @@ pub struct WebAnnotationTarget {
     /// Eidetic extension: capture identity is distinct from the source URI.
     #[serde(rename = "captureHash")]
     pub capture_hash: Hash,
+    /// Eidetic extension: binds versioned caller capture evidence when the
+    /// record retained it. Absent only for legacy records with no such facts.
+    #[serde(
+        rename = "captureEvidenceHash",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub capture_evidence_hash: Option<Hash>,
     /// Eidetic extension: declares the exact text the selectors are measured on.
     #[serde(rename = "canonicalTextHash")]
     pub canonical_text_hash: Hash,
@@ -228,6 +425,7 @@ impl WebAnnotationTarget {
                 })?,
             ],
             capture_hash: extraction.capture.capture_hash,
+            capture_evidence_hash: extraction.capture.evidence_hash,
             canonical_text_hash: extraction.canonical_text_hash,
         })
     }
@@ -258,6 +456,7 @@ impl WebAnnotationEnvelope {
                 serde_json::json!({
                     "eidetic": "https://merely-made.org/ns/eidetic#",
                     "captureHash": "eidetic:captureHash",
+                    "captureEvidenceHash": "eidetic:captureEvidenceHash",
                     "canonicalTextHash": "eidetic:canonicalTextHash"
                 }),
             ],
@@ -307,6 +506,7 @@ impl FleeceAnnotationRecord {
             || self.target.source.format != self.extraction.canonical_text_record.media_type
             || self.target.scope != self.extraction.capture.canonical_source
             || self.target.capture_hash != self.extraction.capture.capture_hash
+            || self.target.capture_evidence_hash != self.extraction.capture.evidence_hash
             || self.target.canonical_text_hash != self.extraction.canonical_text_hash
         {
             return Err(eidetic::Error::new(
@@ -636,9 +836,20 @@ mod tests {
             document.contract.quote_context,
         )
         .expect("fixture anchor");
+        let response = genet_host_api::ResourceResponse::new(
+            "https://example.test/story",
+            html.as_bytes().to_vec(),
+        )
+        .with_content_type("text/html; charset=utf-8");
         FleeceAnnotationRecord::from_fleece(
-            CaptureIdentity::new("https://example.test/story", Hash::of(html.as_bytes()))
-                .expect("capture identity"),
+            CaptureIdentity::from_resource_response(
+                &response,
+                Timestamp(1_700_000_000_000),
+                CaptureDomMode::Source,
+                Some(ManifestId::from_hash(Hash::of(html.as_bytes()))),
+                Some(ManifestId::of_blob(b"replay fixture")),
+            )
+            .expect("capture identity"),
             &document,
             &anchor,
         )
@@ -873,6 +1084,18 @@ mod tests {
                 default_graph.clone(),
             ),
             Quad::new(
+                target.clone(),
+                named_node("https://merely-made.org/ns/eidetic#captureEvidenceHash"),
+                Literal::new_simple_literal(
+                    record
+                        .target
+                        .capture_evidence_hash
+                        .expect("fixture has capture evidence")
+                        .to_string(),
+                ),
+                default_graph.clone(),
+            ),
+            Quad::new(
                 target,
                 named_node("https://merely-made.org/ns/eidetic#canonicalTextHash"),
                 Literal::new_simple_literal(record.target.canonical_text_hash.to_string()),
@@ -1038,11 +1261,144 @@ mod tests {
         let capture_hash = Hash::of(b"capture");
         assert!(CaptureIdentity::new("relative/path", capture_hash).is_err());
         assert!(CaptureIdentity::new("not a URL", capture_hash).is_err());
-        assert!(CaptureIdentity::new("gemini://example.test/page", capture_hash).is_ok());
+        let legacy = CaptureIdentity::new("gemini://example.test/page", capture_hash)
+            .expect("legacy capture identity");
+        assert_eq!(legacy.canonical_source, "gemini://example.test/page");
+        assert_eq!(legacy.capture_hash, capture_hash);
+        assert!(
+            !legacy
+                .evidence
+                .as_ref()
+                .expect("legacy constructor delegates to V1 evidence")
+                .has_authoritative_acquisition_context()
+        );
 
         let mut record = fixture();
         record.extraction.capture.canonical_source = "relative/path".to_owned();
         assert!(record.validate_integrity().is_err());
+    }
+
+    #[test]
+    fn capture_evidence_binds_every_retained_fact() {
+        let record = fixture();
+        assert!(
+            record
+                .extraction
+                .capture
+                .evidence
+                .as_ref()
+                .expect("fixture retains V1 capture evidence")
+                .has_authoritative_acquisition_context()
+        );
+        assert!(
+            CaptureEvidenceV1::new(
+                "https://example.test/story",
+                Hash::of(b"capture"),
+                Timestamp(1_700_000_000_000),
+                None,
+                CaptureDomMode::Source,
+                Some(ManifestId::of_blob(b"other raw bytes")),
+                None,
+            )
+            .is_err(),
+            "a raw manifest must name the same bytes as the capture hash"
+        );
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .final_source = "https://example.test/changed".to_owned();
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .capture_hash = Hash::of(b"changed capture");
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .captured_at = Timestamp(1_700_000_000_001);
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .response_content_type = Some("application/xhtml+xml".to_owned());
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .dom_mode = CaptureDomMode::Rendered;
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record.clone();
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .raw_manifest = Some(ManifestId::of_blob(b"changed raw fixture"));
+        assert!(changed.validate_integrity().is_err());
+
+        let mut changed = record;
+        changed
+            .extraction
+            .capture
+            .evidence
+            .as_mut()
+            .expect("fixture evidence")
+            .replay_manifest = Some(ManifestId::of_blob(b"changed replay fixture"));
+        assert!(changed.validate_integrity().is_err());
+    }
+
+    #[test]
+    fn record_serialized_before_capture_evidence_remains_readable() {
+        let mut json = serde_json::to_value(fixture()).expect("serialize current record");
+        let capture = json["extraction"]["capture"]
+            .as_object_mut()
+            .expect("capture object");
+        capture.remove("evidence");
+        capture.remove("evidence_hash");
+        json["target"]
+            .as_object_mut()
+            .expect("target object")
+            .remove("captureEvidenceHash");
+        json["annotation"]["target"]
+            .as_object_mut()
+            .expect("annotation target object")
+            .remove("captureEvidenceHash");
+
+        let legacy: FleeceAnnotationRecord =
+            serde_json::from_value(json).expect("decode pre-evidence record");
+        assert!(legacy.extraction.capture.evidence.is_none());
+        assert!(legacy.extraction.capture.evidence_hash.is_none());
+        legacy
+            .validate_integrity()
+            .expect("pre-evidence record remains valid");
     }
 
     #[test]

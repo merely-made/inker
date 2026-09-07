@@ -61,7 +61,7 @@ render regimes would recover none of it, because the data is already gone.
 ### The trust gap (architectural)
 
 The parse ASTs carry no trust state (verified: nothing in `errand/src/parse/`). The
-native lane goes errand-parse → smolweb-views, **bypassing `Block`** and its
+native lane goes errand-parse → `mere-document-lanes::SmolwebDocument`, **bypassing `Block`** and its
 `DocumentTrustState`. So focused viewing via the genet lane surfaces no security
 posture: a spartan page (unauthenticated by design), a gemini page (TOFU), and a
 misfin message (signed sender) render with the same neutral chrome. The transport
@@ -139,7 +139,7 @@ the new fields feed the article reader, the podcast affordance, and read-state.
   public struct fields post-publish is a semver treadmill.
 - **`content` is an HTML fragment — the article reader needs a lane decision.** Feed
   bodies (`<content>`/`<content:encoded>`) are HTML. Rendering them inside
-  `feed_view` would pull HTML rendering into smolweb-views, against the two-family
+  `feed_view` would pull HTML rendering into the smolweb document lane, against the two-family
   split; the alternative is a cross-lane handoff (the entry card opens the article
   via the HTML/document lane, with `content` as the offline body). Decide before the
   article reader is built; the field itself is lane-neutral and can land first.
@@ -273,7 +273,7 @@ Targets, not dates.
   risk is protocol semantics normalized away at parse time, not HTML semantics
   imposed at paint time. The fix is richer ASTs, not a different render regime.
 - **The native lane carries no trust** (nothing trust-shaped in `errand/src/parse/`;
-  `smolweb-views` emits no posture). The `Block` lane has `DocumentTrustState`; the
+  `SmolwebDocument` emits no posture). The `Block` lane has `DocumentTrustState`; the
   genet lane, which the host uses for focused tiles, drops it.
 - **Gopher is the sole clear regime-B candidate.** Gemtext, feed, nex, finger,
   spartan, guppy, scroll, misfin are all box-flow-shaped; gopher's fixed-width typed
@@ -283,7 +283,7 @@ Targets, not dates.
 
 - **2026-07-01**: Plan created from the fidelity audit with Mark (the DocumentBlock →
   Block terminology sweep opened into a substrate/spec-faithfulness review). Collapse
-  inventory verified against `errand/src/parse/*`, `smolweb-views/src/lib.rs`, and the
+  inventory verified against `errand/src/parse/*`, the then-current `smolweb-views/src/lib.rs`, and the
   paint-list API. Three workstreams scoped; A-default / B-for-non-box regime rule set.
 
 ## Cross-references

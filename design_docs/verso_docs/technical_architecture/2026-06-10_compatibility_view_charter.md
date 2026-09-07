@@ -6,8 +6,10 @@
 > and `scry` modules, plus the `genet-donor` feature). The paths below are
 > as of writing; the design they record is unchanged.
 **Date**: 2026-06-10
-**Status**: Charter decision (Mark, 2026-06-10 conversation). Pre-implementation;
-nothing consumes this yet, and nothing should until the sequencing gate below.
+**Status**: Charter decision (Mark, 2026-06-10 conversation). The first-flip
+implementation now lives in the consolidated `verso-tile` crate, whose session
+contract is consumed by Mere fetch; this document remains the design authority
+for the compatibility-view invariants and sequencing gates.
 **Supersedes**: verso's original realization charter (composition spine §7/§14.3),
 which was decomposed and absorbed by shipped layers. See the spine's 2026-06-10
 banner for the absorption record:
