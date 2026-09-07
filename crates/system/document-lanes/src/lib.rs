@@ -34,7 +34,9 @@ pub use eidetic_bridge::{
 };
 #[cfg(feature = "fleece-json-ld")]
 pub use structured_data::{
-    JsonLdBlockProjection, JsonLdProjectionOutcome, json_ld_contributions, project_json_ld_blocks,
+    JsonLdBlockProjection, JsonLdProjectionOutcome, json_ld_contributions,
+    json_ld_contributions_with_base_iri, project_json_ld_blocks,
+    project_json_ld_blocks_with_base_iri,
 };
 
 pub use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};

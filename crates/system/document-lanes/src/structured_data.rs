@@ -34,15 +34,30 @@ pub fn project_json_ld_blocks(
     blocks: &[EmbeddedJsonLdBlock],
     contexts: &ContextCache,
 ) -> Vec<JsonLdBlockProjection> {
+    project_json_ld_blocks_with_base_iri(blocks, contexts, None)
+}
+
+/// Project every preserved block with a caller-supplied resolved document URL.
+///
+/// JSON-LD resolves relative IRIs against its `base` option. Fleece deliberately
+/// does not know a page's resolved address, transport, or custody, so the host
+/// that owns those facts supplies `base_iri` here. The value is used only for
+/// JSON-LD expansion and is not folded into the retained block provenance.
+pub fn project_json_ld_blocks_with_base_iri(
+    blocks: &[EmbeddedJsonLdBlock],
+    contexts: &ContextCache,
+    base_iri: Option<&str>,
+) -> Vec<JsonLdBlockProjection> {
     blocks
         .iter()
         .map(|block| {
             let outcome = if !matches!(&block.parse, JsonLdParseStatus::Parsed(_)) {
                 JsonLdProjectionOutcome::InvalidJson
             } else {
-                match linked_data::from_jsonld_with_contexts(
+                match linked_data::from_jsonld_with_contexts_and_base_iri(
                     block.dom_text.as_bytes(),
                     contexts.clone(),
+                    base_iri,
                 ) {
                     Ok(contribution) => JsonLdProjectionOutcome::Projected(contribution),
                     Err(error) => JsonLdProjectionOutcome::ExpansionFailed(error.to_string()),
@@ -71,7 +86,17 @@ pub fn json_ld_contributions(
     blocks: &[EmbeddedJsonLdBlock],
     contexts: &ContextCache,
 ) -> Vec<GraphContribution> {
-    project_json_ld_blocks(blocks, contexts)
+    json_ld_contributions_with_base_iri(blocks, contexts, None)
+}
+
+/// Like [`json_ld_contributions`], resolving relative JSON-LD IRIs against a
+/// caller-owned document address.
+pub fn json_ld_contributions_with_base_iri(
+    blocks: &[EmbeddedJsonLdBlock],
+    contexts: &ContextCache,
+    base_iri: Option<&str>,
+) -> Vec<GraphContribution> {
+    project_json_ld_blocks_with_base_iri(blocks, contexts, base_iri)
         .into_iter()
         .filter_map(|projection| match projection.outcome {
             JsonLdProjectionOutcome::Projected(contribution) => Some(contribution),
@@ -88,7 +113,10 @@ mod tests {
     use genet_static_dom::StaticDocument;
     use linked_data::ContextCache;
 
-    use super::{JsonLdProjectionOutcome, json_ld_contributions, project_json_ld_blocks};
+    use super::{
+        JsonLdProjectionOutcome, json_ld_contributions, json_ld_contributions_with_base_iri,
+        project_json_ld_blocks, project_json_ld_blocks_with_base_iri,
+    };
 
     fn subject_id(contribution: &linked_data::GraphContribution) -> &str {
         contribution
@@ -199,6 +227,73 @@ mod tests {
                 .find(|node| node.id == "https://page.test/cached")
                 .and_then(|node| node.title.as_deref()),
             Some("Cached")
+        );
+    }
+
+    #[test]
+    fn resolves_relative_ids_against_the_caller_owned_document_base() {
+        // W3C JSON-LD ToRDF test #t0017, "Relative IRI expands relative
+        // resource location":
+        // https://w3c.github.io/json-ld-api/tests/toRdf-manifest.jsonld#t0017
+        // Original input:
+        // https://w3c.github.io/json-ld-api/tests/toRdf/0017-in.jsonld
+        // Copyright © W3C; distributed under the W3C Test Suite License:
+        // https://www.w3.org/Consortium/Legal/2008/04-testsuite-license.html
+        // Keep the tiny authoritative input inline so this regression remains
+        // offline and does not vendor the full suite.
+        const W3C_T0017_INPUT: &str = r#"{
+          "@id": "a/b",
+          "@type": "http://www.w3.org/2000/01/rdf-schema#Resource"
+        }"#;
+        const DOCUMENT_BASE: &str = "https://w3c.github.io/json-ld-api/tests/toRdf/0017-in.jsonld";
+        const EXPECTED_ID: &str = "https://w3c.github.io/json-ld-api/tests/toRdf/a/b";
+
+        let document = StaticDocument::parse(&format!(
+            r#"<script id="relative" type="application/ld+json">{W3C_T0017_INPUT}</script>"#
+        ));
+        let blocks = extract_json_ld_blocks(&document);
+
+        let without_base = project_json_ld_blocks(&blocks, &ContextCache::new());
+        let JsonLdProjectionOutcome::Projected(without_base) = &without_base[0].outcome else {
+            panic!("the relative-only node is ignored when no base is supplied");
+        };
+        assert!(without_base.nodes.is_empty());
+
+        let invalid_base = project_json_ld_blocks_with_base_iri(
+            &blocks,
+            &ContextCache::new(),
+            Some("relative/base"),
+        );
+        assert!(matches!(
+            invalid_base[0].outcome,
+            JsonLdProjectionOutcome::ExpansionFailed(_)
+        ));
+
+        let projections = project_json_ld_blocks_with_base_iri(
+            &blocks,
+            &ContextCache::new(),
+            Some(DOCUMENT_BASE),
+        );
+        assert_eq!(projections.len(), 1);
+        assert_eq!(projections[0].element_id.as_deref(), Some("relative"));
+        assert_eq!(projections[0].declared_type, "application/ld+json");
+        assert_eq!(projections[0].dom_text, blocks[0].dom_text);
+        let JsonLdProjectionOutcome::Projected(contribution) = &projections[0].outcome else {
+            panic!("the W3C relative-IRI fixture must project with the supplied base");
+        };
+        assert!(contribution.nodes.iter().any(|node| {
+            node.id == EXPECTED_ID
+                && node.types == ["http://www.w3.org/2000/01/rdf-schema#Resource"]
+        }));
+
+        let contributions =
+            json_ld_contributions_with_base_iri(&blocks, &ContextCache::new(), Some(DOCUMENT_BASE));
+        assert_eq!(contributions.len(), 1);
+        assert!(
+            contributions[0]
+                .nodes
+                .iter()
+                .any(|node| node.id == EXPECTED_ID)
         );
     }
 }
