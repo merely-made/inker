@@ -1,8 +1,14 @@
 # Native Smolweb Rendering Plan — each format idiomatic, on genet views
 
+> **Historical status, 2026-09-06.** The native rendering effort recorded here
+> is complete; the remaining work is Mere host integration and interactive
+> eyeballing. The dated implementation notes and headed observations remain
+> historical evidence.
+
 **Date**: 2026-06-27
-**Status**: planning (with Mark). Net-new architecture; greenfield on the genet
-side (no existing smolweb render in genet or pelt, code-verified).
+**Status**: implementation complete (2026-06-27); Mere host integration and
+interactive eyeballing remain. Retained as a historical design and
+implementation record.
 
 > **Home refinement, 2026-08-03**: the §5 crate-home diagram predates the genet
 > adoption of errand/nematic and the smolweb workspace. Crate homes now read

@@ -6,15 +6,18 @@
 > and `scry` modules, plus the `genet-donor` feature). The paths below are
 > as of writing; the design they record is unchanged.
 **Date**: 2026-06-23
-**Status**: Design resolved; `verso-api` + genet donor primitives shipped (2026-06-23).
+**Status**: Design resolved; the consolidated `verso-tile` crate is landed in
+Mere (2026-09-03), carrying the API, flip choreography, Scry receiver, and
+optional Genet donor. The v1 forward carry includes URL, scroll, and session;
+remaining host and flip-back work stays in the Progress ledger.
 Both charter prerequisites are **done** (verified in code 2026-06-23): P4 (the scry
 tile) and the inker picker (the engine-picker plan's Phases 0-3 — `engine_pins`
 routing through `EngineRoutePolicy`, `is_surface_engine`, the apparatus engine
 manager, and the per-node picker) both shipped 2026-06-15. **Verso is unblocked.**
 The picker already flips a node to `scrying.web` as a *stateless* engine-switch (a
 fresh WebView); verso is the state-carry layer that turns that switch into a flip.
-Next: the carrier + the `verso-genet`/`verso-scry` adapters, hooking the existing
-`engine_pins` pin-switch in the ScryingHost.
+The former carrier/adapters next step is represented by `verso-tile`; its
+remaining host integration is tracked below rather than as a future crate split.
 **Extends**: [compatibility-view charter](../technical_architecture/2026-06-10_compatibility_view_charter.md)
 (§3 the charter, §7.3 "mint verso at the first flip").
 

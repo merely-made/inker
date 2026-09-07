@@ -1,7 +1,8 @@
 # Web Surface Contract Assessment
 
-**Status (2026-09-04):** assessment complete; migration started separately
-from the triplet release gate.
+**Status (2026-09-06):** assessment complete; `mere-surface-api` extraction
+and the platform-boundary migration are landed separately from the triplet
+release gate.
 
 ## Verdict
 
