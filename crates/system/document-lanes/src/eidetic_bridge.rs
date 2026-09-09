@@ -22,6 +22,10 @@ use serde::{Deserialize, Serialize};
 
 const RFC_5147: &str = fleece::RFC5147_CONFORMS_TO;
 
+/// Stable schema identifier carried by a Moot `Shared` contribution that
+/// points at a [`FleeceAnnotationRecord`].
+pub const FLEECE_ANNOTATION_SCHEMA_ID: &str = "mere.document-lanes.FleeceAnnotation/v1";
+
 /// Canonical bytes of the schema codicil describing this bridge's typed payload.
 const FLEECE_ANNOTATION_SCHEMA_PAYLOAD: &[u8] = br#"{"format":"mere-native","schema_id":"mere.document-lanes.FleeceAnnotation/v1","body":{"version":1,"description":"A caller-identified Fleece extraction with a W3C Web Annotation target over its canonical DOM text.","required":["extraction","target","annotation"],"fields":{"extraction":{"type":"object"},"target":{"type":"object"},"annotation":{"type":"object"}}}}"#;
 
