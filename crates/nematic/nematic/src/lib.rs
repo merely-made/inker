@@ -33,6 +33,7 @@
 //! - [`ScrollEngine`] — Scroll smolweb body (gemtext or markdown)
 //! - [`SpartanEngine`] — Spartan smolweb body (gemtext or markdown)
 //! - [`TitanEngine`] — Titan response body (gemtext; upload is transport-side)
+//! - [`MicronSubsetEngine`] — evidence-qualified, source-preserving Micron preview
 //! - [`MisfinEngine`] — Misfin gemini-style mail body (gemtext)
 //! - [`NexEngine`] — Nex directory listings + content
 //! - [`GuppyEngine`] — Guppy UDP-smolweb body (gemtext)
@@ -43,7 +44,7 @@
 //!
 //! ## Status
 //!
-//! Pre-1.0. All sixteen registered engines are implemented.
+//! Pre-1.0. The Micron engine intentionally implements only its checked-in capture subset.
 
 #![doc(html_root_url = "https://docs.rs/nematic/0.1.0")]
 
@@ -58,6 +59,7 @@ pub mod html;
 pub mod knot;
 
 pub mod markdown;
+pub mod micron;
 pub mod misfin;
 pub mod nex;
 pub mod scroll;
@@ -79,6 +81,7 @@ pub use knot::{ENGINE_ID as ENGINE_KNOT, KnotEngine};
 // djot engine as the default knot grammar.
 pub use knot::djot::{DjotKnotEngine, ENGINE_ID as ENGINE_KNOT_DJOT};
 pub use markdown::{ENGINE_ID as ENGINE_MARKDOWN, MarkdownEngine};
+pub use micron::{ENGINE_ID as ENGINE_MICRON_SUBSET, MicronSubsetEngine};
 pub use misfin::{ENGINE_ID as ENGINE_MISFIN, MisfinEngine};
 pub use nex::{ENGINE_ID as ENGINE_NEX, NexEngine};
 pub use scroll::{ENGINE_ID as ENGINE_SCROLL, ScrollEngine};
@@ -94,6 +97,7 @@ pub fn engines() -> Vec<Box<dyn Engine>> {
     #[allow(unused_mut)]
     let mut engines: Vec<Box<dyn Engine>> = vec![
         Box::new(MarkdownEngine::new()),
+        Box::new(MicronSubsetEngine::new()),
         Box::new(GemtextEngine::new()),
         Box::new(GopherEngine::new()),
         Box::new(FeedEngine::new()),
@@ -156,6 +160,7 @@ mod tests {
             ENGINE_KNOT,
             ENGINE_KNOT_DJOT,
             ENGINE_MARKDOWN,
+            ENGINE_MICRON_SUBSET,
             ENGINE_MISFIN,
             ENGINE_NEX,
             ENGINE_SCROLL,
@@ -207,6 +212,7 @@ mod tests {
         }
         let mut ids = vec![
             ENGINE_MARKDOWN,
+            ENGINE_MICRON_SUBSET,
             ENGINE_GEMTEXT,
             ENGINE_GOPHER,
             ENGINE_TEXT,

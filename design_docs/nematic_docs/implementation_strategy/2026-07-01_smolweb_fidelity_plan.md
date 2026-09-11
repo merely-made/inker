@@ -46,6 +46,16 @@ Any future parser belongs under `crates/nematic/nematic/src/`, with source
 provenance and diagnostics for every unsupported construct; NomadNet transport
 and dynamic page behavior remain separate adapter work.
 
+**2026-09-11 partial preview receipt.** `MicronSubsetEngine` now lowers only
+literal LF fixtures checked in beside its tests: `> Heading` as a level-one
+heading, `---` as a divider, unmarked text, and the two captured same-line
+inline forms for bold and italic. It attaches a partial-preview diagnostic.
+Mixed controls, candidate links and tables, `#` lines, spacing variants,
+CRLF, and empty physical lines remain inert `Preformatted` source; no link,
+form, MIME, transport, or dynamic-page behavior is inferred. The fixtures
+record stock Python and independent black-box renderer observations. Extending
+this engine requires a new literal capture and a regression test first.
+
 The important finding: almost every semantic loss happens at the **flavour-neutral
 parse ASTs**, before any view exists. The box rendering is mostly innocent. Switching
 render regimes would recover none of it, because the data is already gone.
