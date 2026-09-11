@@ -31,6 +31,21 @@ posture the native lane currently drops.
 
 ## 1. What we collapse today (audit, verified against code)
 
+### Micron grammar gate (2026-09-11)
+
+Micron remains a planned Nematic engine, not an implemented parser. The public
+Reticulum manual establishes that `.mu` pages and Markdown-to-Micron conversion
+exist, but it does not define the line, link, inline-control, cache, or form
+grammar. The household clean-room rule permits public prose and black-box
+captures, while excluding NomadNet implementation source. Until a fixture
+corpus records each interpreted construct and an independent capture confirms
+its output, Nematic must retain Micron as raw source or an explicit unsupported
+format. Do not infer bracket links, `#!c=` cache directives, terminal styles, or
+form syntax from examples whose semantics are not independently established.
+Any future parser belongs under `crates/nematic/nematic/src/`, with source
+provenance and diagnostics for every unsupported construct; NomadNet transport
+and dynamic page behavior remain separate adapter work.
+
 The important finding: almost every semantic loss happens at the **flavour-neutral
 parse ASTs**, before any view exists. The box rendering is mostly innocent. Switching
 render regimes would recover none of it, because the data is already gone.
