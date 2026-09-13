@@ -104,8 +104,10 @@ render regimes would recover none of it, because the data is already gone.
 ### Micron completion scope (2026-09-13)
 
 **Status:** shared reading presentation and both consumer integrations implemented
-and tested on 2026-09-13; headed qualification remains. The remaining behavior
-lanes below are scoped. Source interpretation, document presentation and session
+and tested on 2026-09-13. The form lane's headed acceptance was taken the same
+day against two independent instruments and is recorded in lane 3; reading
+fidelity, navigation and refresh headed qualification remain. The remaining
+behavior lanes below are scoped. Source interpretation, document presentation and session
 interaction have separate evidence boundaries.
 
 The first reading slice carries foreground/background RGB, underline, alignment
@@ -167,7 +169,7 @@ media remain the separate gates below.
    receipts; opening a local anchor must issue zero transport requests. Further
    stock captures must establish ambiguous section-exit, escape, table and
    malformed-control behavior before the parser interprets those spellings.
-3. **Forms: bounded consumers, headed acceptance open.** The 2026-09-13
+3. **Forms: bounded consumers, headed acceptance taken.** The 2026-09-13
    [typed request receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
    closes the packet-sized transport prerequisite: stock NomadNet and Retinue
    match native string maps in both directions for defaults, edited Unicode and
@@ -204,15 +206,55 @@ media remain the separate gates below.
    graceful shutdown before releasing the interface. Turnstone also tests its
    response cap against that Resource. These bounds remain after Resource
    reassembly. Static publication still does not execute dynamic handlers;
-   inline form widgets, partial refresh and headed stock-node acceptance remain
-   outside this receipt. The app plans hold the exact clean-Cargo commands.
-   Done when a stock client reaches our controlled handler and our client reaches
-   a stock node with independently matched values, followed by headed edit/submit
-   receipts in Knot and Turnstone. Rendering, focus and preview must not submit;
-   cancellation or a newer navigation must prevent stale results replacing a page.
-   Bound field count, submitted bytes and request time explicitly. The existing
-   page-byte cap is applied after Resource reassembly; it is not a form-size or
-   early allocation limit.
+   inline form widgets and partial refresh remain outside that automated
+   receipt. The app plans hold the exact clean-Cargo commands.
+   The done-condition — a stock client reaching our controlled handler and our
+   client reaching a stock node with independently matched values, followed by
+   headed edit/submit receipts in Knot and Turnstone — was met on 2026-09-13.
+   Rendering, focus and preview must not submit; cancellation or a newer
+   navigation must prevent stale results replacing a page. Bound field count,
+   submitted bytes and request time explicitly. The existing page-byte cap is
+   applied after Resource reassembly; it is not a form-size or early allocation
+   limit.
+   The headed acceptance is recorded at `C:\t\micron-headed-20260913`, whose
+   `RECEIPT.md` indexes the captures, logs, scenarios and scripts. It used two
+   independent instruments: a controlled public-RNS `nomadnetwork/node` request
+   handler logging every received typed map with wall-clock timestamps
+   (`handler/requests.jsonl`), and a real stock `nomadnet` 1.4.2 daemon under WSL
+   whose stock executable page records the `field_*` environment it receives
+   (`stock-node/submissions.jsonl`). Stock NomadNet stayed black-box. Both apps
+   were built from `C:/t` with the isolated Cargo home, Rust 1.97.1 and absolute
+   manifests: Knot desktop `fae329c` with `--locked --offline`, Turnstone
+   `d710af9` with `--offline`. In both apps opening a page, opening the form and
+   editing fields sent nothing beyond the ordinary page fetch; one explicit Send
+   produced exactly one independently observed map with the edited values
+   (`field_hd_text="edited café 雪"`, `field_hd_empty="filled"`,
+   `field_hd_mask="secret"`, `field_hd_checks="red,blue"`,
+   `field_hd_radio="blue"`), and the reply was visible in the app. Both apps also
+   completed a send to the stock daemon, whose page script recorded the same map
+   shape — Turnstone with edited values, Knot with defaults; the node passes the
+   `str → str` map verbatim as `field_*` environment plus `link_id` and does no
+   splitting or typing. Cancellation, navigating away, reload and timeout each
+   produced one request and no retry, showed an explicit unknown-remote-outcome
+   message, and suppressed the handler's late reply. Turnstone's
+   `TURNSTONE_NOMADNET_TIMEOUT_SECS` and `TURNSTONE_NOMADNET_MAX_PAGE_BYTES`
+   bounds were exercised directly; Knot's equivalents are compile-time defaults
+   (30 s, 4 MiB) with no environment override. Knot additionally refused a
+   malformed local target before sending and offered a stale-form discard after
+   the source changed under a prepared review.
+   Still open after this acceptance: inline form widgets, partial refresh,
+   outgoing request Resources, multi-segment responses, authentication and
+   dynamic page hosting in Djinn. Follow-up from the receipt: Knot compares its
+   4 MiB response cap only after unpacking, so a 5 MiB reply fails as
+   `Remote Micron handler returned an invalid response` — Retinue's
+   single-segment `MAX_SEGMENT_SIZE` (1,048,575 bytes) is hit first and the cap
+   is unreachable, naming the wrong cause. Turnstone caps received bytes before
+   decoding and refuses correctly for both 64 KiB and 5 MiB replies, so Knot
+   should move its check ahead of unpacking; multi-segment responses remain a
+   separate transport gate. Two further Knot cosmetics from the same run: the
+   preview pane loses its scroll offset during submission redraws, making the
+   cancel control hard to hit on long pages, and the previous reply text survives
+   closing and reopening a form (values themselves reset).
 4. **Refresh, media and directives.** Qualify partial replacement, refresh timing,
    image targets and page/cache directives separately. Reuse the host's existing
    subresource and request lifecycle with configurable cadence, fanout, byte and
@@ -526,6 +568,14 @@ Targets, not dates.
   Block terminology sweep opened into a substrate/spec-faithfulness review). Collapse
   inventory verified against `errand/src/parse/*`, the then-current `smolweb-views/src/lib.rs`, and the
   paint-list API. Three workstreams scoped; A-default / B-for-non-box regime rule set.
+- **2026-09-13**: headed Micron form acceptance taken for both consumers against a
+  controlled public-RNS request handler and a real stock `nomadnet` 1.4.2 daemon
+  under WSL, artifacts at `C:\t\micron-headed-20260913`. Knot desktop `fae329c`
+  and Turnstone `d710af9`; edit/send, cancellation, navigation, reload, timeout
+  and size-cap outcomes independently observed. Lane 3's done-condition is met.
+  Inline widgets, partial refresh, request Resources and multi-segment responses
+  stay open, and Knot's response cap is compared after unpacking rather than
+  before it.
 
 ## Cross-references
 
