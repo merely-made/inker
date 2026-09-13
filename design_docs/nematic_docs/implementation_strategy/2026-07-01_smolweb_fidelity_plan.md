@@ -76,7 +76,7 @@ documented by the version-matched Guide.
 | Syntax | Persistent combined styles, three-hex colors, alignment, headings and section depth, collapse markers, explicit anchors, link components, field/partial source, headers, literal blocks, table blocks and image descriptors retain their source facts. | Full malformed-input compatibility, escape spelling, section-exit behavior and version differences need further stock-client captures. |
 | Portable preview | Text, bold/italic, headings, literal text, dividers, ordinary native links and pipe-table cells lower to shared Inker blocks. Tables now have document-canvas geometry, wrapping and link hit regions. | Color, underline, alignment, indentation, folding, anchor scrolling, forms and partials require additional presentation or interaction support. Unsupported constructs have explicit diagnostics; images use an alt-text placeholder. |
 | Link authority | Native same-node `:/page/...` resolves against a real destination. File-context aliases remain explicit for the host's active-site manifest to resolve. | An arbitrary file acquires no native destination. Bare and relative native targets remain unqualified. |
-| Dynamic requests | Stock-client captures establish selected callback fields, empty and masked values, checkbox aggregation, radio defaults and fixed variables. | Callback environment output is not a wire-map receipt. Retinue's byte-valued request data must not be mistaken for a typed request map. Submission and partial refresh remain inert. |
+| Dynamic requests | Stock-client captures establish selected fields, empty and masked values, checkbox aggregation, edited radio state, fixed variables, Unicode and multiline text. A subsequent Retinue receipt verifies the native string-map value in both directions. | Retinue's bounded map API is the packet-sized transport prerequisite. Consumer field state, submission and partial refresh remain inert; outgoing request Resources are unsupported. |
 
 This is broader syntax preservation and a usable native preview, **not full
 Micron conformance**. Completing an interaction requires an independent
@@ -167,13 +167,19 @@ media remain the separate gates below.
    receipts; opening a local anchor must issue zero transport requests. Further
    stock captures must establish ambiguous section-exit, escape, table and
    malformed-control behavior before the parser interprets those spellings.
-3. **Forms, after a typed wire receipt.** Capture the actual request value through
-   a controlled public RNS endpoint, including edited text, Unicode, nonempty
-   multiline, duplicate checkboxes, radio state, selected fields and fixed
-   variables. The existing callback environment is not that evidence. Retinue's
-   `Request::pack` currently writes binary data and `StaticNode` refuses nonempty
-   requests: embedding a serialized map inside those bytes is not a typed-map
-   implementation. Retinue owns the interoperable request value; Mere owns field
+3. **Forms, after a typed wire receipt.** The 2026-09-13
+   [typed request receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
+   closes the packet-sized transport prerequisite: stock NomadNet and Retinue
+   match native string maps in both directions for defaults, edited Unicode and
+   multiline text, checkbox/radio state, selected fields and fixed variables.
+   Retinue's `StringMapRequest` bounds entry count and encoded bytes; raw requests
+   exceeding the link packet capacity are refused before sending. Larger request
+   Resources remain unsupported. `StaticNode` still refuses dynamic submissions.
+   This prerequisite is published as Retinue `2563202`; the existing consumer
+   pins remain on the previously qualified activation fix until a consumer uses
+   the new map API. Six map tests, seven endpoint tests and three link tests pass,
+   and the API builds with the alloc-only feature set.
+   Retinue owns the interoperable request value; Mere owns field
    state and submission actions; apps own destination context and activation.
    Done when a stock client reaches our controlled handler and our client reaches
    a stock node with independently matched values, followed by headed edit/submit
