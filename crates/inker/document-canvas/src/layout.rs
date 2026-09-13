@@ -11,10 +11,12 @@
 //! no scrolling. Width fills the available content width; height grows
 //! to fit content (may exceed `viewport.height`).
 
-use inker::{Block, EngineDocument, InlineSpan, TableAlignment};
+use inker::{Block, BlockAlignment, EngineDocument, InlineSpan, TableAlignment};
 
 use crate::font_table::{FontInterner, FontTable};
-use crate::style_sheet::{BlockRole, ColorToken, DocumentStyleSheet, ResolvedBlockStyle};
+use crate::style_sheet::{
+    BlockRole, ColorToken, DocumentStyleSheet, ResolvedBlockStyle, SourcePresentation,
+};
 use crate::text::{
     Flattened, LaidOutText, LayoutEnvironment, TextBaseStyle, flatten_inline,
     layout_text_block_with_link_identity_base,
@@ -61,7 +63,11 @@ pub fn layout_document(
 
 /// Build the parley block base from a resolved role style: the role's
 /// typography, base text `color`, and `wrap` policy.
-fn text_base_from(resolved: &ResolvedBlockStyle) -> TextBaseStyle {
+fn text_base_from(
+    resolved: &ResolvedBlockStyle,
+    alignment: BlockAlignment,
+    source_presentation: SourcePresentation,
+) -> TextBaseStyle {
     TextBaseStyle {
         font_size: resolved.font_size,
         font_family: resolved.font_family.clone(),
@@ -71,6 +77,8 @@ fn text_base_from(resolved: &ResolvedBlockStyle) -> TextBaseStyle {
         line_height_ratio: resolved.line_height_ratio,
         color: resolved.color,
         wrap: resolved.wrap,
+        alignment,
+        source_presentation,
     }
 }
 
@@ -91,6 +99,7 @@ struct DocumentLayouter<'a> {
     /// Next opaque identity for a logical link in this lowered document.
     /// Wrapped rectangles reserve only one identity and share it.
     next_link_identity: SemanticInteractionId,
+    alignment: BlockAlignment,
 }
 
 impl<'a> DocumentLayouter<'a> {
@@ -111,6 +120,7 @@ impl<'a> DocumentLayouter<'a> {
             fonts: FontInterner::new(),
             base_scheme,
             next_link_identity: SemanticInteractionId::from_lowered_ordinal(1),
+            alignment: BlockAlignment::Start,
         }
     }
 
@@ -154,6 +164,20 @@ impl<'a> DocumentLayouter<'a> {
         indent_level: u32,
     ) -> Option<RenderedBlock> {
         match block {
+            Block::Presented {
+                presentation,
+                block,
+            } => {
+                let previous = self.alignment;
+                self.alignment = presentation.alignment;
+                let rendered = self.render_block(
+                    block,
+                    source_index,
+                    indent_level.saturating_add(presentation.indent_level),
+                );
+                self.alignment = previous;
+                rendered
+            },
             Block::Table {
                 alignments,
                 header,
@@ -168,7 +192,7 @@ impl<'a> DocumentLayouter<'a> {
                     source_index,
                     indent_level,
                     spans,
-                    text_base_from(&resolved),
+                    text_base_from(&resolved, self.alignment, self.style.source_presentation),
                     resolved.spacing_below,
                 ))
             },
@@ -235,7 +259,7 @@ impl<'a> DocumentLayouter<'a> {
         spans: &[InlineSpan],
     ) -> RenderedBlock {
         let resolved = self.style.resolve(BlockRole::Heading(level));
-        let base = text_base_from(&resolved);
+        let base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
         self.render_text_block_with_spacing(
             source_index,
             indent_level,
@@ -302,7 +326,15 @@ impl<'a> DocumentLayouter<'a> {
         rows: &[Vec<Vec<InlineSpan>>],
     ) -> RenderedBlock {
         let body_resolved = self.style.resolve(BlockRole::Body);
-        let body_base = text_base_from(&body_resolved);
+        // A Micron table's block alignment positions the table itself. Its
+        // cells retain their per-column alignment, so do not feed the block
+        // alignment into parley's line alignment here.
+        let block_alignment = self.alignment;
+        let body_base = text_base_from(
+            &body_resolved,
+            BlockAlignment::Start,
+            self.style.source_presentation,
+        );
         let mut header_base = body_base.clone();
         header_base.bold = true;
 
@@ -310,9 +342,9 @@ impl<'a> DocumentLayouter<'a> {
             .len()
             .max(header.len())
             .max(rows.iter().map(Vec::len).max().unwrap_or(0));
-        let table_left = self.content_left(indent_level);
         let table_top = self.cursor_y;
         if column_count == 0 {
+            let table_left = self.content_left(indent_level);
             return RenderedBlock {
                 source_block_index: source_index,
                 bounds: Rect::from_xywh(table_left, table_top, 0.0, body_resolved.spacing_below),
@@ -392,6 +424,13 @@ impl<'a> DocumentLayouter<'a> {
         } else {
             available
         };
+        let content_left = self.content_left(indent_level);
+        let table_left = content_left
+            + match block_alignment {
+                BlockAlignment::Start => 0.0,
+                BlockAlignment::Center => ((available - table_width) * 0.5).max(0.0),
+                BlockAlignment::End => (available - table_width).max(0.0),
+            };
         let inner_width = (table_width - gap * (column_count - 1) as f32).max(0.0);
         let minimum_inner_width = minimum_cell_width * column_count as f32;
         let column_widths = if horizontal_overflow {
@@ -562,7 +601,7 @@ impl<'a> DocumentLayouter<'a> {
         text: &str,
     ) -> RenderedBlock {
         let resolved = self.style.resolve(BlockRole::Code);
-        let base = text_base_from(&resolved);
+        let base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
         let spans = vec![InlineSpan::Text(text.to_string())];
         self.render_text_block_with_spacing(
             source_index,
@@ -797,7 +836,7 @@ impl<'a> DocumentLayouter<'a> {
             InlineSpan::Text(value.to_string()),
         ];
         let resolved = self.style.resolve(BlockRole::Metadata);
-        let base = text_base_from(&resolved);
+        let base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
         self.render_text_block_with_spacing(
             source_index,
             indent_level,
@@ -820,7 +859,7 @@ impl<'a> DocumentLayouter<'a> {
             text.to_string(),
         )])];
         let resolved = self.style.resolve(BlockRole::Badge);
-        let base = text_base_from(&resolved);
+        let base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
         self.render_text_block_with_spacing(
             source_index,
             indent_level,

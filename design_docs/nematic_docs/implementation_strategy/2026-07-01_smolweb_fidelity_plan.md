@@ -103,11 +103,30 @@ render regimes would recover none of it, because the data is already gone.
 
 ### Micron completion scope (2026-09-13)
 
-**Status:** scoped after the syntax/native-preview cutover; the work below is
-unimplemented unless a separate receipt says otherwise. The Micron syntax model
-now retains facts that its portable projection drops. For this format the next
-loss boundary is therefore `micron/render.rs`, followed by document presentation
-and session interaction, rather than another wholesale parser replacement.
+**Status:** shared reading presentation implemented and tested on 2026-09-13;
+consumer integration and headed qualification follow. The remaining behavior
+lanes below are scoped. Source interpretation, document presentation and session
+interaction have separate evidence boundaries.
+
+The first reading slice carries foreground/background RGB, underline, alignment
+and section indentation in Inker's typed `Presented` wrappers. HTML export,
+plain-text fallbacks, statement traversal and accessibility retain the wrapped
+content. The canvas applies the style, and document-lanes retains horizontal
+viewport movement and translated hit regions. `SourcePresentation::Reader`
+suppresses source inline colors and underline through the shared style/session API;
+alignment and indentation remain active. A persisted
+Knot/Turnstone setting has not been qualified. Source bytes remain authoritative.
+The consumer integration carries styled link children in Knot and traverses the
+wrappers in Turnstone's NomadNet alias refusal before activation. Its application
+checks are recorded in the respective consumer plans.
+
+Automated shared receipts: Nematic 190 tests plus 3 examples, document-canvas
+61 tests, Inker 112 tests, document-lanes 7 tests and UxTree 8 tests pass with
+`--offline --locked`. These include retained style, geometry, narrow-width horizontal
+scroll and paint/hit-region translation. These are software receipts, not new
+stock-NomadNet or headed two-app comparisons. Source table-width options still
+produce a diagnostic and use reader geometry; folds, anchors, forms, refresh and
+media remain the separate gates below.
 
 1. **Reading fidelity first.** Nematic owns source interpretation and lowering;
    Inker/document-canvas own reusable presentation; document-lanes own the

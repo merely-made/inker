@@ -69,11 +69,11 @@ pub use capabilities::{
     CapabilityStatus, DocumentCapabilities, DocumentCapabilityStatus, WebFeatureStatus,
 };
 pub use document::{
-    Block, BlockEvaluator, BlockEvaluators, BlockProvenance, BlockProvenanceMap,
-    DocumentDiagnostic, DocumentProvenance, DocumentTrustState, EngineDocument, EvalOutcome,
-    EvalOutput, EvaluationPolicy, Fetched, GophermapContext, InlineSpan, ResolvedProvenance,
-    TableAlignment, TranscludeOutcome, TransclusionPolicy, evaluate_blocks, inline_text,
-    parse_eval, parse_include, resolve_transclusions,
+    Block, BlockAlignment, BlockEvaluator, BlockEvaluators, BlockPresentation, BlockProvenance,
+    BlockProvenanceMap, DocumentDiagnostic, DocumentProvenance, DocumentTrustState, EngineDocument,
+    EvalOutcome, EvalOutput, EvaluationPolicy, Fetched, GophermapContext, InlinePresentation,
+    InlineSpan, ResolvedProvenance, TableAlignment, TranscludeOutcome, TransclusionPolicy,
+    evaluate_blocks, inline_text, parse_eval, parse_include, resolve_transclusions,
 };
 pub use engine::{Engine, EngineError, EngineInput, EngineRegistry};
 pub use page_capture::{
@@ -102,13 +102,13 @@ pub use surface_engine::{
     EngineProfileBinding, FocusReason, FrameHandleOwnership, HttpAuthenticationAnswer,
     HttpAuthenticationChallenge, HttpCredentials, HttpProtectionSpace, KeyboardEvent,
     KeyboardModifiers, MouseButton, MouseEvent, MouseEventKind, NativeSurfaceHost,
-    NativeTextureHandle, NavigationEvent, OwnedSurfaceFrame, PermissionAnswer, PermissionDescriptor,
-    PermissionRequest, PermissionState, PhysicalPosition, PointerButtons, PointerEvent,
-    PointerInputCapabilities, PointerPhase, PointerType, SameSite, ScriptCapabilities,
-    SurfaceEngine, SurfaceEngineRegistry, SurfaceError, SurfaceFrame, SurfaceProducer,
-    SurfaceSettings, SurfaceSpawnRequest, SurfaceSyncHandle, SurfaceTextureFormat,
-    UserAgentRequestId, WebFrameTransportMode, WebMessage, WebSurface, WebSurfaceCapabilities,
-    WebRequestId, WebSurfaceEvent,
+    NativeTextureHandle, NavigationEvent, OwnedSurfaceFrame, PermissionAnswer,
+    PermissionDescriptor, PermissionRequest, PermissionState, PhysicalPosition, PointerButtons,
+    PointerEvent, PointerInputCapabilities, PointerPhase, PointerType, SameSite,
+    ScriptCapabilities, SurfaceEngine, SurfaceEngineRegistry, SurfaceError, SurfaceFrame,
+    SurfaceProducer, SurfaceSettings, SurfaceSpawnRequest, SurfaceSyncHandle, SurfaceTextureFormat,
+    UserAgentRequestId, WebFrameTransportMode, WebMessage, WebRequestId, WebSurface,
+    WebSurfaceCapabilities, WebSurfaceEvent,
 };
 
 /// Crate version.

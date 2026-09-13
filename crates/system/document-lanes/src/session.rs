@@ -121,6 +121,12 @@ impl SmolwebDocumentSession {
         &mut self.doc
     }
 
+    /// Change this appearance's source-style policy and invalidate its
+    /// retained geometry. Hosts may expose this through their own settings.
+    pub fn set_source_presentation(&mut self, presentation: document_canvas::SourcePresentation) {
+        self.doc.set_source_presentation(presentation);
+    }
+
     /// Replace an incrementally received body while retaining this session's
     /// viewport and host-owned presentation policy.
     pub fn replace_body(&mut self, url: &str, body: &str) {
@@ -202,7 +208,7 @@ mod tests {
     use genet_host_api::ResourceFetcher;
     use inker::session_engine::{DocumentSession, SessionEngine, SessionSpawnRequest};
 
-    use super::SmolwebSessionEngine;
+    use super::{SmolwebDocumentSession, SmolwebSessionEngine};
 
     /// Byte source for spawn-with-body tests; never fetches.
     #[derive(Clone)]
@@ -245,5 +251,20 @@ mod tests {
         );
         assert!(session.subresources().is_empty());
         assert_eq!(session.links()[0].url, "gemini://x.test/docs/picture.png");
+    }
+
+    #[test]
+    fn session_exposes_the_reader_source_presentation_override() {
+        let document = crate::SmolwebDocument::parse(
+            "file:///guide.mu",
+            "`F123source color",
+            crate::SmolwebTheme::Plain,
+        );
+        let mut session = SmolwebDocumentSession::new(document, (320, 240));
+        session.set_source_presentation(document_canvas::SourcePresentation::Reader);
+        assert_eq!(
+            session.document_mut().source_presentation(),
+            document_canvas::SourcePresentation::Reader
+        );
     }
 }

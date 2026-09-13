@@ -189,6 +189,13 @@ impl Block {
     fn write_markdown(&self, out: &mut String, indent: usize) {
         let pad = "  ".repeat(indent);
         match self {
+            Self::Presented {
+                presentation,
+                block,
+            } => block.write_markdown(
+                out,
+                indent.saturating_add(presentation.indent_level as usize),
+            ),
             Self::Heading { level, spans } => {
                 let level = (*level).clamp(1, 6) as usize;
                 out.push_str(&pad);
@@ -327,6 +334,7 @@ impl Block {
 
     fn write_gemini(&self, out: &mut String) {
         match self {
+            Self::Presented { block, .. } => block.write_gemini(out),
             Self::Table { header, rows, .. } => {
                 out.push_str("```\n");
                 for line in table_lines(header, rows) {
@@ -493,6 +501,10 @@ impl Block {
     /// `nematic::KnotEngine`'s fence expansion.
     fn write_knot(&self, out: &mut String) {
         match self {
+            Self::Presented {
+                presentation,
+                block,
+            } => block.write_markdown(out, presentation.indent_level as usize),
             Self::FeedHeader {
                 title,
                 subtitle,
@@ -587,6 +599,7 @@ impl Block {
 fn write_inline_markdown(spans: &[InlineSpan], out: &mut String) {
     for span in spans {
         match span {
+            InlineSpan::Presented { spans, .. } => write_inline_markdown(spans, out),
             InlineSpan::Text(t) => out.push_str(t),
             InlineSpan::Code(t) => {
                 out.push('`');
@@ -628,27 +641,53 @@ fn write_inline_markdown(spans: &[InlineSpan], out: &mut String) {
 fn is_link_only(spans: &[InlineSpan]) -> bool {
     let mut saw_link = false;
     for span in spans {
-        match span {
-            InlineSpan::Link { .. } => saw_link = true,
-            InlineSpan::Text(text) if text.trim().is_empty() => {},
-            InlineSpan::SoftBreak | InlineSpan::LineBreak => {},
-            _ => return false,
+        if !is_link_only_span(span, &mut saw_link) {
+            return false;
         }
     }
     saw_link
 }
 
+fn is_link_only_span(span: &InlineSpan, saw_link: &mut bool) -> bool {
+    match span {
+        InlineSpan::Link { .. } => {
+            *saw_link = true;
+            true
+        },
+        InlineSpan::Text(text) => text.trim().is_empty(),
+        InlineSpan::SoftBreak | InlineSpan::LineBreak => true,
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
+        | InlineSpan::Strong(spans) => spans.iter().all(|span| is_link_only_span(span, saw_link)),
+        _ => false,
+    }
+}
+
 fn is_submit_only(spans: &[InlineSpan]) -> bool {
     let mut saw_submit = false;
     for span in spans {
-        match span {
-            InlineSpan::Submit { .. } => saw_submit = true,
-            InlineSpan::Text(text) if text.trim().is_empty() => {},
-            InlineSpan::SoftBreak | InlineSpan::LineBreak => {},
-            _ => return false,
+        if !is_submit_only_span(span, &mut saw_submit) {
+            return false;
         }
     }
     saw_submit
+}
+
+fn is_submit_only_span(span: &InlineSpan, saw_submit: &mut bool) -> bool {
+    match span {
+        InlineSpan::Submit { .. } => {
+            *saw_submit = true;
+            true
+        },
+        InlineSpan::Text(text) => text.trim().is_empty(),
+        InlineSpan::SoftBreak | InlineSpan::LineBreak => true,
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
+        | InlineSpan::Strong(spans) => spans
+            .iter()
+            .all(|span| is_submit_only_span(span, saw_submit)),
+        _ => false,
+    }
 }
 
 fn collect_link_targets(span: &InlineSpan, out: &mut Vec<(String, String)>) {
@@ -659,7 +698,8 @@ fn collect_link_targets(span: &InlineSpan, out: &mut Vec<(String, String)>) {
                 collect_link_targets(inner, out);
             }
         },
-        InlineSpan::Emphasis(spans)
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
         | InlineSpan::Strong(spans)
         | InlineSpan::Submit { spans, .. } => {
             for inner in spans {
@@ -675,7 +715,8 @@ fn collect_submit_targets(span: &InlineSpan, out: &mut Vec<(String, String)>) {
         InlineSpan::Submit { target, spans } => {
             out.push((target.clone(), inline_text(spans)));
         },
-        InlineSpan::Emphasis(spans)
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
         | InlineSpan::Strong(spans)
         | InlineSpan::Link { spans, .. } => {
             for inner in spans {

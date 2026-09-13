@@ -54,6 +54,16 @@ pub enum WrapPolicy {
     NoWrap,
 }
 
+/// Whether a reader honors source-specified inline colors and underlines.
+/// This is a host-selectable accessibility/contrast override, not a parser
+/// decision; source facts remain in the document either way.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SourcePresentation {
+    #[default]
+    Respect,
+    Reader,
+}
+
 /// A semantic color slot, resolved against the sheet's [`ColorVocabulary`]
 /// (and, in a later phase, the live theme). Naming a token rather than a
 /// literal RGBA means a single palette change re-themes every role that uses
@@ -242,6 +252,10 @@ pub struct DocumentStyleSheet {
     pub colors: ColorVocabulary,
     /// How inline links are adorned (the `⇒` / `→` scheme arrows).
     pub link_adornment: LinkAdornment,
+    /// Preserve source inline styling by default. A reader may select
+    /// [`SourcePresentation::Reader`] for its own contrast-safe palette.
+    #[serde(default)]
+    pub source_presentation: SourcePresentation,
     /// Per-role style descriptors.
     pub roles: RoleStyles,
 }
@@ -351,6 +365,7 @@ impl Default for DocumentStyleSheet {
             vertical_padding: 16.0,
             colors: ColorVocabulary::default(),
             link_adornment: LinkAdornment::SchemeArrow,
+            source_presentation: SourcePresentation::Respect,
             roles: RoleStyles {
                 body: BlockStyle {
                     family: FontChoice::InheritBody,

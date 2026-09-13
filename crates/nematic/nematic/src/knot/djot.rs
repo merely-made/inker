@@ -424,6 +424,7 @@ fn emit_djot_table(header: &[Vec<InlineSpan>], rows: &[Vec<Vec<InlineSpan>>], ou
 
 fn emit_block(block: &Block, out: &mut String) {
     match block {
+        Block::Presented { block, .. } => emit_block(block, out),
         Block::Heading { level, spans } => {
             for _ in 0..(*level).max(1) {
                 out.push('#');

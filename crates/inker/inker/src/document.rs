@@ -196,6 +196,13 @@ pub enum DocumentDiagnostic {
 /// into an a11y / automation tree without any host-specific information.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Block {
+    /// A source-format presentation hint around one structural block. The
+    /// wrapped block remains the semantic content; readers may choose a
+    /// contrast-preserving override of these visual facts.
+    Presented {
+        presentation: BlockPresentation,
+        block: Box<Block>,
+    },
     /// AccessKit `Role::Heading` with the heading level set on the node.
     Heading { level: u8, spans: Vec<InlineSpan> },
     /// AccessKit `Role::Paragraph`.
@@ -268,9 +275,43 @@ pub enum TableAlignment {
     Right,
 }
 
+/// Source-specified alignment for one rendered block.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BlockAlignment {
+    /// Use the reader's ordinary start alignment.
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
+/// Visual facts carried by a source format without changing its structural
+/// block kind. `indent_level` is relative to the reader's configured indent.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockPresentation {
+    pub alignment: BlockAlignment,
+    pub indent_level: u32,
+}
+
+/// Source-specified visual facts for inline content. The reader can render
+/// them directly or apply an accessibility/contrast override while retaining
+/// the source representation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InlinePresentation {
+    pub foreground: Option<[u8; 3]>,
+    pub background: Option<[u8; 3]>,
+    pub underline: bool,
+}
+
 /// An inline-level span inside a [`Block`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InlineSpan {
+    /// Presentation around an inline subtree. It is intentionally separate
+    /// from emphasis/strong semantics and does not make the text interactive.
+    Presented {
+        presentation: InlinePresentation,
+        spans: Vec<InlineSpan>,
+    },
     Text(String),
     Code(String),
     Emphasis(Vec<InlineSpan>),
@@ -316,7 +357,9 @@ pub fn inline_text(spans: &[InlineSpan]) -> String {
 fn append_inline_text(span: &InlineSpan, out: &mut String) {
     match span {
         InlineSpan::Text(text) | InlineSpan::Code(text) => out.push_str(text),
-        InlineSpan::Emphasis(spans) | InlineSpan::Strong(spans) => {
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
+        | InlineSpan::Strong(spans) => {
             for inner in spans {
                 append_inline_text(inner, out);
             }
@@ -333,6 +376,7 @@ fn append_inline_text(span: &InlineSpan, out: &mut String) {
 
 fn collect_block_spans<'a>(block: &'a Block, out: &mut Vec<&'a InlineSpan>) {
     match block {
+        Block::Presented { block, .. } => collect_block_spans(block, out),
         Block::Heading { spans, .. } | Block::Paragraph { spans } => {
             for span in spans {
                 out.push(span);
@@ -370,6 +414,7 @@ fn collect_block_spans<'a>(block: &'a Block, out: &mut Vec<&'a InlineSpan>) {
 
 fn collect_block_link_urls<'a>(block: &'a Block, out: &mut Vec<&'a str>) {
     match block {
+        Block::Presented { block, .. } => collect_block_link_urls(block, out),
         Block::Heading { spans, .. } | Block::Paragraph { spans } => {
             for span in spans {
                 collect_link_urls(span, out);
@@ -439,7 +484,8 @@ fn collect_link_urls<'a>(span: &'a InlineSpan, out: &mut Vec<&'a str>) {
                 collect_link_urls(inner, out);
             }
         },
-        InlineSpan::Emphasis(spans)
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
         | InlineSpan::Strong(spans)
         | InlineSpan::Submit { spans, .. } => {
             for inner in spans {

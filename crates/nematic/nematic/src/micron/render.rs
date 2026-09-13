@@ -6,8 +6,9 @@
 
 use super::syntax::{self, Alignment, LineKind, Span, Style};
 use inker::{
-    Block, DocumentDiagnostic, DocumentProvenance, DocumentTrustState, Engine, EngineDocument,
-    EngineError, EngineInput, InlineSpan,
+    Block, BlockAlignment, BlockPresentation, DocumentDiagnostic, DocumentProvenance,
+    DocumentTrustState, Engine, EngineDocument, EngineError, EngineInput, InlinePresentation,
+    InlineSpan,
 };
 
 pub const ENGINE_ID: &str = "nematic.micron";
@@ -32,12 +33,7 @@ impl Engine for MicronEngine {
         let mut diagnostics = Vec::new();
         let mut title = None;
         for line in &parsed.lines {
-            if line.alignment != Alignment::Default && line.alignment != Alignment::Left {
-                loss(
-                    &mut diagnostics,
-                    "Micron alignment retained in syntax; native projection uses reader alignment",
-                );
-            }
+            let block_start = blocks.len();
             match &line.kind {
                 LineKind::Comment | LineKind::LiteralDelimiter => {},
                 LineKind::Header { .. } => {
@@ -86,7 +82,7 @@ impl Engine for MicronEngine {
                     if !options.is_empty() {
                         loss(
                             &mut diagnostics,
-                            "Micron table width and block alignment retained in syntax; native projection uses reader geometry",
+                            "Micron table width retained in syntax; native projection uses reader geometry",
                         );
                     }
                     if let Some(table) =
@@ -118,11 +114,8 @@ impl Engine for MicronEngine {
                     }
                 },
             }
-            if line.section_depth > 1 {
-                loss(
-                    &mut diagnostics,
-                    "Micron section depth retained in syntax; native projection does not indent sections",
-                );
+            for block in &mut blocks[block_start..] {
+                *block = present_block(std::mem::replace(block, Block::Rule), line);
             }
         }
         if !diagnostics.is_empty() {
@@ -140,6 +133,38 @@ impl Engine for MicronEngine {
             diagnostics,
             blocks,
         })
+    }
+}
+
+fn present_block(block: Block, line: &syntax::Line) -> Block {
+    let alignment = match &line.kind {
+        LineKind::Table { options, .. } => match options.chars().next() {
+            Some('c') => BlockAlignment::Center,
+            Some('r') => BlockAlignment::End,
+            Some('l') => BlockAlignment::Start,
+            _ => block_alignment(line.alignment),
+        },
+        _ => block_alignment(line.alignment),
+    };
+    let presentation = BlockPresentation {
+        alignment,
+        indent_level: u32::try_from(line.section_depth.saturating_sub(1)).unwrap_or(u32::MAX),
+    };
+    if presentation == BlockPresentation::default() {
+        block
+    } else {
+        Block::Presented {
+            presentation,
+            block: Box::new(block),
+        }
+    }
+}
+
+fn block_alignment(alignment: Alignment) -> BlockAlignment {
+    match alignment {
+        Alignment::Default | Alignment::Left => BlockAlignment::Start,
+        Alignment::Center => BlockAlignment::Center,
+        Alignment::Right => BlockAlignment::End,
     }
 }
 
@@ -205,12 +230,7 @@ fn lower_table(
 }
 
 fn text_span(text: &str, style: &Style, diagnostics: &mut Vec<DocumentDiagnostic>) -> InlineSpan {
-    if style.underline || style.foreground.is_some() || style.background.is_some() {
-        loss(
-            diagnostics,
-            "Micron underline and colors retained in syntax; portable projection uses reader styling",
-        );
-    }
+    let _ = diagnostics;
     let mut span = InlineSpan::Text(text.to_owned());
     if style.italic {
         span = InlineSpan::Emphasis(vec![span]);
@@ -218,7 +238,19 @@ fn text_span(text: &str, style: &Style, diagnostics: &mut Vec<DocumentDiagnostic
     if style.bold {
         span = InlineSpan::Strong(vec![span]);
     }
-    span
+    let presentation = InlinePresentation {
+        foreground: style.foreground,
+        background: style.background,
+        underline: style.underline,
+    };
+    if presentation == InlinePresentation::default() {
+        span
+    } else {
+        InlineSpan::Presented {
+            presentation,
+            spans: vec![span],
+        }
+    }
 }
 
 fn lower_spans(
@@ -356,6 +388,61 @@ mod tests {
         assert!(doc.blocks.iter().any(|block| matches!(block,
             Block::Table { header, rows, alignments }
                 if header.len() == 2 && rows.len() == 1 && alignments == &[inker::TableAlignment::Left, inker::TableAlignment::Right])));
+    }
+
+    #[test]
+    fn captured_presentation_becomes_typed_source_wrappers() {
+        let source = "\u{60}c\u{60}F123\u{60}Babc\u{60}_Styled\n>> Nested\n\u{60}tc30\n| Name | Count |\n| --- | ---: |\n| A | 2 |\n\u{60}t";
+        let doc = MicronEngine::new()
+            .render(&EngineInput::new(BASE, source))
+            .unwrap();
+
+        let paragraph = doc.blocks.iter().find_map(|block| match block {
+            Block::Presented {
+                presentation:
+                    BlockPresentation {
+                        alignment: BlockAlignment::Center,
+                        indent_level: 0,
+                    },
+                block,
+            } => match block.as_ref() {
+                Block::Paragraph { spans } => Some(spans),
+                _ => None,
+            },
+            _ => None,
+        });
+        let spans = paragraph.expect("centered source paragraph");
+        assert!(matches!(
+            spans.first(),
+            Some(InlineSpan::Presented {
+                presentation: InlinePresentation {
+                    foreground: Some([0x11, 0x22, 0x33]),
+                    background: Some([0xaa, 0xbb, 0xcc]),
+                    underline: true,
+                },
+                ..
+            })
+        ));
+        assert!(doc.blocks.iter().any(|block| {
+            matches!(block,
+                Block::Presented {
+                    presentation: BlockPresentation { alignment: BlockAlignment::Center, indent_level: 1 },
+                    block,
+                } if matches!(block.as_ref(), Block::Heading { .. }))
+        }));
+        assert!(doc.blocks.iter().any(|block| {
+            matches!(block,
+                Block::Presented {
+                    presentation: BlockPresentation { alignment: BlockAlignment::Center, .. },
+                    block,
+                } if matches!(block.as_ref(), Block::Table { .. }))
+        }));
+        assert!(
+            !doc.diagnostics.iter().any(|diagnostic| matches!(diagnostic,
+                DocumentDiagnostic::UnsupportedConstruct(message)
+                    if message.contains("colors, underline, alignment, or section indentation"))),
+            "captured reader presentation is now carried through the document model"
+        );
     }
 
     #[test]

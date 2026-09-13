@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use document_canvas::{
     ColorVocabulary, DecodedImage, DocumentStyleSheet, InteractionKind, LaidOutDocument, Rect,
-    SemanticInteractionId, Viewport, layout_document,
+    SemanticInteractionId, SourcePresentation, Viewport, layout_document,
     netrender_backend::scene_from_packet_with_images,
 };
 #[cfg(feature = "smolweb")]
@@ -100,6 +100,7 @@ pub struct SmolwebDocument {
     inline_media: SmolwebInlineMediaPolicy,
     layout: Option<LaidOutDocument>,
     size: (u32, u32),
+    scroll_x: f32,
     scroll_y: f32,
     /// A semantic snapshot is only meaningful after the layout has crossed a
     /// completed presentation boundary. Layout may exist earlier for sizing or
@@ -203,7 +204,12 @@ impl SmolwebDocument {
     ) -> Self {
         let (style, background) =
             style_for_theme(&theme, &document.address, &document.content_type);
-        Self::from_shared_document(document, style, background, SmolwebInlineMediaPolicy::default())
+        Self::from_shared_document(
+            document,
+            style,
+            background,
+            SmolwebInlineMediaPolicy::default(),
+        )
     }
 
     fn from_document_with_media_policy(
@@ -229,6 +235,7 @@ impl SmolwebDocument {
             inline_media,
             layout: None,
             size: (0, 0),
+            scroll_x: 0.0,
             scroll_y: 0.0,
             presented: false,
         }
@@ -237,6 +244,22 @@ impl SmolwebDocument {
     /// The portable document retained by this session.
     pub fn document(&self) -> &EngineDocument {
         &self.document
+    }
+
+    /// Select whether this retained appearance honors source-specified inline
+    /// colors and underlines. This changes only presentation, so the shared
+    /// source document and its semantics remain untouched.
+    pub fn set_source_presentation(&mut self, presentation: SourcePresentation) {
+        if self.style.source_presentation == presentation {
+            return;
+        }
+        self.style.source_presentation = presentation;
+        self.layout = None;
+        self.presented = false;
+    }
+
+    pub fn source_presentation(&self) -> SourcePresentation {
+        self.style.source_presentation
     }
 
     /// Replace an in-flight document body without replacing its live session.
@@ -302,7 +325,15 @@ impl SmolwebDocument {
             &self.style,
         ));
         self.size = size;
+        self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());
+    }
+
+    fn max_scroll_x(&self) -> f32 {
+        let Some(layout) = &self.layout else {
+            return 0.0;
+        };
+        (layout.packet.content_bounds.size.width - self.size.0 as f32).max(0.0)
     }
 
     fn max_scroll(&self) -> f32 {
@@ -316,7 +347,12 @@ impl SmolwebDocument {
     pub fn frame(&mut self, width: u32, height: u32) -> Scene {
         self.ensure_layout(width, height);
         let layout = self.layout.as_ref().expect("layout built above");
-        let packet = layout.packet.window(self.scroll_y, self.size.1 as f32);
+        let packet = layout.packet.window_rect(
+            self.scroll_x,
+            self.scroll_y,
+            self.size.0 as f32,
+            self.size.1 as f32,
+        );
         let mut scene =
             scene_from_packet_with_images(&packet, &layout.fonts, &self.style.colors, &self.images);
         scene.push_rect(
@@ -333,13 +369,14 @@ impl SmolwebDocument {
     }
 
     /// Move the single host-owned document viewport.
-    pub fn scroll_by(&mut self, _dx: f32, dy: f32) -> bool {
+    pub fn scroll_by(&mut self, dx: f32, dy: f32) -> bool {
         if self.layout.is_none() {
             return false;
         }
-        let before = self.scroll_y;
+        let before = (self.scroll_x, self.scroll_y);
+        self.scroll_x = (self.scroll_x + dx).clamp(0.0, self.max_scroll_x());
         self.scroll_y = (self.scroll_y + dy).clamp(0.0, self.max_scroll());
-        self.scroll_y != before
+        (self.scroll_x, self.scroll_y) != before
     }
 
     /// document-canvas has one viewport scroller, so point routing delegates
@@ -382,6 +419,11 @@ impl SmolwebDocument {
         self.scroll_y
     }
 
+    /// Current horizontal viewport offset for wide retained table packets.
+    pub fn scroll_x(&self) -> f32 {
+        self.scroll_x
+    }
+
     /// Full laid-out content height, floored to the viewport height.
     pub fn content_height(&mut self, width: u32, height: u32) -> u32 {
         self.ensure_layout(width, height);
@@ -410,16 +452,8 @@ impl SmolwebDocument {
                 let InteractionKind::Link { url } = &region.kind else {
                     return None;
                 };
-                let rect = region.bounds;
-                Some((
-                    url.clone(),
-                    [
-                        rect.origin.x,
-                        rect.origin.y - self.scroll_y,
-                        rect.size.width,
-                        rect.size.height,
-                    ],
-                ))
+                let [x, y, width, height] = self.viewport_rect(region.bounds)?;
+                Some((url.clone(), [x, y, width, height]))
             })
             .collect()
     }
@@ -482,13 +516,14 @@ impl SmolwebDocument {
                 continue;
             };
             let point = (x + width * 0.5, y + height * 0.5);
+            let document_x = point.0 + self.scroll_x;
             let document_y = point.1 + self.scroll_y;
             let current_topmost = layout
                 .packet
                 .interactions
                 .iter()
                 .rev()
-                .find(|candidate| rect_contains(candidate.bounds, point.0, document_y));
+                .find(|candidate| rect_contains(candidate.bounds, document_x, document_y));
             if current_topmost
                 .and_then(|candidate| candidate.link_semantics.as_ref())
                 .is_some_and(|current| current.identity == identity)
@@ -503,8 +538,8 @@ impl SmolwebDocument {
     /// viewport. The returned rectangle and all pointer targets derived from
     /// it remain inside the content hole.
     fn viewport_rect(&self, bounds: Rect) -> Option<[f32; 4]> {
-        let left = bounds.origin.x.max(0.0);
-        let right = bounds.max_x().min(self.size.0 as f32);
+        let left = (bounds.origin.x - self.scroll_x).max(0.0);
+        let right = (bounds.max_x() - self.scroll_x).min(self.size.0 as f32);
         let top = (bounds.origin.y - self.scroll_y).max(0.0);
         let bottom = (bounds.max_y() - self.scroll_y).min(self.size.1 as f32);
         (left < right && top < bottom).then_some([left, top, right - left, bottom - top])
@@ -516,7 +551,7 @@ impl SmolwebDocument {
         self.layout
             .as_ref()?
             .packet
-            .interaction_at(x, y + self.scroll_y)
+            .interaction_at(x + self.scroll_x, y + self.scroll_y)
             .cloned()
     }
 }
@@ -976,6 +1011,65 @@ mod tests {
             doc.click_at(x + width / 2.0, y + height / 2.0, 400, 300),
             Some(InteractionKind::Link { url }) if url == "gemini://x.test/page"
         ));
+    }
+
+    #[test]
+    fn wide_table_links_clip_scroll_hit_test_and_resize_in_viewport_coordinates() {
+        let document = EngineDocument {
+            address: "gemini://x.test/wide".into(),
+            title: None,
+            content_type: "text/gemini".into(),
+            lang: None,
+            provenance: inker::DocumentProvenance::default(),
+            trust: inker::DocumentTrustState::Unknown,
+            diagnostics: Vec::new(),
+            blocks: vec![Block::Table {
+                alignments: Vec::new(),
+                header: Vec::new(),
+                rows: vec![vec![
+                    vec![InlineSpan::Text(
+                        "first-column-is-intentionally-unbreakable".into(),
+                    )],
+                    vec![InlineSpan::Link {
+                        url: "gemini://x.test/wide/target".into(),
+                        title: None,
+                        spans: vec![InlineSpan::Text("target".into())],
+                        predicate: None,
+                    }],
+                ]],
+            }],
+        };
+        let mut doc = SmolwebDocument::from_document(
+            document,
+            DocumentStyleSheet::default(),
+            [1.0, 1.0, 1.0, 1.0],
+        );
+        let _ = doc.frame(120, 100);
+        assert!(
+            doc.max_scroll_x() > 0.0,
+            "the wide table must expose a horizontal range"
+        );
+        assert!(
+            doc.links().is_empty(),
+            "offscreen link rectangles are not exposed as viewport targets"
+        );
+
+        assert!(doc.scroll_by(f32::MAX, 0.0));
+        let (url, [x, y, width, height]) = doc.links().into_iter().next().expect("scrolled target");
+        assert_eq!(url, "gemini://x.test/wide/target");
+        assert!(x >= 0.0 && x + width <= 120.0);
+        assert!(y >= 0.0 && y + height <= 100.0);
+        assert!(matches!(
+            doc.click_at(x + width * 0.5, y + height * 0.5, 120, 100),
+            Some(InteractionKind::Link { url }) if url == "gemini://x.test/wide/target"
+        ));
+
+        let _ = doc.frame(240, 100);
+        assert!(doc.scroll_x() <= doc.max_scroll_x());
+        for (_, [x, y, width, height]) in doc.links() {
+            assert!(x >= 0.0 && x + width <= 240.0);
+            assert!(y >= 0.0 && y + height <= 100.0);
+        }
     }
 
     #[test]

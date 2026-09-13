@@ -63,6 +63,12 @@ pub struct InlineStyle {
     pub bold: bool,
     pub monospace: bool,
     pub link: bool,
+    /// Source-specified underline, kept separate from link affordances.
+    pub underline: bool,
+    /// Source-specified RGB colors. The style sheet decides whether a reader
+    /// honors them or uses its contrast-preserving palette instead.
+    pub foreground: Option<[u8; 3]>,
+    pub background: Option<[u8; 3]>,
 }
 
 impl InlineStyle {
@@ -71,6 +77,9 @@ impl InlineStyle {
         bold: false,
         monospace: false,
         link: false,
+        underline: false,
+        foreground: None,
+        background: None,
     };
 
     pub fn with_italic(mut self) -> Self {
@@ -90,6 +99,17 @@ impl InlineStyle {
 
     pub fn with_link(mut self) -> Self {
         self.link = true;
+        self
+    }
+
+    pub fn with_presentation(mut self, presentation: inker::InlinePresentation) -> Self {
+        self.underline |= presentation.underline;
+        if presentation.foreground.is_some() {
+            self.foreground = presentation.foreground;
+        }
+        if presentation.background.is_some() {
+            self.background = presentation.background;
+        }
         self
     }
 }

@@ -222,6 +222,9 @@ impl<'a> Builder<'a> {
     }
 
     fn emit_glyph_run(&mut self, run: &GlyphRun) {
+        if let Some(background) = run.background {
+            self.push_rect(glyph_run_bounds(run), background);
+        }
         let Some(font_instance) = self.intern_font(run.font_face) else {
             // The run's face isn't in the sidecar — shouldn't happen for a
             // table produced by the same layout pass. Placeholder rect so
@@ -254,6 +257,23 @@ impl<'a> Builder<'a> {
             glyphs,
             options: TextOptions::default(),
         }));
+        if run.underline {
+            let bounds = glyph_run_bounds(run);
+            let baseline = run.origin.y + run.baseline_y;
+            let underline = Rect::from_xywh(
+                bounds.origin.x,
+                baseline + (run.font_size * 0.08),
+                bounds.size.width,
+                1.0,
+            );
+            self.commands.push(PaintCmd::DrawLine(LineItem {
+                placement: CommonPlacement::new(layout_rect(underline)),
+                color: colorf(run.color),
+                style: LineStyle::Solid,
+                orientation: LineOrientation::Horizontal,
+                wavy_thickness: 0.0,
+            }));
+        }
     }
 
     /// Map a run's [`FontFaceId`] to the `FontInstanceKey` the side-table
@@ -347,7 +367,10 @@ mod tests {
     use crate::layout::layout_document;
     use crate::style_sheet::DocumentStyleSheet;
     use crate::types::Viewport;
-    use inker::{Block, DocumentProvenance, DocumentTrustState, EngineDocument, InlineSpan};
+    use inker::{
+        Block, DocumentProvenance, DocumentTrustState, EngineDocument, InlinePresentation,
+        InlineSpan,
+    };
 
     fn doc(blocks: Vec<Block>) -> EngineDocument {
         EngineDocument {
@@ -385,6 +408,39 @@ mod tests {
         assert!(list.commands().is_empty());
         assert!(list.fonts().is_empty());
         assert!(list.images().is_empty());
+    }
+
+    #[test]
+    fn source_background_and_underline_paint_around_the_shaped_run() {
+        let (list, _) = list_for(vec![Block::Paragraph {
+            spans: vec![InlineSpan::Presented {
+                presentation: InlinePresentation {
+                    foreground: Some([0x11, 0x22, 0x33]),
+                    background: Some([0xaa, 0xbb, 0xcc]),
+                    underline: true,
+                },
+                spans: vec![InlineSpan::Text("source paint".into())],
+            }],
+        }]);
+        let background = list
+            .commands()
+            .iter()
+            .position(|command| matches!(command, PaintCmd::DrawRect(_)))
+            .expect("source background produces a rect");
+        let text = list
+            .commands()
+            .iter()
+            .position(|command| matches!(command, PaintCmd::DrawText(_)))
+            .expect("source text remains shaped");
+        let underline = list
+            .commands()
+            .iter()
+            .rposition(|command| matches!(command, PaintCmd::DrawLine(_)))
+            .expect("source underline produces a line");
+        assert!(
+            background < text && text < underline,
+            "background, text, underline paint in order"
+        );
     }
 
     #[test]

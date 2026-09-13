@@ -111,7 +111,8 @@ fn collect_links(span: &InlineSpan, out: &mut Vec<(String, String)>) {
                 collect_links(inner, out);
             }
         },
-        InlineSpan::Emphasis(spans)
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
         | InlineSpan::Strong(spans)
         | InlineSpan::Submit { spans, .. } => {
             for inner in spans {
@@ -124,6 +125,16 @@ fn collect_links(span: &InlineSpan, out: &mut Vec<(String, String)>) {
 
 fn write_gophermap_block(block: &Block, ctx: &GophermapContext, out: &mut String, prefix: &str) {
     match block {
+        Block::Presented {
+            presentation,
+            block,
+        } => {
+            let prefix = format!(
+                "{prefix}{}",
+                "  ".repeat(presentation.indent_level as usize)
+            );
+            write_gophermap_block(block, ctx, out, &prefix);
+        },
         Block::Heading { spans, .. } => {
             push_info(out, &format!("{prefix}{}", inline_text(spans)));
             push_info(out, "");
@@ -199,6 +210,16 @@ fn write_gophermap_block(block: &Block, ctx: &GophermapContext, out: &mut String
 
 fn write_text_block(block: &Block, out: &mut String, prefix: &str) {
     match block {
+        Block::Presented {
+            presentation,
+            block,
+        } => {
+            let prefix = format!(
+                "{prefix}{}",
+                "  ".repeat(presentation.indent_level as usize)
+            );
+            write_text_block(block, out, &prefix);
+        },
         Block::Table { header, rows, .. } => {
             for line in super::table_lines(header, rows) {
                 out.push_str(prefix);
@@ -339,7 +360,9 @@ fn text_with_links(spans: &[InlineSpan]) -> String {
                 out.push_str(target);
                 out.push_str(">]");
             },
-            InlineSpan::Emphasis(spans) | InlineSpan::Strong(spans) => {
+            InlineSpan::Presented { spans, .. }
+            | InlineSpan::Emphasis(spans)
+            | InlineSpan::Strong(spans) => {
                 out.push_str(&text_with_links(spans));
             },
             InlineSpan::Text(text) | InlineSpan::Code(text) => out.push_str(text),

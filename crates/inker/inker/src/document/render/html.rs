@@ -28,10 +28,16 @@
 //! - A `Link`'s open predicate (statements-over-schema `rel`) is carried as
 //!   a `data-predicate` attribute — meaning is preserved without inventing
 //!   an HTML `rel` token the IRI isn't.
-//! - Table column alignment becomes an inline `text-align` style, the only
-//!   styling this exporter emits.
+//! - Source presentation wrappers retain block alignment/depth and inline
+//!   colors, backgrounds, and underlines as `data-source-*` facts plus a
+//!   browser-native CSS fallback. A page shell may override those styles for
+//!   reader accessibility without losing the underlying text or links.
+//! - Table column alignment becomes an inline `text-align` style.
 
-use super::super::{Block, EngineDocument, InlineSpan, TableAlignment};
+use super::super::{
+    Block, BlockAlignment, BlockPresentation, EngineDocument, InlinePresentation, InlineSpan,
+    TableAlignment,
+};
 
 impl EngineDocument {
     /// Render the document as an HTML body fragment. See the module docs
@@ -72,6 +78,14 @@ fn escape_attr(text: &str, out: &mut String) {
 
 fn write_html_block(block: &Block, out: &mut String) {
     match block {
+        Block::Presented {
+            presentation,
+            block,
+        } => {
+            write_block_presentation_open(*presentation, out);
+            write_html_block(block, out);
+            out.push_str("</div>\n");
+        },
         Block::Heading { level, spans } => {
             let level = (*level).clamp(1, 6);
             out.push_str(&format!("<h{level}>"));
@@ -197,6 +211,79 @@ fn write_html_block(block: &Block, out: &mut String) {
     }
 }
 
+fn block_alignment_name(alignment: BlockAlignment) -> &'static str {
+    match alignment {
+        BlockAlignment::Start => "start",
+        BlockAlignment::Center => "center",
+        BlockAlignment::End => "end",
+    }
+}
+
+/// Preserve source block presentation as inspectable facts and browser-native
+/// fallback styling. A page shell can override `--reader-indent` or these
+/// properties for contrast and accessibility without reparsing the document.
+fn write_block_presentation_open(presentation: BlockPresentation, out: &mut String) {
+    let alignment = block_alignment_name(presentation.alignment);
+    out.push_str("<div class=\"source-presentation source-align-");
+    out.push_str(alignment);
+    out.push_str("\" data-source-alignment=\"");
+    out.push_str(alignment);
+    out.push_str("\" data-source-indent=\"");
+    out.push_str(&presentation.indent_level.to_string());
+    out.push_str("\" style=\"--source-indent-level:");
+    out.push_str(&presentation.indent_level.to_string());
+    out.push(';');
+    match presentation.alignment {
+        BlockAlignment::Start => {},
+        BlockAlignment::Center => out.push_str("text-align:center;"),
+        BlockAlignment::End => out.push_str("text-align:end;"),
+    }
+    if presentation.indent_level != 0 {
+        out.push_str("margin-inline-start:calc(var(--reader-indent, 1.5rem) * ");
+        out.push_str(&presentation.indent_level.to_string());
+        out.push_str(");");
+    }
+    out.push_str("\">");
+}
+
+fn write_hex_color(color: [u8; 3], out: &mut String) {
+    for component in color {
+        out.push_str(&format!("{component:02x}"));
+    }
+}
+
+fn write_inline_presentation_open(presentation: InlinePresentation, out: &mut String) {
+    out.push_str("<span class=\"source-presentation\"");
+    if let Some(color) = presentation.foreground {
+        out.push_str(" data-source-foreground=\"#");
+        write_hex_color(color, out);
+        out.push('"');
+    }
+    if let Some(color) = presentation.background {
+        out.push_str(" data-source-background=\"#");
+        write_hex_color(color, out);
+        out.push('"');
+    }
+    if presentation.underline {
+        out.push_str(" data-source-underline=\"true\"");
+    }
+    out.push_str(" style=\"");
+    if let Some(color) = presentation.foreground {
+        out.push_str("--source-foreground:#");
+        write_hex_color(color, out);
+        out.push_str(";color:var(--source-foreground);");
+    }
+    if let Some(color) = presentation.background {
+        out.push_str("--source-background:#");
+        write_hex_color(color, out);
+        out.push_str(";background-color:var(--source-background);");
+    }
+    if presentation.underline {
+        out.push_str("text-decoration-line:underline;");
+    }
+    out.push_str("\">");
+}
+
 /// A link on its own paragraph line — the feed blocks' "Open …" links.
 fn write_bare_link(url: &str, label: &str, out: &mut String) {
     out.push_str("<p><a href=\"");
@@ -255,6 +342,14 @@ fn write_html_table(
 fn write_inline_html(spans: &[InlineSpan], out: &mut String) {
     for span in spans {
         match span {
+            InlineSpan::Presented {
+                presentation,
+                spans,
+            } => {
+                write_inline_presentation_open(*presentation, out);
+                write_inline_html(spans, out);
+                out.push_str("</span>");
+            },
             InlineSpan::Text(t) => escape_text(t, out),
             InlineSpan::Code(t) => {
                 out.push_str("<code>");

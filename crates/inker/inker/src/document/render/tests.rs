@@ -4,7 +4,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-use super::super::{Block, DocumentProvenance, DocumentTrustState, EngineDocument, InlineSpan};
+use super::super::{
+    Block, BlockAlignment, BlockPresentation, DocumentProvenance, DocumentTrustState,
+    EngineDocument, InlinePresentation, InlineSpan,
+};
 
 fn doc(blocks: Vec<Block>) -> EngineDocument {
     EngineDocument {
@@ -408,4 +411,48 @@ fn to_html_carries_link_title_and_predicate() {
     assert!(html.contains(
         "<a href=\"mere://node/topic\" title=\"Topic\" data-predicate=\"schema:cites\">Topic</a>"
     ));
+}
+
+#[test]
+fn presented_source_facts_survive_html_and_plain_fallbacks() {
+    let document = doc(vec![Block::Presented {
+        presentation: BlockPresentation {
+            alignment: BlockAlignment::Center,
+            indent_level: 2,
+        },
+        block: Box::new(Block::Paragraph {
+            spans: vec![InlineSpan::Presented {
+                presentation: InlinePresentation {
+                    foreground: Some([0x11, 0x22, 0x33]),
+                    background: Some([0xaa, 0xbb, 0xcc]),
+                    underline: true,
+                },
+                spans: vec![InlineSpan::Link {
+                    url: "gemini://example.test/guide".into(),
+                    title: None,
+                    spans: vec![InlineSpan::Text("Guide".into())],
+                    predicate: None,
+                }],
+            }],
+        }),
+    }]);
+
+    let html = document.to_html();
+    assert!(html.contains("source-align-center"));
+    assert!(html.contains("data-source-alignment=\"center\""));
+    assert!(html.contains("data-source-indent=\"2\""));
+    assert!(html.contains("data-source-foreground=\"#112233\""));
+    assert!(html.contains("data-source-background=\"#aabbcc\""));
+    assert!(html.contains("data-source-underline=\"true\""));
+    assert!(html.contains("<a href=\"gemini://example.test/guide\">Guide</a>"));
+    assert!(
+        document
+            .to_text()
+            .contains("    Guide <gemini://example.test/guide>")
+    );
+    assert!(
+        document
+            .to_gemini()
+            .contains("=> gemini://example.test/guide Guide")
+    );
 }

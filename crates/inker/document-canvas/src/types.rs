@@ -156,6 +156,11 @@ pub struct GlyphRun {
     /// heading, link, code, badge). The renderer paints the glyphs in this
     /// color; it is not re-derived downstream.
     pub color: [f32; 4],
+    /// Optional source background resolved by the reader's presentation
+    /// policy. Paint it before glyphs.
+    pub background: Option<[f32; 4]>,
+    /// Source underline resolved by the reader's presentation policy.
+    pub underline: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -270,30 +275,43 @@ impl DocumentRenderPacket {
     /// dropped; a `Group` keeps only the children that intersect (so a long list
     /// emits only its visible items).
     pub fn window(&self, band_y: f32, band_h: f32) -> DocumentRenderPacket {
-        let top = band_y;
-        let bot = band_y + band_h;
+        self.window_rect(0.0, band_y, self.viewport.width, band_h)
+    }
+
+    /// Window a full document in both axes. The returned coordinates are
+    /// viewport-local, so paint, visible link rectangles, and hit testing use
+    /// the same horizontal and vertical offsets.
+    pub fn window_rect(
+        &self,
+        left: f32,
+        top: f32,
+        width: f32,
+        height: f32,
+    ) -> DocumentRenderPacket {
+        let right = left + width;
+        let bottom = top + height;
         let blocks = self
             .blocks
             .iter()
-            .filter_map(|b| window_block(b, top, bot))
+            .filter_map(|block| window_block(block, left, top, right, bottom))
             .collect();
         let interactions = self
             .interactions
             .iter()
-            .filter(|r| rect_intersects_band(r.bounds, top, bot))
+            .filter(|region| rect_intersects_rect(region.bounds, left, top, right, bottom))
             .map(|r| InteractionRegion {
-                bounds: translate_rect_y(r.bounds, -band_y),
+                bounds: translate_rect(r.bounds, -left, -top),
                 kind: r.kind.clone(),
                 link_semantics: r.link_semantics.clone(),
             })
             .collect();
         DocumentRenderPacket {
             viewport: Viewport {
-                width: self.viewport.width,
-                height: band_h,
+                width,
+                height,
                 scale_factor: self.viewport.scale_factor,
             },
-            content_bounds: Rect::from_xywh(0.0, 0.0, self.content_bounds.size.width, band_h),
+            content_bounds: Rect::from_xywh(0.0, 0.0, width, height),
             blocks,
             interactions,
         }
@@ -348,8 +366,8 @@ impl DocumentRenderPacket {
 }
 
 /// A rect overlaps the half-open vertical band `[top, bot)`.
-fn rect_intersects_band(r: Rect, top: f32, bot: f32) -> bool {
-    r.origin.y < bot && r.max_y() > top
+fn rect_intersects_rect(r: Rect, left: f32, top: f32, right: f32, bottom: f32) -> bool {
+    r.origin.x < right && r.max_x() > left && r.origin.y < bottom && r.max_y() > top
 }
 
 /// Whether `(x, y)` lies within `r` (inclusive edges).
@@ -357,16 +375,22 @@ fn rect_contains(r: Rect, x: f32, y: f32) -> bool {
     x >= r.origin.x && x <= r.max_x() && y >= r.origin.y && y <= r.max_y()
 }
 
-/// Shift a rect vertically by `dy` (x and size unchanged).
-fn translate_rect_y(r: Rect, dy: f32) -> Rect {
-    Rect::new(Point::new(r.origin.x, r.origin.y + dy), r.size)
+/// Shift a rect into a viewport-local coordinate system.
+fn translate_rect(r: Rect, dx: f32, dy: f32) -> Rect {
+    Rect::new(Point::new(r.origin.x + dx, r.origin.y + dy), r.size)
 }
 
 /// Window one block to the band: drop it if it does not intersect, else translate
 /// its geometry by `-top` and recurse into `Group` children. A `Text` block's runs
 /// all sit within its (intersecting) bounds, so each run's origin just shifts.
-fn window_block(block: &RenderedBlock, top: f32, bot: f32) -> Option<RenderedBlock> {
-    if !rect_intersects_band(block.bounds, top, bot) {
+fn window_block(
+    block: &RenderedBlock,
+    left: f32,
+    top: f32,
+    right: f32,
+    bottom: f32,
+) -> Option<RenderedBlock> {
+    if !rect_intersects_rect(block.bounds, left, top, right, bottom) {
         return None;
     }
     let kind = match &block.kind {
@@ -375,7 +399,7 @@ fn window_block(block: &RenderedBlock, top: f32, bot: f32) -> Option<RenderedBlo
                 .iter()
                 .map(|run| {
                     let mut run = run.clone();
-                    run.origin = Point::new(run.origin.x, run.origin.y - top);
+                    run.origin = Point::new(run.origin.x - left, run.origin.y - top);
                     run
                 })
                 .collect(),
@@ -383,7 +407,7 @@ fn window_block(block: &RenderedBlock, top: f32, bot: f32) -> Option<RenderedBlo
         RenderedBlockKind::Group { children } => RenderedBlockKind::Group {
             children: children
                 .iter()
-                .filter_map(|c| window_block(c, top, bot))
+                .filter_map(|child| window_block(child, left, top, right, bottom))
                 .collect(),
         },
         RenderedBlockKind::Image { url, alt } => RenderedBlockKind::Image {
@@ -394,7 +418,7 @@ fn window_block(block: &RenderedBlock, top: f32, bot: f32) -> Option<RenderedBlo
     };
     Some(RenderedBlock {
         source_block_index: block.source_block_index,
-        bounds: translate_rect_y(block.bounds, -top),
+        bounds: translate_rect(block.bounds, -left, -top),
         kind,
     })
 }
@@ -418,6 +442,8 @@ mod window_tests {
                     glyphs: Vec::new(),
                     baseline_y: 12.0,
                     color: [0.0, 0.0, 0.0, 1.0],
+                    background: None,
+                    underline: false,
                 }],
             },
         }
@@ -528,6 +554,37 @@ mod window_tests {
             "link translated into the band"
         );
         assert!(matches!(&w.interactions[0].kind, InteractionKind::Link { url } if url == "in"));
+    }
+
+    #[test]
+    fn window_rect_clips_and_translates_x_coordinates_with_link_regions() {
+        let mut block = text_block(0.0, 100.0, 12.0);
+        block.bounds.origin.x = 300.0;
+        if let RenderedBlockKind::Text { glyph_runs } = &mut block.kind {
+            glyph_runs[0].origin.x = 300.0;
+        }
+        let mut p = packet(vec![block], 600.0);
+        p.interactions = vec![InteractionRegion {
+            bounds: Rect::from_xywh(320.0, 20.0, 80.0, 20.0),
+            kind: InteractionKind::Link { url: "wide".into() },
+            link_semantics: None,
+        }];
+
+        let w = p.window_rect(300.0, 0.0, 120.0, 80.0);
+        assert_eq!(
+            w.blocks.len(),
+            1,
+            "wide content intersects the horizontal window"
+        );
+        assert_eq!(w.blocks[0].bounds.origin.x, 0.0);
+        assert_eq!(
+            w.interactions.len(),
+            1,
+            "the visible link remains accessible"
+        );
+        assert_eq!(w.interactions[0].bounds.origin.x, 20.0);
+        assert_eq!(w.link_at(25.0, 25.0), Some("wide"));
+        assert_eq!(w.link_at(5.0, 25.0), None, "coordinates are window-local");
     }
 
     #[test]

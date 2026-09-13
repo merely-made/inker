@@ -43,6 +43,7 @@ pub fn link_statements(doc: &EngineDocument) -> Vec<LinkStatement> {
 
 fn collect_block(block: &Block, out: &mut Vec<LinkStatement>) {
     match block {
+        Block::Presented { block, .. } => collect_block(block, out),
         Block::Heading { spans, .. } | Block::Paragraph { spans } => {
             for span in spans {
                 collect_span(span, out);
@@ -98,7 +99,8 @@ fn collect_span(span: &InlineSpan, out: &mut Vec<LinkStatement>) {
                 collect_span(inner, out);
             }
         },
-        InlineSpan::Emphasis(inner)
+        InlineSpan::Presented { spans: inner, .. }
+        | InlineSpan::Emphasis(inner)
         | InlineSpan::Strong(inner)
         | InlineSpan::Submit { spans: inner, .. } => {
             for s in inner {

@@ -17,7 +17,7 @@
 
 use std::{borrow::Cow, ops::Range};
 
-use inker::InlineSpan;
+use inker::{BlockAlignment, InlineSpan};
 use parley::{
     Alignment, AlignmentOptions, FontContext, FontFamily, GenericFamily, LayoutContext, LineHeight,
     PositionedLayoutItem, StyleProperty,
@@ -25,7 +25,7 @@ use parley::{
 
 use crate::font_table::FontInterner;
 use crate::style::InlineStyle;
-use crate::style_sheet::{LinkAdornment, WrapPolicy};
+use crate::style_sheet::{LinkAdornment, SourcePresentation, WrapPolicy};
 use crate::types::{
     GlyphRun, InteractionKind, InteractionRegion, LinkSemantics, Point, PositionedGlyph, Rect,
     SemanticInteractionId, Size, TextStyle,
@@ -47,6 +47,11 @@ pub struct TextBaseStyle {
     /// its natural width and overflows for the host to scroll (`NoWrap`, e.g.
     /// code blocks).
     pub wrap: WrapPolicy,
+    /// Alignment carried by the source block, resolved in the shared layout
+    /// rather than by a consumer-specific renderer.
+    pub alignment: BlockAlignment,
+    /// Host-selected source-presentation policy.
+    pub source_presentation: SourcePresentation,
 }
 
 impl Default for TextBaseStyle {
@@ -60,6 +65,8 @@ impl Default for TextBaseStyle {
             line_height_ratio: 1.4,
             color: [0.0, 0.0, 0.0, 1.0],
             wrap: WrapPolicy::Wrap,
+            alignment: BlockAlignment::Start,
+            source_presentation: SourcePresentation::Respect,
         }
     }
 }
@@ -115,6 +122,18 @@ fn flatten_into(
 ) {
     for span in spans {
         match span {
+            InlineSpan::Presented {
+                presentation,
+                spans,
+            } => {
+                flatten_into(
+                    spans,
+                    inherited.with_presentation(*presentation),
+                    adornment,
+                    base_scheme,
+                    out,
+                );
+            },
             InlineSpan::Text(t) => {
                 let start = out.text.len();
                 out.text.push_str(t);
@@ -320,7 +339,12 @@ pub(crate) fn layout_text_block_with_link_identity_base(
         WrapPolicy::NoWrap => None,
     };
     layout.break_all_lines(wrap_width);
-    layout.align(Alignment::Start, AlignmentOptions::default());
+    let alignment = match base.alignment {
+        BlockAlignment::Start => Alignment::Start,
+        BlockAlignment::Center => Alignment::Center,
+        BlockAlignment::End => Alignment::End,
+    };
+    layout.align(alignment, AlignmentOptions::default());
 
     // Walk lines, accumulating Y positions ourselves (parley gives us
     // baseline + line_height per line; the line's top is baseline minus
@@ -374,7 +398,10 @@ pub(crate) fn layout_text_block_with_link_identity_base(
             // color. parley already segments runs at brush boundaries, so a
             // link / inline-code span is its own run here.
             let brush = parley_run.style().brush;
-            let run_color = if brush.link {
+            let source_colors = matches!(base.source_presentation, SourcePresentation::Respect);
+            let run_color = if source_colors && brush.foreground.is_some() {
+                rgb(brush.foreground.expect("checked above"))
+            } else if brush.link {
                 link_color
             } else if brush.monospace {
                 code_color
@@ -392,6 +419,8 @@ pub(crate) fn layout_text_block_with_link_identity_base(
                 glyphs,
                 baseline_y: baseline_in_line,
                 color: run_color,
+                background: source_colors.then(|| brush.background.map(rgb)).flatten(),
+                underline: source_colors && brush.underline,
             });
         }
 
@@ -474,6 +503,15 @@ pub(crate) fn layout_text_block_with_link_identity_base(
         total_size: Size::new(total_width, total_height),
         interactions,
     }
+}
+
+fn rgb(color: [u8; 3]) -> [f32; 4] {
+    [
+        color[0] as f32 / 255.0,
+        color[1] as f32 / 255.0,
+        color[2] as f32 / 255.0,
+        1.0,
+    ]
 }
 
 /// Resolve a friendly family-name label for a glyph run. parley's brush

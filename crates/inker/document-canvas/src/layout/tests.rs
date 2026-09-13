@@ -8,7 +8,8 @@ use super::*;
 use crate::LinkAdornment;
 use crate::types::InteractionKind;
 use inker::{
-    Block, DocumentProvenance, DocumentTrustState, EngineDocument, InlineSpan, TableAlignment,
+    Block, BlockAlignment, BlockPresentation, DocumentProvenance, DocumentTrustState,
+    EngineDocument, InlinePresentation, InlineSpan, TableAlignment,
 };
 
 fn doc(blocks: Vec<Block>) -> EngineDocument {
@@ -53,6 +54,79 @@ fn single_paragraph_produces_one_text_block() {
         panic!("expected Text kind, got {:?}", block.kind);
     };
     assert!(!glyph_runs.is_empty(), "expected at least one glyph run");
+}
+
+#[test]
+fn source_presentation_controls_inline_paint_and_block_geometry() {
+    let document = doc(vec![Block::Presented {
+        presentation: BlockPresentation {
+            alignment: BlockAlignment::Center,
+            indent_level: 2,
+        },
+        block: Box::new(Block::Paragraph {
+            spans: vec![InlineSpan::Presented {
+                presentation: InlinePresentation {
+                    foreground: Some([0x11, 0x22, 0x33]),
+                    background: Some([0xaa, 0xbb, 0xcc]),
+                    underline: true,
+                },
+                spans: vec![InlineSpan::Text("source paint".into())],
+            }],
+        }),
+    }]);
+    let style = DocumentStyleSheet::default();
+    let respecting = layout_document(&document, viewport(), &style).packet;
+    let RenderedBlockKind::Text { glyph_runs } = &respecting.blocks[0].kind else {
+        panic!("expected presented paragraph text");
+    };
+    let run = glyph_runs.first().expect("text run");
+    assert_eq!(
+        run.color,
+        [
+            0x11 as f32 / 255.0,
+            0x22 as f32 / 255.0,
+            0x33 as f32 / 255.0,
+            1.0
+        ]
+    );
+    assert_eq!(
+        run.background,
+        Some([
+            0xaa as f32 / 255.0,
+            0xbb as f32 / 255.0,
+            0xcc as f32 / 255.0,
+            1.0
+        ])
+    );
+    assert!(run.underline);
+    assert!(
+        respecting.blocks[0].bounds.origin.x
+            >= style.horizontal_padding + 2.0 * style.indent_per_level,
+        "section depth indents the content column"
+    );
+    assert!(
+        run.origin.x > respecting.blocks[0].bounds.origin.x + 10.0,
+        "center alignment moves the shaped run within the indented content column"
+    );
+
+    let mut reader_style = style.clone();
+    reader_style.source_presentation = SourcePresentation::Reader;
+    let reader = layout_document(&document, viewport(), &reader_style).packet;
+    let RenderedBlockKind::Text { glyph_runs } = &reader.blocks[0].kind else {
+        panic!("expected reader paragraph text");
+    };
+    let run = glyph_runs.first().expect("text run");
+    assert_eq!(run.background, None);
+    assert!(!run.underline);
+    assert_ne!(
+        run.color,
+        [
+            0x11 as f32 / 255.0,
+            0x22 as f32 / 255.0,
+            0x33 as f32 / 255.0,
+            1.0
+        ]
+    );
 }
 
 #[test]
