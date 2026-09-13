@@ -103,8 +103,8 @@ render regimes would recover none of it, because the data is already gone.
 
 ### Micron completion scope (2026-09-13)
 
-**Status:** shared reading presentation implemented and tested on 2026-09-13;
-consumer integration and headed qualification follow. The remaining behavior
+**Status:** shared reading presentation and both consumer integrations implemented
+and tested on 2026-09-13; headed qualification remains. The remaining behavior
 lanes below are scoped. Source interpretation, document presentation and session
 interaction have separate evidence boundaries.
 
@@ -119,6 +119,11 @@ Knot/Turnstone setting has not been qualified. Source bytes remain authoritative
 The consumer integration carries styled link children in Knot and traverses the
 wrappers in Turnstone's NomadNet alias refusal before activation. Its application
 checks are recorded in the respective consumer plans.
+The final consumer code pins are Knot `cf3afe8` and Turnstone `a1d7834`, both
+using Mere `dce5cc97` with Genet `101d9e9` and Netrender `3961aca`. Knot's desktop
+library passes 54 tests with one existing ignored test; Turnstone passes the
+five NomadNet and two smolweb input tests. These final gates use immutable
+sources with `--locked --offline`, without development path redirects.
 
 The consumer audit also carries wrapped text and links through clipping and
 wrapped headings through Gloss and reader outlines. Outline order, heading levels
@@ -193,6 +198,12 @@ Tabard's reader-theme work can consume shared styling roles without extending
 Gemtext or turning author styling into a cross-client requirement. The Go client's
 incompressible multipart failure against both servers remains a separate
 transport compatibility investigation, with the current Python receipt retained.
+An additional Rust peer candidate is
+[`nomadnet-rs`](https://github.com/TeskesLab/nomadnet-rs), whose MIT-licensed
+package is published as 0.3.1. Its documented server, page-fetching API and
+Micron parser offer further independent comparison points. Compatibility with
+Retinue has not been qualified, and it is not a new runtime dependency. The Go
+client remains a test peer rather than a requirement of the shipped stack.
 
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
