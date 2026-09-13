@@ -198,12 +198,16 @@ Tabard's reader-theme work can consume shared styling roles without extending
 Gemtext or turning author styling into a cross-client requirement. The Go client's
 incompressible multipart failure against both servers remains a separate
 transport compatibility investigation, with the current Python receipt retained.
-An additional Rust peer candidate is
-[`nomadnet-rs`](https://github.com/TeskesLab/nomadnet-rs), whose MIT-licensed
-package is published as 0.3.1. Its documented server, page-fetching API and
-Micron parser offer further independent comparison points. Compatibility with
-Retinue has not been qualified, and it is not a new runtime dependency. The Go
-client remains a test peer rather than a requirement of the shipped stack.
+The Rust peer candidate [`nomadnet-rs`](https://github.com/TeskesLab/nomadnet-rs)
+0.3.1 remains experimental after the 2026-09-13 qualification. Its package is
+MIT licensed; its RNS dependencies use the custom Reticulum License and were
+tested as black boxes. Native Windows compilation failed. On Linux, Retinue
+retrieved a small page exactly from both the stock server and raw PageCache API,
+but multipart responses timed out. The browser API also failed its own server
+self-control, so forward failures cannot qualify or disqualify Retinue.
+See the [Retinue receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md)
+for pinned inputs and the eleven-case matrix. It is not a runtime dependency.
+The Go client likewise remains a test peer, not a shipped-stack requirement.
 
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
