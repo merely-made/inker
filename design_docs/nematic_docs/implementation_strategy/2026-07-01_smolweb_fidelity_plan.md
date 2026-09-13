@@ -225,7 +225,25 @@ then confirmed that float32 RTT encoding left this peer inactive. Retinue now
 emits float64 RTT encoding; all three page fixtures transfer exactly from both
 the newer explicit Resource server and stock Python RNS 1.5.3 on native Fedora.
 The old server API and stock browser defects remain separate. This is a Retinue
-source fix; downstream dependency pins require their own adoption and checks.
+source fix. The 2026-09-13 adoption pins Mere's optional transport and Turnstone's
+page client to Retinue `85e716c7f06dac0a5253effe5ef06d05b266f02f`. Knot's
+`knot-site` adopts the same revision in `4d880910fd8b6ffa6e4227b65ea65278f3e8011b`,
+which Djinn now selects. Knot's locked NomadNet saved-snapshot lifecycle test
+passed, including small/128 KiB responses, replacement, and interface shutdown.
+Locked dependency-tree checks show exactly that Retinue revision on both the
+Turnstone page-client path and the Djinn → knot-site serving path. These checks
+run from `C:\t` with an isolated Cargo home, outside local development overrides.
+The linked Retinue receipt also preserves three unsent upstream issue drafts and
+the separate Resource-handler API note.
+Turnstone adoption `a596f18` passed five NomadNet and two smolweb routing tests
+with `--locked --offline`. Logs and resolved lockfile snapshots are retained in
+`C:\t\smolweb-next-20260913` (`turnstone-rtt-locked.log`,
+`turnstone-rtt-smolweb.log`, `knot-rtt-locked.log`, and the `*-rtt-tree.log` files).
+Djinn's library suite passed 74 tests with `--locked --offline` and default features disabled; this covers
+the resident serving integration, not a new headed or external-client receipt.
+Mere's optional backend also passed `cargo check --locked --offline -p
+mere-transport --features reticulum`. The corresponding logs are
+`djinn-rtt-locked.log` and `transport-rtt-check.log` in the same receipt directory.
 
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
