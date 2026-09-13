@@ -209,6 +209,14 @@ See the [Retinue receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go
 for pinned inputs and the eleven-case matrix. It is not a runtime dependency.
 The Go client likewise remains a test peer, not a shipped-stack requirement.
 
+Follow-up diagnostics confirmed mismatched browser request IDs and an undecoded
+MessagePack response wrapper. An isolated single-request remap plus decoding
+retrieved small and both 128 KiB pages from unchanged Retinue exactly on WSL and
+native Fedora. This qualifies that experimental direction only, not the stock
+browser or a production-safe correlation fix. In reverse, the Rust server emitted
+neither response nor resource advertisement for large requests before timeout.
+The linked Retinue receipt records the traces and remaining server-side question.
+
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
 | Protocol | Spec distinction | Where it is lost |
