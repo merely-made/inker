@@ -101,6 +101,66 @@ The important finding: almost every semantic loss happens at the **flavour-neutr
 parse ASTs**, before any view exists. The box rendering is mostly innocent. Switching
 render regimes would recover none of it, because the data is already gone.
 
+### Micron completion scope (2026-09-13)
+
+**Status:** scoped after the syntax/native-preview cutover; the work below is
+unimplemented unless a separate receipt says otherwise. The Micron syntax model
+now retains facts that its portable projection drops. For this format the next
+loss boundary is therefore `micron/render.rs`, followed by document presentation
+and session interaction, rather than another wholesale parser replacement.
+
+1. **Reading fidelity first.** Nematic owns source interpretation and lowering;
+   Inker/document-canvas own reusable presentation; document-lanes own the
+   retained viewport. Carry captured color, underline, alignment and section
+   depth through that boundary with an explicit reader override. Preserve Micron
+   facts independently of the reader's chosen appearance. Extend the shared
+   presentation contract only for concrete consumers, including its HTML export
+   and plain-text fallback. Knot and Turnstone consume the same semantics.
+   Done when the original combined-style and nested-section fixtures have
+   independent stock-client comparisons and headed receipts in both apps,
+   including keyboard focus, selection, contrast overrides and narrow widths.
+   Horizontal scrolling must expose the full wide-table packet and preserve
+   clipping and link hit coordinates after scrolling and resizing.
+2. **Document navigation.** Preserve anchors and collapsible section boundaries
+   through projection, then implement session-owned fold state and anchor
+   activation. These actions are distinct from network navigation and submission.
+   Done when duplicate/missing anchors, links into closed sections, keyboard
+   activation, reflow and back navigation have explicit behavior and consumer
+   receipts; opening a local anchor must issue zero transport requests. Further
+   stock captures must establish ambiguous section-exit, escape, table and
+   malformed-control behavior before the parser interprets those spellings.
+3. **Forms, after a typed wire receipt.** Capture the actual request value through
+   a controlled public RNS endpoint, including edited text, Unicode, nonempty
+   multiline, duplicate checkboxes, radio state, selected fields and fixed
+   variables. The existing callback environment is not that evidence. Retinue's
+   `Request::pack` currently writes binary data and `StaticNode` refuses nonempty
+   requests: embedding a serialized map inside those bytes is not a typed-map
+   implementation. Retinue owns the interoperable request value; Mere owns field
+   state and submission actions; apps own destination context and activation.
+   Done when a stock client reaches our controlled handler and our client reaches
+   a stock node with independently matched values, followed by headed edit/submit
+   receipts in Knot and Turnstone. Rendering, focus and preview must not submit;
+   cancellation or a newer navigation must prevent stale results replacing a page.
+   Bound field count, submitted bytes and request time explicitly. The existing
+   page-byte cap is applied after Resource reassembly; it is not a form-size or
+   early allocation limit.
+4. **Refresh, media and directives.** Qualify partial replacement, refresh timing,
+   image targets and page/cache directives separately. Reuse the host's existing
+   subresource and request lifecycle with configurable cadence, fanout, byte and
+   time bounds; parsing and saving
+   source remain inert. Done when stock behavior is documented and each enabled
+   feature has bounded fetching, cancellation, stale-completion, offline/failure
+   and both-consumer receipts. An unsupported feature keeps its source and a
+   diagnostic. Full conformance requires this matrix, not just successful parsing.
+
+The evidence lane can proceed alongside reading fidelity. Forms do not gate
+ordinary static serving. Djinn's persistent serving contract lives in
+[resident services §13](../../mere_docs/implementation_strategy/2026-08-22_djinn_family_resident_services_plan.md#13-ordinary-site-serving-and-governed-replication-2026-09-11-scope).
+Tabard's reader-theme work can consume shared styling roles without extending
+Gemtext or turning author styling into a cross-client requirement. The Go client's
+incompressible multipart failure against both servers remains a separate
+transport compatibility investigation, with the current Python receipt retained.
+
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
 | Protocol | Spec distinction | Where it is lost |
