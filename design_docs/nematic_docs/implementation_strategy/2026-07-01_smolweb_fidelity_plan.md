@@ -167,7 +167,7 @@ media remain the separate gates below.
    receipts; opening a local anchor must issue zero transport requests. Further
    stock captures must establish ambiguous section-exit, escape, table and
    malformed-control behavior before the parser interprets those spellings.
-3. **Forms, after a typed wire receipt.** The 2026-09-13
+3. **Forms: bounded consumers, headed acceptance open.** The 2026-09-13
    [typed request receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
    closes the packet-sized transport prerequisite: stock NomadNet and Retinue
    match native string maps in both directions for defaults, edited Unicode and
@@ -175,9 +175,8 @@ media remain the separate gates below.
    Retinue's `StringMapRequest` bounds entry count and encoded bytes; raw requests
    exceeding the link packet capacity are refused before sending. Larger request
    Resources remain unsupported. `StaticNode` still refuses dynamic submissions.
-   This prerequisite is published as Retinue `2563202`; the existing consumer
-   pins remain on the previously qualified activation fix until a consumer uses
-   the new map API. Six map tests, seven endpoint tests and three link tests pass,
+   This prerequisite is published as Retinue `2563202`; Knot and Turnstone now
+   consume that map API. Six map tests, seven endpoint tests and three link tests pass,
    and the API builds with the alloc-only feature set.
    Retinue owns the interoperable request value; Mere owns field
    state and submission actions; apps own destination context and activation.
@@ -192,6 +191,21 @@ media remain the separate gates below.
    are omitted while empty text remains present. The focused Micron suite has
    28 tests, including seven form tests; this is an
    automated preparation receipt, not a headed widget or submit receipt.
+   Shared contracts are published at Mere `91c6238d`. Knot `fae329c` adds an
+   editable preview-side form with reviewed, explicit remote sending; Turnstone
+   `d710af9` adds **Fill Micron form** in the command palette. Both retain
+   ephemeral field state, require native destination authority, enforce bounded
+   request time/size, cancel local work and suppress stale replies. A reply is
+   transient output, not an implicit navigation or authored-source replacement.
+   Knot passes 16 desktop and 16 site tests; Turnstone passes six focused form
+   tests and two existing smolweb input tests. Actual loopback tests exercise
+   the typed request and a 4096-byte Resource reply. They exposed abrupt client
+   shutdown dropping the queued proof; both clients now await Retinue's bounded
+   graceful shutdown before releasing the interface. Turnstone also tests its
+   response cap against that Resource. These bounds remain after Resource
+   reassembly. Static publication still does not execute dynamic handlers;
+   inline form widgets, partial refresh and headed stock-node acceptance remain
+   outside this receipt. The app plans hold the exact clean-Cargo commands.
    Done when a stock client reaches our controlled handler and our client reaches
    a stock node with independently matched values, followed by headed edit/submit
    receipts in Knot and Turnstone. Rendering, focus and preview must not submit;
