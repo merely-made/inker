@@ -181,6 +181,15 @@ media remain the separate gates below.
    and the API builds with the alloc-only feature set.
    Retinue owns the interoperable request value; Mere owns field
    state and submission actions; apps own destination context and activation.
+   `nematic::micron::forms` now supplies ephemeral text, masked, checkbox and
+   radio state, named/wildcard selectors and fixed variables. Its prepared maps
+   match the three independently captured stock-client maps. Source changes,
+   ambiguous groups, unsupported table/partial controls and configured bounds
+   are refused; debug output redacts values. This API performs no IO and leaves
+   the ordinary renderer inert. Apps must additionally bind state to the page's
+   identity and address, resolve targets and invalidate stale requests. The
+   focused Micron suite passes 27 tests, including six form tests; this is an
+   automated preparation receipt, not a headed widget or submit receipt.
    Done when a stock client reaches our controlled handler and our client reaches
    a stock node with independently matched values, followed by headed edit/submit
    receipts in Knot and Turnstone. Rendering, focus and preview must not submit;

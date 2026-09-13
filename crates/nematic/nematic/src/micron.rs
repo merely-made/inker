@@ -17,6 +17,7 @@ use inker::{
 
 mod render;
 pub mod syntax;
+pub mod forms;
 pub use render::{ENGINE_ID as ENGINE_MICRON, MicronEngine};
 
 /// Stable engine identifier for the evidence-qualified preview subset.
