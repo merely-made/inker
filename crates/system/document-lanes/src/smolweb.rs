@@ -991,14 +991,15 @@ mod tests {
 
     #[test]
     fn links_and_clicks_share_viewport_coordinates() {
-        let mut body: String = (0..30).map(|i| format!("Line {i}\n\n")).collect();
+        let mut body: String = (0..4).map(|i| format!("Line {i}\n\n")).collect();
         body.push_str("=> gemini://x.test/page A link\n");
+        body.extend((0..30).map(|i| format!("Tail {i}\n\n")));
         let mut doc = SmolwebDocument::parse("gemini://x.test/", &body, SmolwebTheme::Plain);
         assert!(doc.links().is_empty());
         let _ = doc.frame(400, 300);
         let (url, [_, initial_y, _, _]) = doc.links().into_iter().next().expect("link region");
         assert_eq!(url, "gemini://x.test/page");
-        doc.scroll_to(f32::MAX);
+        assert!(doc.scroll_by(0.0, 40.0));
         let (url, [x, y, width, height]) = doc
             .links()
             .into_iter()
@@ -1011,6 +1012,11 @@ mod tests {
             doc.click_at(x + width / 2.0, y + height / 2.0, 400, 300),
             Some(InteractionKind::Link { url }) if url == "gemini://x.test/page"
         ));
+        doc.scroll_to(f32::MAX);
+        assert!(
+            doc.links().is_empty(),
+            "viewport-space links omit regions scrolled fully out of view"
+        );
     }
 
     #[test]

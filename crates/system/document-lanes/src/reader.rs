@@ -624,6 +624,7 @@ impl DocumentSession<Scene> for ReaderDocumentSession {
 fn collect_headings(blocks: &[Block], out: &mut Vec<String>) {
     for block in blocks {
         match block {
+            Block::Presented { block, .. } => collect_headings(std::slice::from_ref(block), out),
             Block::Heading { spans, .. } => out.push(inker::inline_text(spans)),
             Block::Quote { blocks } => collect_headings(blocks, out),
             Block::List { items, .. } => {
@@ -723,6 +724,40 @@ mod tests {
             ),
             Err(SessionError::Unsupported(message)) if message.contains("post-JS DOM")
         ));
+    }
+
+    #[test]
+    fn presented_headings_remain_in_reader_outline_order() {
+        let blocks = vec![
+            Block::Presented {
+                presentation: Default::default(),
+                block: Box::new(Block::Heading {
+                    level: 3,
+                    spans: vec![InlineSpan::Text("Wrapped first".into())],
+                }),
+            },
+            Block::Quote {
+                blocks: vec![Block::Presented {
+                    presentation: Default::default(),
+                    block: Box::new(Block::Heading {
+                        level: 2,
+                        spans: vec![InlineSpan::Text("Wrapped second".into())],
+                    }),
+                }],
+            },
+            Block::Heading {
+                level: 1,
+                spans: vec![InlineSpan::Text("Plain third".into())],
+            },
+        ];
+
+        let mut headings = Vec::new();
+        collect_headings(&blocks, &mut headings);
+        assert_eq!(
+            headings,
+            ["Wrapped first", "Wrapped second", "Plain third"],
+            "presentation wrappers must not change reader-outline order"
+        );
     }
 
     #[test]

@@ -120,6 +120,20 @@ The consumer integration carries styled link children in Knot and traverses the
 wrappers in Turnstone's NomadNet alias refusal before activation. Its application
 checks are recorded in the respective consumer plans.
 
+The consumer audit also carries wrapped text and links through clipping and
+wrapped headings through Gloss and reader outlines. Outline order, heading levels
+and existing source-index identities remain stable. Micron routing remains an
+explicit host decision; clipping does not add a new default MIME route. Generic
+wrapped media discovery and executable/transclusion expansion are outside this
+reading slice; Micron does not acquire code execution through presentation.
+The import library's 16 tests and Gloss's 6 tests pass against these traversal
+changes. The clipping regression retains the native destination identity while
+recovering styled text and links.
+Document-lanes with `smolweb` enabled passes 23 unit tests and the streaming
+integration test. Its viewport regression checks translation and activation of
+a link visible before and after bounded scrolling, then verifies that scrolling
+it fully out of view removes the host hit target.
+
 Automated shared receipts: Nematic 190 tests plus 3 examples, document-canvas
 61 tests, Inker 112 tests, document-lanes 7 tests and UxTree 8 tests pass with
 `--offline --locked`. These include retained style, geometry, narrow-width horizontal
