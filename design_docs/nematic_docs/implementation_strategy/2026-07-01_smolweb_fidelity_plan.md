@@ -217,6 +217,14 @@ browser or a production-safe correlation fix. In reverse, the Rust server emitte
 neither response nor resource advertisement for large requests before timeout.
 The linked Retinue receipt records the traces and remaining server-side question.
 
+The subsequent external-peer comparison narrows that question: upstream passing
+tests use rns-net 0.7.0 and an explicit Resource-response API absent from 0.5.6.
+The newer explicit server passes all three page fixtures with the diagnostic
+Rust client, but still times out with Retinue. Neither an upgrade alone nor
+timestamp/response-cap request variations resolve that direction. Upstream also
+records an independently initiated link-activation divergence; checking that
+boundary is the next focused investigation, not yet a confirmed root cause.
+
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
 | Protocol | Spec distinction | Where it is lost |
