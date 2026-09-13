@@ -1,0 +1,133 @@
+{
+  "source": "C:\\t\\micron-reference-20260912\\probe-table-style-state.mu",
+  "theme": "dark",
+  "lines": [
+    {
+      "index": 0,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "before",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "┌─────┬──────┐",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "│ A   │ B    │",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "├─────┼──────┤",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "│ ",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": "off │ next │",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "└─────┴──────┘",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "after",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    }
+  ]
+}

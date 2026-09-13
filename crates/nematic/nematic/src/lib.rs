@@ -33,7 +33,8 @@
 //! - [`ScrollEngine`] — Scroll smolweb body (gemtext or markdown)
 //! - [`SpartanEngine`] — Spartan smolweb body (gemtext or markdown)
 //! - [`TitanEngine`] — Titan response body (gemtext; upload is transport-side)
-//! - [`MicronSubsetEngine`] — evidence-qualified, source-preserving Micron preview
+//! - [`MicronEngine`] — Guide-qualified Micron syntax with explicit projection limits
+//! - [`MicronSubsetEngine`] — compatibility preview for the original capture subset
 //! - [`MisfinEngine`] — Misfin gemini-style mail body (gemtext)
 //! - [`NexEngine`] — Nex directory listings + content
 //! - [`GuppyEngine`] — Guppy UDP-smolweb body (gemtext)
@@ -44,7 +45,7 @@
 //!
 //! ## Status
 //!
-//! Pre-1.0. The Micron engine intentionally implements only its checked-in capture subset.
+//! Pre-1.0. Micron keeps unsupported presentation and request behavior explicit.
 
 #![doc(html_root_url = "https://docs.rs/nematic/0.1.0")]
 
@@ -82,6 +83,7 @@ pub use knot::{ENGINE_ID as ENGINE_KNOT, KnotEngine};
 pub use knot::djot::{DjotKnotEngine, ENGINE_ID as ENGINE_KNOT_DJOT};
 pub use markdown::{ENGINE_ID as ENGINE_MARKDOWN, MarkdownEngine};
 pub use micron::{ENGINE_ID as ENGINE_MICRON_SUBSET, MicronSubsetEngine};
+pub use micron::{ENGINE_MICRON, MicronEngine};
 pub use misfin::{ENGINE_ID as ENGINE_MISFIN, MisfinEngine};
 pub use nex::{ENGINE_ID as ENGINE_NEX, NexEngine};
 pub use scroll::{ENGINE_ID as ENGINE_SCROLL, ScrollEngine};
@@ -98,6 +100,7 @@ pub fn engines() -> Vec<Box<dyn Engine>> {
     let mut engines: Vec<Box<dyn Engine>> = vec![
         Box::new(MarkdownEngine::new()),
         Box::new(MicronSubsetEngine::new()),
+        Box::new(MicronEngine::new()),
         Box::new(GemtextEngine::new()),
         Box::new(GopherEngine::new()),
         Box::new(FeedEngine::new()),
@@ -161,6 +164,7 @@ mod tests {
             ENGINE_KNOT_DJOT,
             ENGINE_MARKDOWN,
             ENGINE_MICRON_SUBSET,
+            ENGINE_MICRON,
             ENGINE_MISFIN,
             ENGINE_NEX,
             ENGINE_SCROLL,
@@ -213,6 +217,7 @@ mod tests {
         let mut ids = vec![
             ENGINE_MARKDOWN,
             ENGINE_MICRON_SUBSET,
+            ENGINE_MICRON,
             ENGINE_GEMTEXT,
             ENGINE_GOPHER,
             ENGINE_TEXT,

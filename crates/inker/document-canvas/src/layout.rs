@@ -11,7 +11,7 @@
 //! no scrolling. Width fills the available content width; height grows
 //! to fit content (may exceed `viewport.height`).
 
-use inker::{Block, EngineDocument, InlineSpan};
+use inker::{Block, EngineDocument, InlineSpan, TableAlignment};
 
 use crate::font_table::{FontInterner, FontTable};
 use crate::style_sheet::{BlockRole, ColorToken, DocumentStyleSheet, ResolvedBlockStyle};
@@ -154,10 +154,11 @@ impl<'a> DocumentLayouter<'a> {
         indent_level: u32,
     ) -> Option<RenderedBlock> {
         match block {
-            // Tables render through the genet note path, not document-canvas
-            // (cards are uniform thumbnails); skipped here until a card
-            // table-preview lands, and unreachable until parsers emit Table.
-            Block::Table { .. } => None,
+            Block::Table {
+                alignments,
+                header,
+                rows,
+            } => Some(self.render_table(source_index, indent_level, alignments, header, rows)),
             Block::Heading { level, spans } => {
                 Some(self.render_heading(source_index, indent_level, *level, spans))
             },
@@ -285,6 +286,218 @@ impl<'a> DocumentLayouter<'a> {
             spacing_above,
             spacing_below,
         )
+    }
+
+    /// Lay out a table as a group of cell-sized text blocks. Cells are kept
+    /// as ordinary text blocks so links and submissions retain the same
+    /// interaction and painting path as paragraphs. The table itself and all
+    /// of its cells retain the source block's index: a table cell is a view of
+    /// the source block, not a synthetic document block.
+    fn render_table(
+        &mut self,
+        source_index: usize,
+        indent_level: u32,
+        alignments: &[TableAlignment],
+        header: &[Vec<InlineSpan>],
+        rows: &[Vec<Vec<InlineSpan>>],
+    ) -> RenderedBlock {
+        let body_resolved = self.style.resolve(BlockRole::Body);
+        let body_base = text_base_from(&body_resolved);
+        let mut header_base = body_base.clone();
+        header_base.bold = true;
+
+        let column_count = alignments
+            .len()
+            .max(header.len())
+            .max(rows.iter().map(Vec::len).max().unwrap_or(0));
+        let table_left = self.content_left(indent_level);
+        let table_top = self.cursor_y;
+        if column_count == 0 {
+            return RenderedBlock {
+                source_block_index: source_index,
+                bounds: Rect::from_xywh(table_left, table_top, 0.0, body_resolved.spacing_below),
+                kind: RenderedBlockKind::Group {
+                    children: Vec::new(),
+                },
+            };
+        }
+
+        // Flatten once for measurement and the final pass. Measurement uses a
+        // throwaway font table and never allocates document link identities.
+        let mut flattened_rows: Vec<(bool, Vec<Flattened>)> = Vec::new();
+        if !header.is_empty() {
+            flattened_rows.push((
+                true,
+                header
+                    .iter()
+                    .map(|cell| {
+                        flatten_inline(cell, self.style.link_adornment, self.base_scheme.as_deref())
+                    })
+                    .collect(),
+            ));
+        }
+        flattened_rows.extend(rows.iter().map(|row| {
+            (
+                false,
+                row.iter()
+                    .map(|cell| {
+                        flatten_inline(cell, self.style.link_adornment, self.base_scheme.as_deref())
+                    })
+                    .collect(),
+            )
+        }));
+
+        let available = self.available_width(indent_level);
+        // Keep a metric-sized minimum cell. If the viewport cannot contain
+        // all columns at that size, the table gets an explicit horizontal
+        // overflow width instead of collapsing adjacent cells onto one
+        // another. Ordinary narrow tables still fit and wrap to the viewport.
+        let gap = if column_count > 1 {
+            self.style.block_spacing().max(0.0)
+        } else {
+            0.0
+        };
+        let minimum_cell_width = body_resolved.font_size.max(1.0);
+        let minimum_table_width = minimum_cell_width * column_count as f32
+            + gap * (column_count.saturating_sub(1)) as f32;
+        let mut natural_widths = vec![minimum_cell_width; column_count];
+        let mut unbreakable_columns = vec![false; column_count];
+        for (is_header, cells) in &flattened_rows {
+            for (column, flattened) in cells.iter().enumerate() {
+                let base = if *is_header { &header_base } else { &body_base };
+                let natural_width = self.measure_table_cell(flattened, base);
+                natural_widths[column] = natural_widths[column]
+                    .max(minimum_cell_width)
+                    .max(natural_width);
+                if natural_width > minimum_cell_width
+                    && !flattened.text.chars().any(char::is_whitespace)
+                {
+                    unbreakable_columns[column] = true;
+                }
+            }
+        }
+        // The table fills the content column. Natural widths are retained when
+        // they fit; when they do not, each column receives a proportional share
+        // and parley wraps the cell into that share.
+        let natural_total: f32 = natural_widths.iter().sum();
+        // When even the metric minimum cannot fit, preserve each cell's
+        // measured width and let the table overflow horizontally. This keeps
+        // unbreakable words from painting through their neighbouring cells.
+        let inner_available = (available - gap * (column_count - 1) as f32).max(0.0);
+        let unbreakable_overflow = natural_total > inner_available
+            && unbreakable_columns.iter().any(|unbreakable| *unbreakable);
+        let horizontal_overflow = available < minimum_table_width || unbreakable_overflow;
+        let table_width = if horizontal_overflow {
+            natural_total + gap * (column_count - 1) as f32
+        } else {
+            available
+        };
+        let inner_width = (table_width - gap * (column_count - 1) as f32).max(0.0);
+        let minimum_inner_width = minimum_cell_width * column_count as f32;
+        let column_widths = if horizontal_overflow {
+            natural_widths.clone()
+        } else if natural_total > inner_width && inner_width >= minimum_inner_width {
+            let excess_total = natural_total - minimum_inner_width;
+            let excess_budget = inner_width - minimum_inner_width;
+            if excess_total > 0.0 {
+                natural_widths
+                    .iter()
+                    .map(|width| {
+                        minimum_cell_width
+                            + (*width - minimum_cell_width) * (excess_budget / excess_total)
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                vec![minimum_cell_width; column_count]
+            }
+        } else if natural_total > inner_width {
+            vec![minimum_cell_width; column_count]
+        } else if natural_total > 0.0 {
+            let extra = (inner_width - natural_total) / column_count as f32;
+            natural_widths.iter().map(|width| width + extra).collect()
+        } else {
+            vec![inner_width / column_count as f32; column_count]
+        };
+
+        let link_color = self.style.token_color(ColorToken::LinkText);
+        let code_color = self.style.token_color(ColorToken::CodeText);
+        let mut children = Vec::new();
+        let mut row_top = table_top + body_resolved.spacing_above;
+        for (is_header, cells) in &flattened_rows {
+            let base = if *is_header { &header_base } else { &body_base };
+            let mut row_cells = Vec::new();
+            let mut row_height = self.style.line_height(base.font_size);
+            let mut x = table_left;
+            for column in 0..column_count {
+                let width = column_widths[column];
+                let flattened = cells.get(column);
+                let mut laid_out = flattened.map(|flattened| {
+                    let identity = self.reserve_link_identities(flattened.links.len());
+                    layout_text_block_with_link_identity_base(
+                        self.env,
+                        flattened,
+                        base,
+                        link_color,
+                        code_color,
+                        width,
+                        Point::new(x, row_top),
+                        &mut self.fonts,
+                        identity,
+                    )
+                });
+                if let Some(laid_out) = &mut laid_out {
+                    align_table_cell(laid_out, x, width, alignments.get(column).copied());
+                    row_height = row_height.max(laid_out.total_size.height);
+                }
+                row_cells.push((x, width, laid_out));
+                x += width + gap;
+            }
+
+            for (x, width, laid_out) in row_cells {
+                let (glyph_runs, total_height, mut interactions) = laid_out
+                    .map(|laid_out| {
+                        (
+                            laid_out.glyph_runs,
+                            laid_out.total_size.height,
+                            laid_out.interactions,
+                        )
+                    })
+                    .unwrap_or((Vec::new(), 0.0, Vec::new()));
+                self.interactions.append(&mut interactions);
+                children.push(RenderedBlock {
+                    source_block_index: source_index,
+                    bounds: Rect::from_xywh(x, row_top, width, row_height.max(total_height)),
+                    kind: RenderedBlockKind::Text { glyph_runs },
+                });
+            }
+            row_top += row_height + gap;
+        }
+
+        let table_height = (row_top - table_top - gap + body_resolved.spacing_below).max(0.0);
+        RenderedBlock {
+            source_block_index: source_index,
+            bounds: Rect::from_xywh(table_left, table_top, table_width, table_height),
+            kind: RenderedBlockKind::Group { children },
+        }
+    }
+
+    fn measure_table_cell(&mut self, flattened: &Flattened, base: &TextBaseStyle) -> f32 {
+        let mut fonts = FontInterner::new();
+        let mut natural_base = base.clone();
+        natural_base.wrap = crate::style_sheet::WrapPolicy::NoWrap;
+        layout_text_block_with_link_identity_base(
+            self.env,
+            flattened,
+            &natural_base,
+            self.style.token_color(ColorToken::LinkText),
+            self.style.token_color(ColorToken::CodeText),
+            0.0,
+            Point::ZERO,
+            &mut fonts,
+            SemanticInteractionId::from_lowered_ordinal(1),
+        )
+        .total_size
+        .width
     }
 
     fn render_flattened_with_spacing(
@@ -620,15 +833,79 @@ impl<'a> DocumentLayouter<'a> {
 
     fn finish(self) -> LaidOutDocument {
         let total_height = self.cursor_y + self.style.vertical_padding;
+        let content_width = self
+            .viewport
+            .width
+            .max(self.max_x + self.style.horizontal_padding);
         LaidOutDocument {
             packet: DocumentRenderPacket {
                 viewport: self.viewport,
-                content_bounds: Rect::from_xywh(0.0, 0.0, self.viewport.width, total_height),
+                content_bounds: Rect::from_xywh(0.0, 0.0, content_width, total_height),
                 blocks: self.blocks,
                 interactions: self.interactions,
             },
             fonts: self.fonts.into_table(),
         }
+    }
+}
+
+/// Shift each laid-out line into its table cell according to the column's
+/// alignment. Parley remains start-aligned for ordinary document blocks;
+/// table cells translate the shaped output and hit regions together.
+fn align_table_cell(
+    laid_out: &mut LaidOutText,
+    cell_left: f32,
+    cell_width: f32,
+    alignment: Option<TableAlignment>,
+) {
+    let Some(alignment) = alignment else {
+        return;
+    };
+    if matches!(alignment, TableAlignment::None | TableAlignment::Left) {
+        return;
+    }
+
+    let mut line_widths: Vec<(f32, f32)> = Vec::new();
+    for run in &laid_out.glyph_runs {
+        let width = run
+            .glyphs
+            .iter()
+            .map(|glyph| glyph.x + glyph.advance)
+            .fold(0.0_f32, f32::max)
+            + run.origin.x
+            - cell_left;
+        if let Some((line_y, line_width)) = line_widths
+            .iter_mut()
+            .find(|(line_y, _)| (*line_y - run.origin.y).abs() < 0.01)
+        {
+            *line_y = run.origin.y;
+            *line_width = line_width.max(width);
+        } else {
+            line_widths.push((run.origin.y, width));
+        }
+    }
+
+    let shift_for = |line_y: f32| {
+        let Some(width) = line_widths
+            .iter()
+            .find(|(candidate_y, _)| (*candidate_y - line_y).abs() < 0.01)
+            .map(|(_, width)| *width)
+        else {
+            return 0.0;
+        };
+        let remaining = (cell_width - width).max(0.0);
+        match alignment {
+            TableAlignment::Center => remaining * 0.5,
+            TableAlignment::Right => remaining,
+            TableAlignment::None | TableAlignment::Left => 0.0,
+        }
+    };
+
+    for run in &mut laid_out.glyph_runs {
+        run.origin.x += shift_for(run.origin.y);
+    }
+    for interaction in &mut laid_out.interactions {
+        interaction.bounds.origin.x += shift_for(interaction.bounds.origin.y);
     }
 }
 

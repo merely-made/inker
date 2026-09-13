@@ -33,7 +33,7 @@ posture the native lane currently drops.
 
 ### Micron grammar gate (2026-09-11)
 
-Micron remains a planned Nematic engine, not an implemented parser. The public
+At the initial 2026-09-11 gate, Micron was a planned Nematic engine. The public
 Reticulum manual establishes that `.mu` pages and Markdown-to-Micron conversion
 exist, but it does not define the line, link, inline-control, cache, or form
 grammar. The household clean-room rule permits public prose and black-box
@@ -55,6 +55,47 @@ CRLF, and empty physical lines remain inert `Preformatted` source; no link,
 form, MIME, transport, or dynamic-page behavior is inferred. The fixtures
 record stock Python and independent black-box renderer observations. Extending
 this engine requires a new literal capture and a regression test first.
+
+**2026-09-13 syntax and native-preview extension.** `MicronEngine`
+(`nematic.micron`) now uses a separate, source-preserving syntax model.
+`MicronSubsetEngine` remains available for legacy callers. `FileEngine` routes
+`.mu` and `.micron` through the new engine; Knot and Turnstone use the same
+engine for retained native previews. Native Micron files remain the author's
+source, with no conversion on save.
+
+The reference is the stock NomadNet **1.4.2** in-app Guide, accessed through the
+isolated executable UI, plus original fixtures and opaque reference-client
+outputs. See the checked-in
+[capture manifest](../../../crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/CAPTURE_MANIFEST.md)
+and [activation receipt](../../../crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/activation/ACTIVATION_RECEIPT.md).
+The independent Go renderer's older behavior is not used to reject constructs
+documented by the version-matched Guide.
+
+| Layer | Implemented boundary | Still open |
+| --- | --- | --- |
+| Syntax | Persistent combined styles, three-hex colors, alignment, headings and section depth, collapse markers, explicit anchors, link components, field/partial source, headers, literal blocks, table blocks and image descriptors retain their source facts. | Full malformed-input compatibility, escape spelling, section-exit behavior and version differences need further stock-client captures. |
+| Portable preview | Text, bold/italic, headings, literal text, dividers, ordinary native links and pipe-table cells lower to shared Inker blocks. Tables now have document-canvas geometry, wrapping and link hit regions. | Color, underline, alignment, indentation, folding, anchor scrolling, forms and partials require additional presentation or interaction support. Unsupported constructs have explicit diagnostics; images use an alt-text placeholder. |
+| Link authority | Native same-node `:/page/...` resolves against a real destination. File-context aliases remain explicit for the host's active-site manifest to resolve. | An arbitrary file acquires no native destination. Bare and relative native targets remain unqualified. |
+| Dynamic requests | Stock-client captures establish selected callback fields, empty and masked values, checkbox aggregation, radio defaults and fixed variables. | Callback environment output is not a wire-map receipt. Retinue's byte-valued request data must not be mistaken for a typed request map. Submission and partial refresh remain inert. |
+
+This is broader syntax preservation and a usable native preview, **not full
+Micron conformance**. Completing an interaction requires an independent
+transaction receipt, typed request/state handling, native UI behavior and
+tests in both consumers. Djinn's persistent serving and Tabard's theme exports
+remain separate work.
+
+Native table cells wrap within their allocated width. When the viewport cannot
+fit even the minimum column widths, the packet reports its full overflow width;
+the current Smolweb session still scrolls vertically only. Horizontal navigation
+of those unusually wide tables remains open and is not covered by the layout
+receipt.
+
+Shared validation for this extension: 187 Nematic unit tests, 3 integration
+tests and 58 document-canvas tests pass with Rust 1.97.1, `--locked --offline`,
+an absolute workspace manifest and cwd `C:\`. The dependency tree resolves
+Parley from Genet `3a7b50230d447f6fa7ed6921cba019f78347d932`; the shared checkout's
+ancestor Cargo path overrides are not involved. A runtime UI appearance
+receipt and full interactive conformance are separate gates.
 
 The important finding: almost every semantic loss happens at the **flavour-neutral
 parse ASTs**, before any view exists. The box rendering is mostly innocent. Switching

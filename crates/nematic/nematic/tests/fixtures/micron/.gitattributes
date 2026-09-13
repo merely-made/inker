@@ -1,0 +1,5 @@
+# Wire captures are byte evidence, including their original line endings.
+*.mu -text
+*.json -text whitespace=cr-at-eol
+*.jsonl -text
+nomadnet-1.4.2/activation/ACTIVATION_RECEIPT.md -text

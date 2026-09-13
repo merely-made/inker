@@ -18,7 +18,9 @@
 
 use inker::{DocumentProvenance, Engine, EngineDocument, EngineError, EngineInput};
 
-use crate::{FeedEngine, GemtextEngine, GopherEngine, KnotEngine, MarkdownEngine, TextEngine};
+use crate::{
+    FeedEngine, GemtextEngine, GopherEngine, KnotEngine, MarkdownEngine, MicronEngine, TextEngine,
+};
 
 /// Stable engine identifier.
 pub const ENGINE_ID: &str = "nematic.file";
@@ -28,6 +30,7 @@ pub const ENGINE_ID: &str = "nematic.file";
 pub struct FileEngine {
     markdown: MarkdownEngine,
     gemtext: GemtextEngine,
+    micron: MicronEngine,
     gopher: GopherEngine,
     feed: FeedEngine,
     knot: KnotEngine,
@@ -39,6 +42,7 @@ impl FileEngine {
         Self {
             markdown: MarkdownEngine::new(),
             gemtext: GemtextEngine::new(),
+            micron: MicronEngine::new(),
             gopher: GopherEngine::new(),
             feed: FeedEngine::new(),
             knot: KnotEngine::new(),
@@ -50,6 +54,7 @@ impl FileEngine {
         match extension(address).as_deref() {
             Some("md") | Some("markdown") | Some("mkd") | Some("mdown") => &self.markdown,
             Some("gmi") | Some("gemini") => &self.gemtext,
+            Some("mu") | Some("micron") => &self.micron,
             Some("gophermap") | Some("goph") => &self.gopher,
             Some("xml") | Some("rss") | Some("atom") => &self.feed,
             Some("knot") => &self.knot,
@@ -134,6 +139,17 @@ mod tests {
         let doc = render("file:///home/user/notes.md", "# Hello\n\ntext");
         assert_eq!(doc.title.as_deref(), Some("Hello"));
         assert_eq!(doc.content_type, "text/markdown");
+    }
+
+    #[test]
+    fn micron_extension_keeps_foreign_source_engine_provenance() {
+        let doc = render("file:///site/page.mu", ">Hello\nA \u{60}!bold\u{60}! word");
+        assert_eq!(doc.title.as_deref(), Some("Hello"));
+        assert_eq!(
+            doc.provenance.source_label.as_deref(),
+            Some(crate::ENGINE_MICRON)
+        );
+        assert_eq!(doc.provenance.source_kind.as_deref(), Some(ENGINE_ID));
     }
 
     #[test]

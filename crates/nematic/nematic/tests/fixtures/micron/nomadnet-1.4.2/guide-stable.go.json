@@ -1,0 +1,376 @@
+{
+  "source": "C:\\t\\mere-micron-20260912\\crates\\nematic\\nematic\\tests\\fixtures\\micron\\nomadnet-1.4.2\\guide-stable.mu",
+  "theme": "dark",
+  "lines": [
+    {
+      "index": 0,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "left alignment",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "this line remains left aligned",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "align": "center",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "centred alignment",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "align": "center",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "this line remains centred",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "align": "right",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "right alignment",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "alignment reset to the document default",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "bold",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": " plain ",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": "underlined",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": true,
+          "italic": false
+        },
+        {
+          "text": " plain ",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": "italic",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": true
+        },
+        {
+          "text": " plain",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "combined styles",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": true,
+          "italic": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "-digit foreground",
+          "fg": "#33aa33",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": " default foreground",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "3-digit background",
+          "fg": "#dddddd",
+          "bg": "#444444",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": " default background",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "bold before full reset",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": true,
+          "underline": false,
+          "italic": false
+        },
+        {
+          "text": "plain after full reset",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "align": "center",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "right? no, this starts centre",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "align": "center",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "centred until reset",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "alignment and style reset",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "align": "left",
+      "indent": 0,
+      "heading_level": 0,
+      "divider": false,
+      "spans": [
+        {
+          "text": "default after the reset",
+          "fg": "#dddddd",
+          "bg": "default",
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      ]
+    }
+  ]
+}
