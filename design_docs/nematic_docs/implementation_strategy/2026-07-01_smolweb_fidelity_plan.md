@@ -219,11 +219,13 @@ The linked Retinue receipt records the traces and remaining server-side question
 
 The subsequent external-peer comparison narrows that question: upstream passing
 tests use rns-net 0.7.0 and an explicit Resource-response API absent from 0.5.6.
-The newer explicit server passes all three page fixtures with the diagnostic
-Rust client, but still times out with Retinue. Neither an upgrade alone nor
-timestamp/response-cap request variations resolve that direction. Upstream also
-records an independently initiated link-activation divergence; checking that
-boundary is the next focused investigation, not yet a confirmed root cause.
+The newer explicit server initially passed all three page fixtures with the
+diagnostic Rust client but timed out with Retinue. The activation comparison
+then confirmed that float32 RTT encoding left this peer inactive. Retinue now
+emits float64 RTT encoding; all three page fixtures transfer exactly from both
+the newer explicit Resource server and stock Python RNS 1.5.3 on native Fedora.
+The old server API and stock browser defects remain separate. This is a Retinue
+source fix; downstream dependency pins require their own adoption and checks.
 
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
