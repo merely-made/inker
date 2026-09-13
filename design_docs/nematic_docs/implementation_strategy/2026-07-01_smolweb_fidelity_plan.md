@@ -188,7 +188,9 @@ media remain the separate gates below.
    are refused; debug output redacts values. This API performs no IO and leaves
    the ordinary renderer inert. Apps must additionally bind state to the page's
    identity and address, resolve targets and invalidate stale requests. The
-   focused Micron suite passes 27 tests, including six form tests; this is an
+   independent follow-up capture confirms that unchecked checkbox/radio groups
+   are omitted while empty text remains present. The focused Micron suite has
+   28 tests, including seven form tests; this is an
    automated preparation receipt, not a headed widget or submit receipt.
    Done when a stock client reaches our controlled handler and our client reaches
    a stock node with independently matched values, followed by headed edit/submit

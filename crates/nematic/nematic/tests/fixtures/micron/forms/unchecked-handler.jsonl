@@ -1,0 +1,5 @@
+{"path": "/page/index.mu", "data": {"type": "nil"}}
+{"path": "/page/index.mu", "data": {"type": "nil"}}
+{"path": "/page/capture.mu", "data": {"type": "map", "entries": [[{"type": "str", "value": "var_mnprobe_fixed"}, {"type": "str", "value": "ready"}], [{"type": "str", "value": "field_mnprobe_text"}, {"type": "str", "value": "seed-text"}]]}}
+{"path": "/page/index.mu", "data": {"type": "nil"}}
+{"path": "/page/capture.mu", "data": {"type": "map", "entries": [[{"type": "str", "value": "field_mnprobe_text"}, {"type": "str", "value": "seed-text"}], [{"type": "str", "value": "field_mnprobe_empty"}, {"type": "str", "value": ""}], [{"type": "str", "value": "field_mnprobe_mask"}, {"type": "str", "value": "mask-seed"}], [{"type": "str", "value": "field_mnprobe_multiline"}, {"type": "str", "value": ""}]]}}

@@ -67,6 +67,38 @@ mod tests {
     }
 
     #[test]
+    fn stock_client_omits_unchecked_groups_but_retains_empty_text() {
+        const SOURCE: &str = include_str!("../../tests/fixtures/micron/forms/unchecked.mu");
+        let form = FormState::from_source(SOURCE, FormLimits::default()).unwrap();
+        let captures: Vec<serde_json::Value> =
+            include_str!("../../tests/fixtures/micron/forms/unchecked-handler.jsonl")
+                .lines()
+                .map(|line| serde_json::from_str(line).unwrap())
+                .collect();
+        let maps: Vec<_> = captures
+            .iter()
+            .filter(|capture| capture["data"]["type"] == "map")
+            .collect();
+        assert_eq!(maps.len(), 2);
+        for (action, capture) in [(1, maps[0]), (0, maps[1])] {
+            let expected: BTreeMap<String, String> = capture["data"]["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| {
+                    (
+                        entry[0]["value"].as_str().unwrap().to_owned(),
+                        entry[1]["value"].as_str().unwrap().to_owned(),
+                    )
+                })
+                .collect();
+            assert_eq!(form.prepare(action, SOURCE).unwrap().values(), &expected);
+            assert!(!expected.contains_key("field_mnprobe_checks"));
+            assert!(!expected.contains_key("field_mnprobe_radio"));
+        }
+    }
+
+    #[test]
     fn navigation_and_invalid_edits_cannot_reuse_prepared_state() {
         let mut form = state();
         assert!(form.prepare(0, "replacement page").is_err());
@@ -420,9 +452,9 @@ impl FormState {
             if !matches!(group[0].kind, FieldKind::Text { .. })
                 && !group.iter().any(|field| field.checked)
             {
-                return Err(
-                    "An unselected choice group is not qualified for submission yet".into(),
-                );
+                // Stock NomadNet omits unchecked groups, including an initially
+                // unselected radio group. Empty text fields remain present.
+                continue;
             }
             let value = match &group[0].kind {
                 FieldKind::Text { .. } => group[0].value.clone(),
