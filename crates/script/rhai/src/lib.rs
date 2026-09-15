@@ -46,6 +46,12 @@ pub use rhai::{self, Array, Dynamic as RhaiDynamic, Engine as RhaiEngine};
 /// their binding set.
 pub fn base_engine() -> Engine {
     let mut engine = Engine::new();
+    // `Engine::new` installs a file module resolver on native targets, so
+    // `import "x"` would read `./x.rhai` off disk. A note is not a program
+    // directory: resolve nothing, and refuse the keywords that would try.
+    engine.set_module_resolver(rhai::module_resolvers::DummyModuleResolver::new());
+    engine.disable_symbol("import");
+    engine.disable_symbol("eval");
     engine.set_max_call_levels(64);
     engine.set_max_expr_depths(128, 64);
     // No `print`/`debug` to stdout from a rendered note or a command line.
@@ -187,6 +193,28 @@ mod tests {
             .eval_block(r#"open_file("/etc/passwd")"#, 1_000_000)
             .unwrap_err();
         assert!(err.to_lowercase().contains("function") || err.to_lowercase().contains("not"));
+    }
+
+    /// A module import is the one file read rhai ships enabled. The positive
+    /// control proves a bare engine really does resolve a `.rhai` file from a
+    /// directory, so the sandbox's refusal is a measurement, not an absence.
+    #[test]
+    fn the_sandbox_cannot_import_a_module_from_disk() {
+        let dir = std::env::temp_dir().join(format!("script-rhai-import-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("sibling.rhai"), "fn x() { 42 }").unwrap();
+        let script = r#"import "sibling" as m; m::x()"#;
+
+        let mut bare = Engine::new();
+        bare.set_module_resolver(rhai::module_resolvers::FileModuleResolver::new_with_path(&dir));
+        assert_eq!(bare.eval::<i64>(script).unwrap(), 42, "positive control: a bare engine imports");
+
+        let mut evaluator = RhaiEvaluator::new();
+        assert!(evaluator.eval_block(script, 1_000_000).is_err());
+        let mut sandbox = base_engine();
+        sandbox.set_module_resolver(rhai::module_resolvers::FileModuleResolver::new_with_path(&dir));
+        assert!(sandbox.eval::<i64>(script).is_err(), "the keyword is refused even with a resolver");
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     /// The full polyglot path: a `rhai eval` fence, routed through the
