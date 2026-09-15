@@ -216,3 +216,72 @@ fn feed_entry_div_reads_attributes() {
         }]
     );
 }
+
+/// Every `InlineSpan::Link` directly inside `spans`, as `(url, predicate)`.
+fn link_pairs(spans: &[InlineSpan]) -> Vec<(String, Option<String>)> {
+    spans
+        .iter()
+        .filter_map(|span| match span {
+            InlineSpan::Link { url, predicate, .. } => Some((url.clone(), predicate.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Regression: the inline-rewrite pass used to rebuild paragraph links with
+/// `predicate: None` while headings kept theirs, so `inker::link_statements`
+/// saw nothing for any djot paragraph. Heading link = control, plain link =
+/// the `None` case that must stay `None`.
+#[test]
+fn link_predicates_survive_the_inline_rewrite_pass() {
+    let body = concat!(
+        "# Source [Gibson](https://example.test/gibson){rel=\"cites\"}\n",
+        "\n",
+        "Body cites [Gibson](https://example.test/gibson){rel=\"cites\"}",
+        " and links [docs](https://x.test/) plainly.\n",
+    );
+    let doc = DjotKnotEngine::new()
+        .render(&EngineInput::new("knot:test", body))
+        .expect("render");
+
+    let heading = doc
+        .blocks
+        .iter()
+        .find_map(|block| match block {
+            Block::Heading { spans, .. } => Some(link_pairs(spans)),
+            _ => None,
+        })
+        .expect("expected a heading");
+    assert_eq!(
+        heading,
+        vec![(
+            "https://example.test/gibson".to_string(),
+            Some("cites".to_string())
+        )]
+    );
+
+    let paragraph = doc
+        .blocks
+        .iter()
+        .find_map(|block| match block {
+            Block::Paragraph { spans } => Some(link_pairs(spans)),
+            _ => None,
+        })
+        .expect("expected a paragraph");
+    assert_eq!(
+        paragraph,
+        vec![
+            (
+                "https://example.test/gibson".to_string(),
+                Some("cites".to_string())
+            ),
+            ("https://x.test/".to_string(), None),
+        ]
+    );
+
+    let cites = inker::LinkStatement {
+        target_url: "https://example.test/gibson".to_string(),
+        rel: "cites".to_string(),
+    };
+    assert_eq!(inker::link_statements(&doc), vec![cites.clone(), cites]);
+}

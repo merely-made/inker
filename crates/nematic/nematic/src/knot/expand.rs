@@ -232,7 +232,7 @@ pub(super) fn rewrite_inline_extensions(blocks: &mut Vec<Block>) {
             Block::Heading { level, spans } => {
                 // Hashtags inside headings aren't usually intended as tags;
                 // leave wikilinks rewritten but don't extract hashtags.
-                let (rewritten, _) = rewrite_spans_no_hashtags(spans);
+                let rewritten = rewrite_spans_no_hashtags(spans);
                 out.push(Block::Heading {
                     level,
                     spans: rewritten,
@@ -263,27 +263,34 @@ pub(super) fn rewrite_inline_extensions(blocks: &mut Vec<Block>) {
 
 /// Rewrite a span list: expand wikilinks inline, collect hashtags.
 fn rewrite_spans(spans: Vec<InlineSpan>) -> (Vec<InlineSpan>, Vec<String>) {
+    let mut hashtags = Vec::new();
+    let out = rewrite_span_list(spans, Some(&mut hashtags));
+    (out, hashtags)
+}
+
+/// Rewrite a span list expanding wikilinks but leaving hashtags as text.
+fn rewrite_spans_no_hashtags(spans: Vec<InlineSpan>) -> Vec<InlineSpan> {
+    rewrite_span_list(spans, None)
+}
+
+/// The single span-list walk. `hashtags` present means hashtag tokens are
+/// extracted from text runs into it; `None` leaves them as plain text. Both
+/// the paragraph and the heading path go through here, so a link's fields
+/// (notably its `rel` predicate) cannot survive one path and be dropped by
+/// the other.
+fn rewrite_span_list(
+    spans: Vec<InlineSpan>,
+    mut hashtags: Option<&mut Vec<String>>,
+) -> Vec<InlineSpan> {
     // pulldown-cmark splits punctuation like `[[` and `]]` into separate
     // Text spans; merge adjacent Text runs first so wikilink boundaries
     // are visible to the scanner.
     let merged = merge_adjacent_text(spans);
     let mut out = Vec::with_capacity(merged.len());
-    let mut hashtags = Vec::new();
     for span in merged {
-        rewrite_one_span(span, &mut out, &mut hashtags);
+        rewrite_one_span(span, &mut out, hashtags.as_deref_mut());
     }
-    (out, hashtags)
-}
-
-/// Rewrite a span list expanding wikilinks but leaving hashtags as text.
-fn rewrite_spans_no_hashtags(spans: Vec<InlineSpan>) -> (Vec<InlineSpan>, Vec<String>) {
-    let merged = merge_adjacent_text(spans);
-    let mut out = Vec::with_capacity(merged.len());
-    let mut sink: Vec<String> = Vec::new();
-    for span in merged {
-        rewrite_one_span_keep_tags(span, &mut out, &mut sink);
-    }
-    (out, sink)
+    out
 }
 
 fn merge_adjacent_text(spans: Vec<InlineSpan>) -> Vec<InlineSpan> {
@@ -306,54 +313,26 @@ fn merge_adjacent_text(spans: Vec<InlineSpan>) -> Vec<InlineSpan> {
     out
 }
 
-fn rewrite_one_span(span: InlineSpan, out: &mut Vec<InlineSpan>, hashtags: &mut Vec<String>) {
-    match span {
-        InlineSpan::Text(text) => expand_text(&text, out, Some(hashtags)),
-        InlineSpan::Emphasis(inner) => {
-            let (rewritten, mut found) = rewrite_spans(inner);
-            hashtags.append(&mut found);
-            out.push(InlineSpan::Emphasis(rewritten));
-        },
-        InlineSpan::Strong(inner) => {
-            let (rewritten, mut found) = rewrite_spans(inner);
-            hashtags.append(&mut found);
-            out.push(InlineSpan::Strong(rewritten));
-        },
-        InlineSpan::Link {
-            url,
-            title,
-            spans: inner,
-            ..
-        } => {
-            // Don't rewrite anything inside an existing link — its display
-            // text is already linked. Pass through verbatim.
-            out.push(InlineSpan::Link {
-                url,
-                title,
-                spans: inner,
-                predicate: None,
-            });
-        },
-        other => out.push(other),
-    }
-}
-
-fn rewrite_one_span_keep_tags(
+fn rewrite_one_span(
     span: InlineSpan,
     out: &mut Vec<InlineSpan>,
-    _ignored: &mut Vec<String>,
+    mut hashtags: Option<&mut Vec<String>>,
 ) {
     match span {
-        InlineSpan::Text(text) => expand_text(&text, out, None),
+        InlineSpan::Text(text) => expand_text(&text, out, hashtags),
         InlineSpan::Emphasis(inner) => {
-            let (rewritten, _) = rewrite_spans_no_hashtags(inner);
+            let rewritten = rewrite_span_list(inner, hashtags.as_deref_mut());
             out.push(InlineSpan::Emphasis(rewritten));
         },
         InlineSpan::Strong(inner) => {
-            let (rewritten, _) = rewrite_spans_no_hashtags(inner);
+            let rewritten = rewrite_span_list(inner, hashtags.as_deref_mut());
             out.push(InlineSpan::Strong(rewritten));
         },
-        InlineSpan::Link { .. } => out.push(span),
+        // Don't rewrite anything inside an existing link — its display text
+        // is already linked. Pass the whole span through verbatim so every
+        // field (url, title, spans, and the `rel` predicate that feeds
+        // `inker::link_statements`) survives untouched.
+        link @ InlineSpan::Link { .. } => out.push(link),
         other => out.push(other),
     }
 }
