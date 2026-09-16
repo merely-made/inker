@@ -32,24 +32,29 @@ not qualify keeps its source and a diagnostic, as today.
   `document_folding.rs` folds *Knot* source outlines, not Micron sections, and
   must not be duplicated for Micron.
 - **Stock semantics are captured for the ordinary cases**
-  (`C:\t\micron-reference-20260912\REFERENCE.md`, "Captured Guide syntax"):
+  (`crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/REFERENCE.md`,
+  "Captured Guide syntax"; its original `C:/t` capture tree no longer exists):
   `>`-runs set depth; `` `+> `` / `` `-> `` headings fold to the next heading of
   equal or shallower depth and toggle on Enter, Space or mouse; explicit
   anchors are zero-width with ASCII letters, digits, `_`, `-`; every heading is
   an anchor by slug, first declaration wins; `` `[label`#name] `` scrolls the
   current page and `` `[label`#] `` jumps to the next heading; an external link
   may carry `anchor=name`. Fixture: `fixtures/guide-structure.mu`.
-- **Still uncaptured** (same file, "next probes"): duplicate and missing anchor
-  behaviour, a link into a closed section, the `<` section-exit token, the
-  escape glyph, and whether an anchor jump is a history step.
-- **Instruments must be rebuilt (2026-09-16).** The whole 2026-09-13 scratch
-  family under `C:/t` is gone: the headed artifact tree, the stock `nomadnet`
-  1.4.2 daemon under WSL, both RNS virtualenvs, the earlier reference-capture
-  tree and the isolated Cargo home. The durable reference capture survives in
-  this repo at `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/`,
-  but its ANSI TUI capture does not. Turnstone still self-drives through
-  `TURNSTONE_SCENARIO`; Knot's guarded input script was in the deleted tree.
-  C1 therefore begins by standing a stock daemon and a capture client back up.
+- **Captured since (C1, 2026-09-16).** The spellings the 2026-09-12 capture left
+  open (duplicate and missing anchors, `#` past the last heading, links into
+  closed sections, nested fold state, `<`, key toggling, in-page transport and
+  anchor history) now have a stock UI receipt at
+  `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/NAVIGATION_RECEIPT.md`;
+  the C1 Findings below summarise it. Still uncaptured: an explicit anchor on the
+  line after a heading, two explicit anchors with the same name, a target inside
+  two closed sections, and `anchor=` links to another page. The last one bears
+  on A1 and should be captured before A1 starts.
+- **Instrument rebuilt (2026-09-16).** The 2026-09-13 `C:/t` scratch family was
+  deleted, so C1 rebuilt stock `nomadnet` 1.4.2, `rns` 1.5.3 and `lxmf` 1.1.1 in
+  a WSL-native venv under `/var/tmp`; the package metadata digest matches the
+  2026-09-12 reference. `/var/tmp` is volatile, so the recipe and wheel digests
+  are recorded in the receipt, and durable captures live under
+  `Code/testing/mere/micron-navigation-20260916/`.
 
 ## Phases and done-conditions
 
@@ -82,7 +87,9 @@ interpreted.
 
 In Nematic (owner of source interpretation): compute each collapsible
 heading's fold extent (line range to the next heading of equal or shallower
-depth), expose `anchors()` as an ordered map from name to first line index
+depth, which C1 probe 07c showed is incomplete: stock also keeps the line after
+a `<` visible under a closed fold, so the extent rule must say what a `<` line
+does to an extent while `<` itself stays source plus diagnostic), expose `anchors()` as an ordered map from name to first line index
 with duplicates recorded, and `resolve_anchor(name)` / `next_heading(from)`
 following the captured rules. Lower these into the shared presentation as
 typed facts rather than diagnostics: `Block::Heading` gains an anchor id and
@@ -104,7 +111,7 @@ by the document identity plus the heading's line index; layout omits a closed
 extent and marks the heading with its state; the heading is a hit target and
 a keyboard target (Enter/Space) that toggles; an in-page link activation asks
 the session to scroll the viewport to a block, with the target's closed
-ancestors opened first when C1 shows stock does so. Fold state survives
+ancestors opened first, which C1 probe 05 confirmed stock does. Fold state survives
 relayout and resize and is discarded when the source bytes change.
 
 Done when document-lanes tests cover toggle by pointer and by keyboard,

@@ -54,5 +54,5 @@ not the reference renderer's internal implementation.
 
 | File | SHA-256 |
 | --- | --- |
-| `activation/ACTIVATION_RECEIPT.md` | `91f4f744c1621942aa08bc1fe12b161b84a48fd3dee57a693efe27c02c7159e` |
+| `activation/ACTIVATION_RECEIPT.md` | `91f4f744c1621942aa08bc1fe12b161b84a48fd3ddee57a693efe27c02c7159e` |
 | `activation/logs/request-record.jsonl` | `afe9c279f3da619eb33061c504bea4b5f70709a69955c27d17c70ed05c168d33` |

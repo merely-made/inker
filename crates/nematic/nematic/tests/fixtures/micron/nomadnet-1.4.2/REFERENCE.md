@@ -100,3 +100,9 @@ nonempty multiline values, and partial-update lifecycle remain unmeasured.
   still need a version-matched NomadNet UI receipt before promotion.
 - Same-node `:/page/...` now has a stock-client activation receipt. Bare and
   relative destinations remain parse-only evidence.
+- 2026-09-16: anchor duplicate and missing behaviour, `#` next-heading, links
+  into closed sections, nested fold state, Enter/Space toggling and in-page
+  transport now have a version-matched stock UI receipt in
+  [`navigation/NAVIGATION_RECEIPT.md`](navigation/NAVIGATION_RECEIPT.md). The
+  `<` section-exit token was probed there too; its rendering effect is recorded
+  but its depth semantics remain unqualified, so it stays source plus diagnostic.
