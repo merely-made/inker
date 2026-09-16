@@ -396,6 +396,8 @@ fn write_inline_html(spans: &[InlineSpan], out: &mut String) {
                 write_inline_html(spans, out);
                 out.push_str("</a>");
             },
+            // Label text only until hosts give in-page targets ids (decision 9).
+            InlineSpan::InPage { spans, .. } => write_inline_html(spans, out),
             InlineSpan::SoftBreak => out.push('\n'),
             InlineSpan::LineBreak => out.push_str("<br>\n"),
         }

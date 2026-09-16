@@ -1,6 +1,6 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1 and C1b landed, N1 next. Lane 2 of the
+**Status (2026-09-16):** accepted; C1, C1b and N1 landed, P1 next. Lane 2 of the
 [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
 navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
 lane is the next user-visible conformance gap.
@@ -97,6 +97,20 @@ interpreted.
 
 ### N1. Document model: fold extents and anchor resolution
 
+**Status (2026-09-16): landed.** Model in `19451cd3`, lowering and the shared
+navigation table in the following commit. Verified in a clean worktree at
+`154bd5c8` carrying exactly the uncommitted changes, with a lock resolved
+offline from a cwd outside the repository, because the shared in-repo lock
+records local path overrides and cannot satisfy `--locked` from a clean cwd.
+Results with Rust 1.97.1 and `--offline --locked`: nematic 226, inker 117,
+document-canvas 63, mere-document-lanes with `smolweb` 24 (including the
+streaming integration test), platen 54, import 17, uxtree 9, script-rhai 9,
+mere-gloss 6, all passing, and a clean workspace check. The format check
+reports only two files that were already unformatted at the parent commit
+(`crates/import/src/history.rs`, `crates/script/rhai/src/lib.rs`), neither at
+a line N1 touched. Logs are `n1-10` to `n1-20` under
+`Code/testing/mere/micron-navigation-20260916/logs/`.
+
 In Nematic (owner of source interpretation), in syntax line space so it is
 testable without Inker: each collapsible heading's fold extent runs to whichever
 comes first of the next *named* heading of equal or shallower depth, an unnamed
@@ -135,6 +149,20 @@ diagnostics are gone while request links still raise theirs, and that a serde
 round trip keeps the table; and the Inker-family crates treat the new inline as
 inert label text. No IO, no consumer change beyond the one-line default each
 engine needs.
+
+External consumers pin mere by rev and were not changed. On their next bump
+(lines as of 2026-09-16):
+
+- Knot `apps/desktop/src/document_preview.rs:39`: the exhaustive `inline()`
+  (arms end at :86) needs an `InlineSpan::InPage` arm rendering label text.
+- Knot `apps/desktop/src/scroll_site.rs:1090`: the Micron preview's exhaustive
+  `inline()` (arms end at :1119) needs the same arm.
+- Turnstone `src/nomadnet.rs:517`: the test `EngineDocument` literal needs
+  `navigation: Default::default()`.
+- No edit needed: Turnstone `src/nomadnet.rs:192` (`refuse_spans` passes
+  `InPage` through its wildcard, and the label holds no alias link) and Knot
+  `apps/desktop/src/scroll_site.rs:1749` (that badge comes from the unresolved
+  alias diagnostic, which N1 keeps).
 
 ### P1. Shared presentation and session state
 
@@ -280,6 +308,37 @@ capturing them, and any change to how source bytes are stored.
   as the first declaration; with another name, both resolve (the slug to the
   heading row, the explicit name to the next row). Duplicate explicit anchors
   resolve to the first, and a target inside two closed folds opens both.
+- 2026-09-16 (N1 implementation): what the code settled beyond the design note.
+  **One definition of a named heading.** A heading is named when it has any
+  span other than an anchor (`micron/navigation.rs` `is_named_heading`). That is
+  exactly when lowering emits a heading block, because `inker::inline_text`
+  counts `Code`, so a fold heading always owns one block and a per-line
+  `first_block` count maps line space to block space (`micron/render.rs`
+  `lower_navigation`). **Choices, uncaptured:** a collapse marker on an unnamed
+  section (`` `-> `` alone) is not a fold, since there is no row to toggle, and
+  keeps a diagnostic. An unresolved `#name` or `#` lowers to `InPage` with an
+  empty target rather than plain text, so P1 can still show the focusable no-op
+  link stock shows (probe 3); nothing diagnoses it. The fragment for `#` is the
+  heading's own active slug, else the first active declaration resolving to the
+  same block, and every lowered fragment resolves back to its target block on
+  every probe page. **Retained now:** table-cell anchors stay on the Table line
+  as `Span::Anchor` and target the table block. **Differs from the note:** HTML
+  export writes bare label text (decision 9), not a `<span>` without `href`.
+  **Diagnostics:** request links now say "Micron request link retained…",
+  `anchor=` links "Micron cross-page anchor link retained…" until A1, and a
+  `<`-led line "Micron leading < line retained as source; section exit is not
+  applied", which puts the badge on 07a, 07b, 07c, 12 and 13.
+  **Staleness:** `resolve_transclusions` and `evaluate_blocks` clear
+  `navigation` once they splice (decision 7), and `InPageTarget` indices share
+  the table's `is_current` guard, so blocks copied into another document
+  (clipping's `fragment_to_knot_body`, a transcluded Micron child) stay inert.
+  **Instruments:** `sem_impact` again stayed inside one crate (`InlineSpan`: 12
+  dependents in 4 inker files) and missed `syntax::parse`'s callers in
+  `render.rs:31` and `forms.rs:306`. Grep and the compiler found the 9
+  exhaustive inline sites and 32 `EngineDocument` literals the note listed,
+  and no others. `import/src/history.rs:78` and `script/rhai/src/lib.rs:206–214`
+  are unformatted at HEAD, so `cargo fmt --check` fails on those two crates for
+  reasons outside N1.
 
 ## Progress
 
@@ -306,3 +365,10 @@ capturing them, and any change to how source bytes are stored.
   rule at depths one and two. Committed 14 probe pages, the receipt's C1b
   section and the manifest digests; Micron tests still pass offline (28 passed).
   N1 next.
+- 2026-09-16: N1 landed in two commits. The model adds fold extents, anchor
+  declarations, `resolve_anchor` and `next_heading` with probe-named tests (43
+  Micron tests, up from 28); lowering adds the navigation table and the in-page
+  inline kind across the Inker family, splits the old diagnostics, and clears
+  the table when transclusion or evaluation splice blocks. The first run of
+  its verification was blocked by the machine-local lock and completed in a
+  clean worktree. P1 next.

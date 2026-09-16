@@ -102,7 +102,8 @@ fn collect_span(span: &InlineSpan, out: &mut Vec<LinkStatement>) {
         InlineSpan::Presented { spans: inner, .. }
         | InlineSpan::Emphasis(inner)
         | InlineSpan::Strong(inner)
-        | InlineSpan::Submit { spans: inner, .. } => {
+        | InlineSpan::Submit { spans: inner, .. }
+        | InlineSpan::InPage { spans: inner, .. } => {
             for s in inner {
                 collect_span(s, out);
             }
@@ -128,6 +129,7 @@ mod tests {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::default(),
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks,
         }
     }
@@ -147,6 +149,13 @@ mod tests {
                     title: None,
                     spans: vec![InlineSpan::Text("Topic".to_string())],
                     predicate: Some("cites".to_string()),
+                },
+                InlineSpan::InPage {
+                    target: crate::InPageTarget {
+                        fragment: Some("topic".to_string()),
+                        block: Some(0),
+                    },
+                    spans: vec![InlineSpan::Text("in-page".to_string())],
                 },
             ],
         }]);

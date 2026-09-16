@@ -78,6 +78,7 @@ fn document(input: &EngineInput, blocks: Vec<Block>) -> EngineDocument {
         provenance: DocumentProvenance::for_engine(ENGINE_ID, &input.address),
         trust: DocumentTrustState::Unknown,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks,
     }
 }

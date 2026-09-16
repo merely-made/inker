@@ -603,6 +603,7 @@ impl Engine for DjotKnotEngine {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::default(),
             diagnostics,
+            navigation: Default::default(),
             blocks,
         };
         super::apply_frontmatter(

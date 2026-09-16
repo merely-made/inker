@@ -18,6 +18,7 @@ fn doc(blocks: Vec<Block>) -> EngineDocument {
         provenance: DocumentProvenance::default(),
         trust: DocumentTrustState::Unknown,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks,
     }
 }
@@ -107,6 +108,7 @@ fn doc_with_metadata(
         provenance,
         trust,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks: vec![Block::Paragraph {
             spans: vec![InlineSpan::Text("Body.".into())],
         }],
@@ -455,4 +457,44 @@ fn presented_source_facts_survive_html_and_plain_fallbacks() {
             .to_gemini()
             .contains("=> gemini://example.test/guide Guide")
     );
+}
+
+#[test]
+fn in_page_links_export_as_label_text_only() {
+    // Plan decision 9: no href, no `=>`, no menu entry until hosts give
+    // in-page targets ids.
+    let document = doc(vec![
+        Block::Heading {
+            level: 1,
+            spans: vec![InlineSpan::Text("Setup".into())],
+        },
+        Block::Paragraph {
+            spans: vec![
+                InlineSpan::Text("see ".into()),
+                InlineSpan::InPage {
+                    target: super::super::InPageTarget {
+                        fragment: Some("setup".into()),
+                        block: Some(0),
+                    },
+                    spans: vec![InlineSpan::Text("Setup".into())],
+                },
+            ],
+        },
+    ]);
+    let markdown = document.to_markdown();
+    assert!(markdown.contains("see Setup"), "{markdown}");
+    assert!(!markdown.contains("]("), "{markdown}");
+    let gemini = document.to_gemini();
+    assert!(gemini.contains("see Setup\n"), "{gemini}");
+    assert!(!gemini.contains("=>"), "{gemini}");
+    let map = document.to_gophermap(&ctx());
+    assert!(map.contains("isee Setup\tfake\t(NULL)\t0\r\n"), "{map}");
+    assert!(!map.contains("\nh"), "{map}");
+    let text = document.to_text();
+    assert!(text.contains("see Setup"), "{text}");
+    assert!(!text.contains('<'), "{text}");
+    let html = document.to_html();
+    assert!(html.contains("see Setup"), "{html}");
+    assert!(!html.contains("<a "), "{html}");
+    assert!(!html.contains("#setup"), "{html}");
 }

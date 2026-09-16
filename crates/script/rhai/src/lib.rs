@@ -240,6 +240,7 @@ mod tests {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks: vec![Block::CodeBlock {
                 language: Some("rhai eval".into()),
                 text: "let s = 0; for i in 1..=10 { s += i } \"sum is \" + s".into(),

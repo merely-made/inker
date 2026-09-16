@@ -362,7 +362,8 @@ fn text_with_links(spans: &[InlineSpan]) -> String {
             },
             InlineSpan::Presented { spans, .. }
             | InlineSpan::Emphasis(spans)
-            | InlineSpan::Strong(spans) => {
+            | InlineSpan::Strong(spans)
+            | InlineSpan::InPage { spans, .. } => {
                 out.push_str(&text_with_links(spans));
             },
             InlineSpan::Text(text) | InlineSpan::Code(text) => out.push_str(text),

@@ -66,6 +66,7 @@ mod tests {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks,
         }
     }

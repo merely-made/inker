@@ -599,7 +599,10 @@ impl Block {
 fn write_inline_markdown(spans: &[InlineSpan], out: &mut String) {
     for span in spans {
         match span {
-            InlineSpan::Presented { spans, .. } => write_inline_markdown(spans, out),
+            // An in-page link exports as its label (plan decision 9).
+            InlineSpan::Presented { spans, .. } | InlineSpan::InPage { spans, .. } => {
+                write_inline_markdown(spans, out)
+            },
             InlineSpan::Text(t) => out.push_str(t),
             InlineSpan::Code(t) => {
                 out.push('`');

@@ -111,6 +111,7 @@ fn render_directory(address: &str, entries: &[NexEntry]) -> EngineDocument {
         provenance: DocumentProvenance::for_engine(ENGINE_ID, address),
         trust: DocumentTrustState::Unknown,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks,
     }
 }

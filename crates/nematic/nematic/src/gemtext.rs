@@ -67,6 +67,7 @@ impl Engine for GemtextEngine {
             provenance: DocumentProvenance::for_engine(self.engine_id(), &input.address),
             trust: DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks,
         })
     }

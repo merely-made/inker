@@ -79,6 +79,7 @@ impl Engine for HtmlFragmentEngine {
             provenance: DocumentProvenance::for_engine(self.engine_id(), &input.address),
             trust: DocumentTrustState::Unknown,
             diagnostics: diagnostics.into_iter().collect(),
+            navigation: Default::default(),
             blocks,
         })
     }

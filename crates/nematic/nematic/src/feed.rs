@@ -75,6 +75,7 @@ impl Engine for FeedEngine {
             provenance: DocumentProvenance::for_engine(self.engine_id(), &input.address),
             trust: DocumentTrustState::Unknown,
             diagnostics,
+            navigation: Default::default(),
             blocks,
         })
     }

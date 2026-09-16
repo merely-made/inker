@@ -21,6 +21,7 @@ fn doc(blocks: Vec<Block>) -> EngineDocument {
         provenance: DocumentProvenance::default(),
         trust: DocumentTrustState::Unknown,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks,
     }
 }
@@ -313,6 +314,28 @@ fn submission_span_emits_a_non_navigation_interaction() {
         packet.interaction_at(x, y),
         Some(InteractionKind::Submit { .. })
     ));
+}
+
+#[test]
+fn in_page_span_emits_no_interaction_region() {
+    let packet = layout_document(
+        &doc(vec![Block::Paragraph {
+            spans: vec![InlineSpan::InPage {
+                target: inker::InPageTarget {
+                    fragment: Some("setup".into()),
+                    block: Some(0),
+                },
+                spans: vec![InlineSpan::Text("Setup".into())],
+            }],
+        }]),
+        viewport(),
+        &DocumentStyleSheet::default(),
+    )
+    .packet;
+    assert!(
+        packet.interactions.is_empty(),
+        "an in-page link is inert label text until P1"
+    );
 }
 
 #[test]

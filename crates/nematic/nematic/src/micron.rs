@@ -70,6 +70,7 @@ impl Engine for MicronSubsetEngine {
             provenance: DocumentProvenance::for_engine(self.engine_id(), &input.address),
             trust: DocumentTrustState::Unknown,
             diagnostics: lowering.diagnostics,
+            navigation: Default::default(),
             blocks: lowering.blocks,
         })
     }

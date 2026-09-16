@@ -134,6 +134,7 @@ pub fn lower_article(address: &str, article: &Article) -> EngineDocument {
         },
         trust: DocumentTrustState::Unknown,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks,
     }
 }

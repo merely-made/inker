@@ -1029,6 +1029,7 @@ mod tests {
             provenance: inker::DocumentProvenance::default(),
             trust: inker::DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks: vec![Block::Table {
                 alignments: Vec::new(),
                 header: Vec::new(),

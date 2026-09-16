@@ -216,6 +216,8 @@ pub fn resolve_transclusions(
         if !any_resolved {
             break;
         }
+        // Splices shift top-level indices the navigation table was keyed by.
+        document.navigation = Default::default();
     }
 
     outcome
@@ -235,6 +237,7 @@ mod tests {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks,
         }
     }
@@ -268,6 +271,7 @@ mod tests {
             },
             include_fence("gemini://x.test/page.gmi", "fallback"),
         ]);
+        document.navigation.block_count = 2;
         let mut fetch = |url: &str| {
             assert_eq!(url, "gemini://x.test/page.gmi");
             Ok(Fetched {
@@ -285,6 +289,11 @@ mod tests {
         assert_eq!(outcome.resolved, 1);
         assert!(outcome.denied.is_empty() && outcome.failed.is_empty());
         assert_eq!(document.blocks.len(), 2);
+        assert_eq!(
+            document.navigation,
+            Default::default(),
+            "a splice clears stale navigation indices"
+        );
         assert!(matches!(
             &document.blocks[1],
             Block::Paragraph { spans } if spans == &vec![InlineSpan::Text("from the capsule".into())]

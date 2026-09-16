@@ -114,6 +114,7 @@ fn build_clip_knot_inner(
         provenance: source.clone(),
         trust,
         diagnostics: Vec::new(),
+        navigation: Default::default(),
         blocks: blocks.to_vec(),
     };
     document.write_knot_body(&mut out);

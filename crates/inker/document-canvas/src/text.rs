@@ -189,6 +189,10 @@ fn flatten_into(
                     out.submissions.push((start..end, target.clone()));
                 }
             },
+            // Inert label text until the session owns in-page scrolling.
+            InlineSpan::InPage { spans: inner, .. } => {
+                flatten_into(inner, inherited, adornment, base_scheme, out);
+            },
             InlineSpan::SoftBreak => {
                 out.text.push(' ');
             },
@@ -591,6 +595,24 @@ mod tests {
         assert!(
             f.styles.iter().any(|(r, _)| r.start == 0),
             "prefix styled from 0"
+        );
+    }
+
+    #[test]
+    fn in_page_link_is_inert_label_text() {
+        let span = InlineSpan::InPage {
+            target: inker::InPageTarget {
+                fragment: Some("setup".into()),
+                block: Some(0),
+            },
+            spans: vec![InlineSpan::Text("Setup".into())],
+        };
+        let f = flatten_inline(&[span], LinkAdornment::SchemeArrow, Some("gemini"));
+        assert_eq!(f.text, "Setup", "no scheme arrow");
+        assert!(f.links.is_empty() && f.submissions.is_empty());
+        assert!(
+            f.styles.iter().all(|(_, style)| !style.link),
+            "no link style"
         );
     }
 }

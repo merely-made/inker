@@ -42,6 +42,7 @@ use serde::{Deserialize, Serialize};
 
 mod block_provenance;
 mod evaluate;
+mod navigation;
 mod render;
 mod transclude;
 pub use evaluate::{
@@ -54,6 +55,7 @@ pub use transclude::{
 };
 
 pub use block_provenance::{BlockProvenance, BlockProvenanceMap, ResolvedProvenance};
+pub use navigation::{DocumentAnchor, DocumentFold, DocumentNavigation, InPageTarget};
 
 /// A rendered document.
 ///
@@ -88,6 +90,10 @@ pub struct EngineDocument {
     /// overlay. Defaults to empty.
     #[serde(default)]
     pub diagnostics: Vec<DocumentDiagnostic>,
+    /// In-page anchors and collapsible extents over `blocks`, when the source
+    /// format has them. Empty for engines without in-page navigation.
+    #[serde(default)]
+    pub navigation: DocumentNavigation,
     pub blocks: Vec<Block>,
 }
 
@@ -333,6 +339,12 @@ pub enum InlineSpan {
         target: String,
         spans: Vec<InlineSpan>,
     },
+    /// A link within this document. Activation scrolls the current document;
+    /// it is never a URL, a fetch, an outgoing link or a link statement.
+    InPage {
+        target: InPageTarget,
+        spans: Vec<InlineSpan>,
+    },
     LineBreak,
     SoftBreak,
 }
@@ -364,7 +376,9 @@ fn append_inline_text(span: &InlineSpan, out: &mut String) {
                 append_inline_text(inner, out);
             }
         },
-        InlineSpan::Link { spans, .. } | InlineSpan::Submit { spans, .. } => {
+        InlineSpan::Link { spans, .. }
+        | InlineSpan::Submit { spans, .. }
+        | InlineSpan::InPage { spans, .. } => {
             for inner in spans {
                 append_inline_text(inner, out);
             }
@@ -487,7 +501,8 @@ fn collect_link_urls<'a>(span: &'a InlineSpan, out: &mut Vec<&'a str>) {
         InlineSpan::Presented { spans, .. }
         | InlineSpan::Emphasis(spans)
         | InlineSpan::Strong(spans)
-        | InlineSpan::Submit { spans, .. } => {
+        | InlineSpan::Submit { spans, .. }
+        | InlineSpan::InPage { spans, .. } => {
             for inner in spans {
                 collect_link_urls(inner, out);
             }
@@ -512,6 +527,7 @@ mod tests {
             provenance: DocumentProvenance::default(),
             trust: DocumentTrustState::Unknown,
             diagnostics: Vec::new(),
+            navigation: Default::default(),
             blocks,
         }
     }
@@ -577,5 +593,23 @@ mod tests {
             },
         ]);
         assert_eq!(document.outgoing_links(), vec!["https://dest.test/"]);
+    }
+
+    #[test]
+    fn in_page_links_are_label_text_not_outgoing_links() {
+        let document = doc(vec![Block::Paragraph {
+            spans: vec![InlineSpan::InPage {
+                target: InPageTarget {
+                    fragment: Some("top".into()),
+                    block: Some(0),
+                },
+                spans: vec![InlineSpan::Text("Top".into())],
+            }],
+        }]);
+        assert!(document.outgoing_links().is_empty());
+        let Block::Paragraph { spans } = &document.blocks[0] else {
+            unreachable!()
+        };
+        assert_eq!(inline_text(spans), "Top");
     }
 }

@@ -171,6 +171,7 @@ mod tests {
                 provenance: DocumentProvenance::for_engine(self.engine_id(), &input.address),
                 trust: DocumentTrustState::Unknown,
                 diagnostics: Vec::new(),
+                navigation: Default::default(),
                 blocks: vec![Block::Paragraph {
                     spans: vec![InlineSpan::Text(input.body.clone())],
                 }],

@@ -119,6 +119,7 @@ impl ScrollEngine {
             },
             trust: DocumentTrustState::Unknown,
             diagnostics,
+            navigation: Default::default(),
             blocks,
         }
     }

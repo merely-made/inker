@@ -89,6 +89,7 @@ impl Engine for SpartanEngine {
                         ),
                         trust: DocumentTrustState::Unknown,
                         diagnostics: Vec::new(),
+                        navigation: Default::default(),
                         blocks,
                     },
                     "nematic.gemtext",
