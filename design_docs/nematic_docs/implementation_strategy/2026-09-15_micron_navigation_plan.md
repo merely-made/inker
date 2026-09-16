@@ -166,35 +166,82 @@ External consumers pin mere by rev and were not changed. On their next bump
 
 ### P1. Shared presentation and session state
 
-In Inker/document-canvas and document-lanes (owners of reusable presentation
-and the retained viewport): a fold is a session-owned open/closed flag keyed
-by the document identity plus the heading's line index; layout omits a closed
-extent and marks the heading with its state; the heading is a hit target and
-a keyboard target (Enter/Space) that toggles; an in-page link activation asks
-the session to scroll the viewport to a block, with the target's closed
-ancestors opened first, which C1 probe 05 confirmed stock does. Fold state survives
-relayout and resize and is keyed per decision 10.
+Owners: Inker for the fold-state type, document-canvas for layout and
+interaction regions, document-lanes for the retained session, UxTree for
+accessible facts. Nothing here knows about NomadNet addresses.
 
-Done when document-lanes tests cover toggle by pointer and by keyboard,
-scroll-to-anchor after reflow, state kept across a streamed prefix and dropped
-for an edited heading (decision 10), and the `smolweb`
-streaming test still passes. Nothing here knows about NomadNet addresses.
+- **Fold state (Inker).** A fold key is the heading's source line plus its
+  occurrence among identical source lines (decisions 10 and 11), carried by a
+  new `source_text` on each navigation-table fold that Micron lowering fills. A
+  `FoldState` reconciles keys against each newly lowered document, prunes keys
+  that no longer occur, toggles, opens a target's closed ancestors, and yields
+  the hidden block ranges. It lives in Inker so Knot's preview, which renders
+  Inker blocks itself and never touches the session layer, can hold one
+  (decision 3).
+- **Layout (document-canvas).** Closed extents are skipped inside layout via a
+  skip set, measured against a filtered copy and a post-layout cull on every
+  committed fixture: identical geometry, stable block indices, correct content
+  width when a hidden fold contains a wide table, and stable link identity
+  because skipped blocks still reserve their identities (an existing reflow test
+  asserts identity stability). `layout_document` delegates to a fold-aware
+  variant so its existing callers are unchanged. Headings gain a fold interaction
+  region and a configurable open/closed marker from the style sheet; in-page links
+  gain their own region; a top-level block lookup supports scrolling to a target
+  (nested group children reuse low indices, so only top-level blocks qualify).
+- **Session (document-lanes).** The Smolweb document owns fold state and a focus
+  keyed by fold key or link identity, never by block index. A new in-place
+  `replace_document` accepts an already-lowered document, and `replace_body`
+  delegates to it, so fold state and scroll survive every streamed prefix; hosts
+  must stop respawning sessions per prefix (A1). Pointer and Enter/Space toggle a
+  focused heading; focus reaches every interactive region with a visible,
+  style-configurable indicator, a recorded deviation from stock, which shows none
+  (decision 12). An in-page activation opens closed ancestors, scrolls the
+  viewport to the target block, and returns `Handled` so the host issues no
+  request; a missing target is inert and also `Handled`. Resolved fragments queue
+  on the session for the host to drain, so A1 can apply decision 1 without P1
+  deciding history, and without a Genet change. Resize keeps pixel scroll rather
+  than re-anchoring (decision 14).
+- **Accessibility (UxTree).** Headings carry expanded or collapsed state and
+  in-page links surface as links with no URL. A live session projection waits
+  until an app consumes one (decision 13).
+
+Done when tests over the committed fixtures cover, each with a positive control:
+pointer and keyboard toggling (probes 08, 07c); nested state retained across an
+ancestor's close and reopen (06b, with 06a as control); links into a closed and
+a doubly closed section opening ancestors then scrolling (05, 17); missing
+targets inert (03, 04); state kept across streamed prefixes and dropped for an
+edited heading (guide-structure, 07c, 06b); scroll to a target after toggle and
+resize (17, 05, 08, 14c); zero transport for in-page activation at the session
+boundary (09); link identity stable past a closed fold (inline source, since no
+fixture has a link after a fold); and the `smolweb` streaming integration test
+still passing.
 
 ### A1. Consumers
 
-Turnstone: an in-page anchor link scrolls the focused page with **zero**
-transport requests (asserted against the recorded fetch log), is a history
-entry exactly when it changes the displayed address (decision 1), and a native
-link carrying `anchor=name` fetches once, opens any closed sections around the
-target and scrolls, or loads at the top with a visible notice when the anchor is
-missing, as stock does (C1b probe 14). Knot: the Micron preview shows fold state
-and anchor targets through the same shared lowering; toggling in the preview
-is preview state, not document state, and never writes source. Both apps keep
-their existing alias refusal and diagnostics for unqualified spellings.
+Turnstone: switch Micron streaming from respawning a session per prefix
+(`src/shell/effects.rs` ~1074–1079) to `replace_document`; this compiles either
+way, so a missed switch fails silently and must be asserted by a test. Drain the
+in-page queue after a `Handled` click (`src/shell/input.rs` ~374 and ~1125,
+`src/shell/lens.rs` ~539) and apply decision 1. Route keys through the session
+before the scroll bindings in `src/shell/keys.rs`, where Space is bound to page
+down today, or Space never toggles a heading. An in-page anchor link scrolls the
+focused page with **zero** transport requests (asserted against the recorded
+fetch log), is a history entry exactly when it changes the displayed address
+(decision 1), and a native link carrying `anchor=name` fetches once, opens any
+closed sections around the target and scrolls, or loads at the top with a
+visible notice when the anchor is missing, as stock does (C1b probe 14). Also
+the N1 test literal at `src/nomadnet.rs` ~517.
+
+Knot: the Micron preview holds an Inker `FoldState` and renders fold state and
+anchor targets from the same shared lowering; toggling is preview state, never
+document state, and never writes source. It gains the two `InPage` arms N1
+listed. Both apps keep their existing alias refusal and diagnostics for
+unqualified spellings.
 
 Done when Turnstone's `nomadnet` and app tests and Knot's site and desktop
-tests cover anchor scroll, next-heading jump, fold toggle and the zero-request
-assertion, and the plan docs of both apps record the commands.
+tests cover anchor scroll, next-heading jump, fold toggle, the streaming switch
+and the zero-request assertion, and the plan docs of both apps record the
+commands.
 
 ### R1. Receipts
 
@@ -264,6 +311,17 @@ as a deliberate deviation.
     text it is: it survives streaming and edits elsewhere on the page, and a
     heading's own state drops only when that heading is edited. It remains
     session-only and is discarded when the page closes.
+
+11. **The fold key uses the heading's source line** (settled 2026-09-16),
+    reading decision 10 literally: any edit to that heading, including restyling
+    it or flipping its `+`/`-` marker, drops its state.
+12. **Keyboard focus reaches every interactive region with a visible,
+    configurable indicator** (settled 2026-09-16). Stock NomadNet shows no focus
+    indicator; this is a deliberate deviation.
+13. **P1 carries accessibility facts in UxTree only** (settled 2026-09-16);
+    a live session projection waits until an app consumes one.
+14. **Resize after an anchor jump keeps pixel scroll** (settled 2026-09-16);
+    stock was not captured for this.
 
 ## Out of scope
 
@@ -384,3 +442,10 @@ capturing them, and any change to how source bytes are stored.
   clean worktree. P1 next.
 - 2026-09-16: decision 10 settled with Mark before P1: fold state keyed by
   heading text plus occurrence. P1 starts with a read-only design pass.
+- 2026-09-16: P1 design pass (read-only, throwaway build over every fixture).
+  Found that Turnstone respawns the session on every streamed Micron prefix, so
+  decision 10 cannot reach it without an in-place document swap; that Knot's
+  preview renders Inker blocks itself and never uses the session layer; and
+  that the badge shifts block indices mid-stream while text-and-occurrence keys
+  held on every fixture. Measured skip set, filtered copy and cull; chose the
+  skip set. P1 and A1 rewritten accordingly; decisions 11–14 settled with Mark.
