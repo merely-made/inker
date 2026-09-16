@@ -1,6 +1,6 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1 in progress. Lane 2 of the
+**Status (2026-09-16):** accepted; C1 landed, N1 next. Lane 2 of the
 [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
 navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
 lane is the next user-visible conformance gap.
@@ -54,6 +54,15 @@ not qualify keeps its source and a diagnostic, as today.
 ## Phases and done-conditions
 
 ### C1. Stock captures for the open spellings
+
+**Status (2026-09-16): landed.** Stock NomadNet 1.4.2 (package metadata
+identical to the 2026-09-12 reference) served and browsed 15 probe pages on a
+TCP loopback pair. The observation table, the four spellings that remain "keep
+source and diagnostic", and what was not captured are in
+`crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/NAVIGATION_RECEIPT.md`,
+with page digests in `CAPTURE_MANIFEST.md` beside it. ANSI captures and node
+logs are in `Code/testing/mere/micron-navigation-20260916/`. Micron tests still
+pass offline (28 passed).
 
 Controlled pages served by the stock daemon and rendered in the stock TUI
 client, retained as ANSI captures plus a written observation table, black-box
@@ -168,9 +177,30 @@ capturing them, and any change to how source bytes are stored.
   lost and every cited test still runs, but artifact paths in the 2026-09-13
   receipts are now dead references, and any plan whose commands name
   `CARGO_HOME=C:/t/smolweb-next-20260913/cargo-home` needs that home refetched.
+- 2026-09-16 (C1 receipt): in the stock client, a duplicate slug or a heading
+  and explicit anchor sharing a name resolves to the earlier declaration; a
+  missing anchor, and `#` below the last heading, are silent no-ops; a link into
+  a closed section opens that section and scrolls to the target; opening a
+  closed section shows nested headings in their authored state, and a reader's
+  toggle survives closing and reopening the ancestor but not a reload.
+- 2026-09-16 (C1 receipt): an in-page anchor jump issued zero requests, matching
+  A1's assertion. The stock client also serves URL reopens and Back/Forward from
+  a page cache with zero requests, so a zero count is not by itself proof that
+  nothing was re-rendered. The jump added no fragment to the stock address row,
+  and Back left the page; decision 1 differs from this on purpose.
+- 2026-09-16 (C1 receipt): a `<` line changed stock rendering in a way N1's
+  extent rule does not describe. With the collapsible heading closed, the line
+  after `<` stayed visible, from depth one and from depth two inside a closed
+  depth-one fold. The receipt keeps `<` as source plus diagnostic; N1 has to
+  decide how a fold extent treats that line without promoting `<` to a rule.
 
 ## Progress
 
 - 2026-09-15: plan drafted after the forms lane closed; nothing implemented.
 - 2026-09-16: four decisions settled with Mark; the history rule is
   address-driven rather than gesture-driven. C1 started.
+- 2026-09-16: C1 landed. Instrument rebuilt under WSL (`/var/tmp`, pinned
+  nomadnet 1.4.2 / rns 1.5.3 / lxmf 1.1.1, metadata digest matches the
+  reference); all ten probes captured with the stock daemon's own request log.
+  Probes 06 and 07 were split mid-capture when the first pages proved
+  non-discriminating. Committed `navigation/` fixtures, receipt and manifest.
