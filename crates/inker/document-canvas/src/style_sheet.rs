@@ -81,12 +81,14 @@ pub enum ColorToken {
 /// How to adorn inline links. `SchemeArrow` is the Geopard-style prefix: an
 /// arrow chosen by whether the link leaves the document's own protocol. The
 /// prefix renders as part of the link (link-colored, inside the hit region).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The default is the one both link tokens start from.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LinkAdornment {
     /// No prefix; the link text renders as-is.
     None,
     /// `⇒ ` (U+21D2) for in-protocol / relative links, `→ ` (U+2192) for
     /// links that leave the document's protocol.
+    #[default]
     SchemeArrow,
 }
 
@@ -293,6 +295,11 @@ pub struct DocumentStyleSheet {
     pub colors: ColorVocabulary,
     /// How inline links are adorned (the `⇒` / `→` scheme arrows).
     pub link_adornment: LinkAdornment,
+    /// How in-page links are adorned, apart from `link_adornment` so a theme
+    /// can tell a jump within the page from leaving it (plan decision 15).
+    /// Under `SchemeArrow` an in-page link takes the in-protocol arrow.
+    #[serde(default)]
+    pub in_page_link_adornment: LinkAdornment,
     /// Preserve source inline styling by default. A reader may select
     /// [`SourcePresentation::Reader`] for its own contrast-safe palette.
     #[serde(default)]
@@ -411,7 +418,8 @@ impl Default for DocumentStyleSheet {
             max_content_width: None,
             vertical_padding: 16.0,
             colors: ColorVocabulary::default(),
-            link_adornment: LinkAdornment::SchemeArrow,
+            link_adornment: LinkAdornment::default(),
+            in_page_link_adornment: LinkAdornment::default(),
             source_presentation: SourcePresentation::Respect,
             fold_markers: FoldMarkers::default(),
             focus_indicator: FocusIndicator::default(),
@@ -600,6 +608,21 @@ mod tests {
         assert_eq!(r.font_family, "Iosevka");
         assert_eq!(r.font_size, 20.0);
         assert!(!r.monospace, "explicit family is not implicitly monospace");
+    }
+
+    #[test]
+    fn in_page_link_adornment_defaults_to_the_link_adornment() {
+        let sheet = DocumentStyleSheet::default();
+        assert_eq!(sheet.link_adornment, LinkAdornment::SchemeArrow);
+        assert_eq!(sheet.in_page_link_adornment, sheet.link_adornment);
+        // A sheet serialized before the token existed reads back unchanged.
+        let mut json = serde_json::to_value(&sheet).expect("serialize");
+        json.as_object_mut()
+            .unwrap()
+            .remove("in_page_link_adornment")
+            .expect("field present");
+        let back: DocumentStyleSheet = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(back, sheet);
     }
 
     #[test]

@@ -75,17 +75,36 @@ impl Default for TextBaseStyle {
 /// link annotations. Returned ranges are byte offsets into the text string.
 ///
 /// `adornment` + `base_scheme` drive the per-link prefix glyph (the `⇒` / `→`
-/// scheme arrows): when adornment applies, the prefix is prepended to the
-/// link's display text, styled as part of the link and covered by its byte
-/// range (so it colors + hit-tests as the link).
+/// scheme arrows), and `in_page_adornment` does the same for in-page links:
+/// when adornment applies, the prefix is prepended to the link's display
+/// text, styled as part of the link and covered by its byte range (so it
+/// colors + hit-tests as the link).
 pub fn flatten_inline(
     spans: &[InlineSpan],
     adornment: LinkAdornment,
+    in_page_adornment: LinkAdornment,
     base_scheme: Option<&str>,
 ) -> Flattened {
     let mut out = Flattened::default();
-    flatten_into(spans, InlineStyle::NORMAL, adornment, base_scheme, &mut out);
+    let adornments = Adornments {
+        link: adornment,
+        in_page: in_page_adornment,
+    };
+    flatten_into(
+        spans,
+        InlineStyle::NORMAL,
+        adornments,
+        base_scheme,
+        &mut out,
+    );
     out
+}
+
+/// The network and in-page link adornments, carried together down the span tree.
+#[derive(Clone, Copy)]
+struct Adornments {
+    link: LinkAdornment,
+    in_page: LinkAdornment,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -118,7 +137,7 @@ pub struct LinkAnnotation {
 fn flatten_into(
     spans: &[InlineSpan],
     inherited: InlineStyle,
-    adornment: LinkAdornment,
+    adornments: Adornments,
     base_scheme: Option<&str>,
     out: &mut Flattened,
 ) {
@@ -131,7 +150,7 @@ fn flatten_into(
                 flatten_into(
                     spans,
                     inherited.with_presentation(*presentation),
-                    adornment,
+                    adornments,
                     base_scheme,
                     out,
                 );
@@ -153,19 +172,19 @@ fn flatten_into(
                 }
             },
             InlineSpan::Emphasis(inner) => {
-                flatten_into(inner, inherited.with_italic(), adornment, base_scheme, out);
+                flatten_into(inner, inherited.with_italic(), adornments, base_scheme, out);
             },
             InlineSpan::Strong(inner) => {
-                flatten_into(inner, inherited.with_bold(), adornment, base_scheme, out);
+                flatten_into(inner, inherited.with_bold(), adornments, base_scheme, out);
             },
             InlineSpan::Link {
                 url, spans: inner, ..
             } => flatten_link(
                 InteractionKind::Link { url: url.clone() },
-                adornment.prefix_for(url, base_scheme),
+                adornments.link.prefix_for(url, base_scheme),
                 inner,
                 inherited,
-                adornment,
+                adornments,
                 base_scheme,
                 out,
             ),
@@ -174,7 +193,7 @@ fn flatten_into(
                 spans: inner,
             } => {
                 let start = out.text.len();
-                flatten_into(inner, inherited.with_link(), adornment, base_scheme, out);
+                flatten_into(inner, inherited.with_link(), adornments, base_scheme, out);
                 let end = out.text.len();
                 if start < end {
                     out.submissions.push((start..end, target.clone()));
@@ -189,10 +208,10 @@ fn flatten_into(
                     fragment: target.fragment.clone(),
                 },
                 // A same-document reference is in-protocol, like a relative link.
-                adornment.prefix_for("#", base_scheme),
+                adornments.in_page.prefix_for("#", base_scheme),
                 inner,
                 inherited,
-                adornment,
+                adornments,
                 base_scheme,
                 out,
             ),
@@ -212,7 +231,7 @@ fn flatten_link(
     prefix: Option<&str>,
     inner: &[InlineSpan],
     inherited: InlineStyle,
-    adornment: LinkAdornment,
+    adornments: Adornments,
     base_scheme: Option<&str>,
     out: &mut Flattened,
 ) {
@@ -223,7 +242,7 @@ fn flatten_link(
             .push((link_start..out.text.len(), inherited.with_link()));
     }
     let label_start = out.text.len();
-    flatten_into(inner, inherited.with_link(), adornment, base_scheme, out);
+    flatten_into(inner, inherited.with_link(), adornments, base_scheme, out);
     let link_end = out.text.len();
     if link_start < link_end {
         out.links.push(LinkAnnotation {
@@ -574,7 +593,12 @@ mod tests {
 
     #[test]
     fn no_adornment_leaves_link_text_unprefixed() {
-        let f = flatten_inline(&[link("gemini://x/")], LinkAdornment::None, Some("gemini"));
+        let f = flatten_inline(
+            &[link("gemini://x/")],
+            LinkAdornment::None,
+            LinkAdornment::None,
+            Some("gemini"),
+        );
         assert_eq!(f.text, "label");
         assert_eq!(f.links.len(), 1);
         assert_eq!(f.links[0].range, 0..5);
@@ -585,6 +609,7 @@ mod tests {
         let f = flatten_inline(
             &[link("gemini://x/")],
             LinkAdornment::SchemeArrow,
+            LinkAdornment::None,
             Some("gemini"),
         );
         assert!(f.text.starts_with("\u{21d2} "), "got {:?}", f.text);
@@ -600,6 +625,7 @@ mod tests {
         let f = flatten_inline(
             &[link("https://x/")],
             LinkAdornment::SchemeArrow,
+            LinkAdornment::None,
             Some("gemini"),
         );
         assert!(f.text.starts_with("\u{2192} "), "got {:?}", f.text);
@@ -607,7 +633,12 @@ mod tests {
 
     #[test]
     fn relative_link_is_in_protocol() {
-        let f = flatten_inline(&[link("/page")], LinkAdornment::SchemeArrow, Some("gemini"));
+        let f = flatten_inline(
+            &[link("/page")],
+            LinkAdornment::SchemeArrow,
+            LinkAdornment::None,
+            Some("gemini"),
+        );
         assert!(f.text.starts_with("\u{21d2} "), "got {:?}", f.text);
     }
 
@@ -616,6 +647,7 @@ mod tests {
         let f = flatten_inline(
             &[link("https://x/")],
             LinkAdornment::SchemeArrow,
+            LinkAdornment::None,
             Some("gemini"),
         );
         // Every style range over the link (the arrow prefix + the label) is a
@@ -636,7 +668,12 @@ mod tests {
             },
             spans: vec![InlineSpan::Text("Setup".into())],
         };
-        let f = flatten_inline(&[span], LinkAdornment::SchemeArrow, Some("gemini"));
+        let f = flatten_inline(
+            &[span],
+            LinkAdornment::None,
+            LinkAdornment::SchemeArrow,
+            Some("gemini"),
+        );
         assert_eq!(f.text, "\u{21d2} Setup", "in-protocol arrow");
         assert!(f.styles.iter().all(|(_, style)| style.link), "link style");
         let [link] = f.links.as_slice() else {
@@ -650,5 +687,29 @@ mod tests {
                 fragment: Some("setup".into()),
             }
         );
+    }
+
+    #[test]
+    fn in_page_and_network_adornments_apply_independently_in_one_run() {
+        let spans = [
+            link("/page"),
+            InlineSpan::InPage {
+                target: inker::InPageTarget::default(),
+                spans: vec![InlineSpan::Text("jump".into())],
+            },
+        ];
+        let prefixes = |link, in_page| {
+            let f = flatten_inline(&spans, link, in_page, Some("gemini"));
+            f.links
+                .iter()
+                .map(|l| f.text[l.range.start..l.range.end - l.accessible_label.len()].to_owned())
+                .collect::<Vec<_>>()
+        };
+        let arrow = LinkAdornment::SchemeArrow
+            .prefix_for("#", Some("gemini"))
+            .unwrap();
+        let (on, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
+        assert_eq!(prefixes(on, off), [arrow, ""], "network only");
+        assert_eq!(prefixes(off, on), ["", arrow], "in-page only");
     }
 }

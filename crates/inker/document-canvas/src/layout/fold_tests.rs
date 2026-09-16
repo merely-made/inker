@@ -6,7 +6,8 @@
 
 //! P1 fold-aware layout, asserted over the committed Micron probe pages and
 //! inline sources: skipped extents, reserved link identities, heading markers
-//! and fold and in-page regions.
+//! and fold and in-page regions, plus the P1b marker and in-page adornment
+//! tokens.
 
 use inker::{
     Block, DocumentFold, DocumentNavigation, DocumentProvenance, DocumentTrustState, Engine,
@@ -15,7 +16,7 @@ use inker::{
 use nematic::MicronEngine;
 
 use super::*;
-use crate::style_sheet::FoldMarkers;
+use crate::style_sheet::{FoldMarkers, LinkAdornment};
 
 const NODE: &str = "923706ddc70d389bd3719258c41f6592";
 
@@ -422,6 +423,77 @@ fn probes_09_03_in_page_links_get_link_regions_that_never_navigate() {
         },
         "a stale table's targets are inert"
     );
+}
+
+/// Glyphs painted in the top-level block holding the link labelled `label`.
+fn link_row_glyphs(packet: &DocumentRenderPacket, label: &str) -> usize {
+    let bounds = region(packet, label).bounds;
+    let y = bounds.origin.y + bounds.size.height * 0.5;
+    let block = packet
+        .blocks
+        .iter()
+        .find(|block| block.bounds.origin.y <= y && y < block.bounds.max_y())
+        .unwrap_or_else(|| panic!("no block under {label:?}"));
+    let RenderedBlockKind::Text { glyph_runs } = &block.kind else {
+        panic!("{label:?} row is text");
+    };
+    glyph_runs.iter().map(|run| run.glyphs.len()).sum()
+}
+
+const TOKEN_PAGES: [&str; 3] = [
+    "navigation/probe-nav-05-closed-target.mu",
+    "navigation/probe-nav-09-transport.mu",
+    "navigation/probe-nav-17-nested-closed-target.mu",
+];
+
+#[test]
+fn p1b_probes_05_09_17_default_tokens_paint_as_p1_did() {
+    let default = DocumentStyleSheet::default();
+    // P1 adorned in-page links with the network token.
+    let mut p1 = default.clone();
+    p1.in_page_link_adornment = p1.link_adornment;
+    let mut unadorned = default.clone();
+    unadorned.in_page_link_adornment = LinkAdornment::None;
+    for file in TOKEN_PAGES {
+        let doc = page(file);
+        for state in [FoldState::default(), all_open(&doc)] {
+            let paint = |style: &DocumentStyleSheet| {
+                layout_document_with_folds(&doc, viewport(), style, &state).packet
+            };
+            assert_eq!(paint(&default), paint(&p1), "{file}: default paints as P1");
+            assert_ne!(
+                paint(&unadorned),
+                paint(&default),
+                "{file}: control, the page exercises the in-page token"
+            );
+        }
+    }
+}
+
+#[test]
+fn p1b_probe_09_in_page_and_network_adornments_paint_independently() {
+    let doc = page("navigation/probe-nav-09-transport.mu");
+    let rows = |link: LinkAdornment, in_page: LinkAdornment| {
+        let mut style = DocumentStyleSheet::default();
+        style.link_adornment = link;
+        style.in_page_link_adornment = in_page;
+        let packet = layout_document(&doc, viewport(), &style).packet;
+        (
+            link_row_glyphs(&packet, "in-page anchor jump"),
+            link_row_glyphs(&packet, "same-node page load, positive control"),
+        )
+    };
+    // Both scheme arrows are one glyph plus a space.
+    let arrow = LinkAdornment::SchemeArrow
+        .prefix_for("#", None)
+        .unwrap()
+        .chars()
+        .count();
+    let (on, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
+    let (in_page, network) = rows(off, off);
+    assert_eq!(rows(on, on), (in_page + arrow, network + arrow), "both");
+    assert_eq!(rows(on, off), (in_page, network + arrow), "in-page off");
+    assert_eq!(rows(off, on), (in_page + arrow, network), "network off");
 }
 
 #[test]

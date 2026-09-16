@@ -174,6 +174,7 @@ impl<'a> DocumentLayouter<'a> {
         let mut flattened = flatten_inline(
             spans,
             self.style.link_adornment,
+            self.style.in_page_link_adornment,
             self.base_scheme.as_deref(),
         );
         if !self.in_page_current {
