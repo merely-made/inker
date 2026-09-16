@@ -272,6 +272,19 @@ override reaches the painted output, and every P1 test still passes.
 
 ### A1. Consumers
 
+**Knot status (2026-09-16):** partly landed on main (`6157a0c` bump to Mere
+`709dfdf2` with the `InPage` label arms, `4680eb5` preview fold state with
+click, Enter and Space toggles reconciled after each dispatch, `d13343f`
+record). Desktop library 79 passed and 1 ignored, other members 214 and 1,
+knot-site 17, knot-document 47 and 1, with 11 positive controls. The bump
+changed only the Mere revision in the lock and left the duplicate-crate tree
+unchanged. Still open: in-page scrolling (decision 18, after Cambium's scroll
+request lands) and a visible focus indicator (decision 19).
+
+**Order:** Cambium's scroll request in Mere, then Knot's follow-up bumped onto
+it, then Turnstone pinning that Knot and that Mere together, so Turnstone and
+the Knot it consumes share one Mere identity.
+
 Turnstone: switch Micron streaming from respawning a session per prefix
 (`src/shell/effects.rs` ~1079–1085, the respawn at :1083; the spawn inserts the
 session at :1047) to `replace_document`; this compiles either way, so a missed
@@ -403,6 +416,17 @@ as a deliberate deviation.
 17. **Fold marker defaults move into Inker** (settled 2026-09-16) as a shared
     style token read by document-canvas and by Knot's DOM preview, so the glyph
     choice has one source.
+
+18. **Cambium gains a public scroll request** (settled 2026-09-16). Knot's
+    Cambium host exposes no way for an app to scroll its own view (the rootstock
+    scroll setters are crate-private), so an in-page link in Knot's preview could
+    not reach its target. A public request to bring an element into view is added
+    to Cambium in Mere, for every Cambium app, rather than making Knot's preview
+    an app-local scroll container.
+19. **Knot gets one visible focus rule for all its controls** (settled
+    2026-09-16). Knot had no focus styling anywhere, so decision 12 could not be
+    met in its preview alone; the fix covers every focusable control, reaching
+    beyond the Micron lane on purpose.
 
 ## Out of scope
 
@@ -589,3 +613,7 @@ capturing them, and any change to how source bytes are stored.
   over all 42 pages plus an inline page with same-node, other-node and in-page
   links at two node addresses: 86 of 86 packets identical, with positive
   controls proving both the in-protocol and the external arrow are detected.
+- 2026-09-16: A1's Knot half partly landed (`d13343f`). In-page scrolling was
+  blocked by Cambium's crate-private scroll setters and Knot lacked any focus
+  styling; decisions 18 and 19 settled with Mark. Next: Cambium's public scroll
+  request, then Knot's follow-up, then Turnstone.
