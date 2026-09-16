@@ -7,7 +7,7 @@
 //! P1 fold-aware layout, asserted over the committed Micron probe pages and
 //! inline sources: skipped extents, reserved link identities, heading markers
 //! and fold and in-page regions, plus the P1b marker and in-page adornment
-//! tokens.
+//! tokens and P1c's custom adornment glyph.
 
 use inker::{
     Block, DocumentFold, DocumentNavigation, DocumentProvenance, DocumentTrustState, Engine,
@@ -425,16 +425,20 @@ fn probes_09_03_in_page_links_get_link_regions_that_never_navigate() {
     );
 }
 
-/// Glyphs painted in the top-level block holding the link labelled `label`.
-fn link_row_glyphs(packet: &DocumentRenderPacket, label: &str) -> usize {
+/// The top-level block holding the link labelled `label`.
+fn link_row<'a>(packet: &'a DocumentRenderPacket, label: &str) -> &'a RenderedBlock {
     let bounds = region(packet, label).bounds;
     let y = bounds.origin.y + bounds.size.height * 0.5;
-    let block = packet
+    packet
         .blocks
         .iter()
         .find(|block| block.bounds.origin.y <= y && y < block.bounds.max_y())
-        .unwrap_or_else(|| panic!("no block under {label:?}"));
-    let RenderedBlockKind::Text { glyph_runs } = &block.kind else {
+        .unwrap_or_else(|| panic!("no block under {label:?}"))
+}
+
+/// Glyphs painted in the top-level block holding the link labelled `label`.
+fn link_row_glyphs(packet: &DocumentRenderPacket, label: &str) -> usize {
+    let RenderedBlockKind::Text { glyph_runs } = &link_row(packet, label).kind else {
         panic!("{label:?} row is text");
     };
     glyph_runs.iter().map(|run| run.glyphs.len()).sum()
@@ -451,7 +455,7 @@ fn p1b_probes_05_09_17_default_tokens_paint_as_p1_did() {
     let default = DocumentStyleSheet::default();
     // P1 adorned in-page links with the network token; the markers are Inker's.
     let mut p1 = default.clone();
-    p1.in_page_link_adornment = p1.link_adornment;
+    p1.in_page_link_adornment = p1.link_adornment.clone();
     p1.fold_markers = FoldMarkers::default();
     let mut unadorned = default.clone();
     unadorned.in_page_link_adornment = LinkAdornment::None;
@@ -481,27 +485,170 @@ fn p1b_probes_05_09_17_default_tokens_paint_as_p1_did() {
 #[test]
 fn p1b_probe_09_in_page_and_network_adornments_paint_independently() {
     let doc = page("navigation/probe-nav-09-transport.mu");
-    let rows = |link: LinkAdornment, in_page: LinkAdornment| {
-        let mut style = DocumentStyleSheet::default();
-        style.link_adornment = link;
-        style.in_page_link_adornment = in_page;
-        let packet = layout_document(&doc, viewport(), &style).packet;
+    let rows = |link: &LinkAdornment, in_page: &LinkAdornment| {
+        let packet = paint_tokens(&doc, link, in_page).packet;
         (
             link_row_glyphs(&packet, "in-page anchor jump"),
             link_row_glyphs(&packet, "same-node page load, positive control"),
         )
     };
     // Both scheme arrows are one glyph plus a space.
-    let arrow = LinkAdornment::SchemeArrow
-        .prefix_for("#", None)
-        .unwrap()
-        .chars()
-        .count();
     let (on, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
-    let (in_page, network) = rows(off, off);
-    assert_eq!(rows(on, on), (in_page + arrow, network + arrow), "both");
-    assert_eq!(rows(on, off), (in_page, network + arrow), "in-page off");
-    assert_eq!(rows(off, on), (in_page + arrow, network), "network off");
+    let arrow = on.prefix_for("#", None).unwrap().chars().count();
+    let (in_page, network) = rows(&off, &off);
+    assert_eq!(rows(&on, &on), (in_page + arrow, network + arrow), "both");
+    assert_eq!(rows(&on, &off), (in_page, network + arrow), "in-page off");
+    assert_eq!(rows(&off, &on), (in_page + arrow, network), "network off");
+}
+
+fn paint_tokens(
+    doc: &EngineDocument,
+    link: &LinkAdornment,
+    in_page: &LinkAdornment,
+) -> LaidOutDocument {
+    let mut style = DocumentStyleSheet::default();
+    style.link_adornment = link.clone();
+    style.in_page_link_adornment = in_page.clone();
+    layout_document(doc, viewport(), &style)
+}
+
+/// The row holding the link labelled `label`, each run's face id replaced by
+/// that face's index in `faces`. Ids number faces by first use across the
+/// page, so a glyph in an earlier row can renumber a row it never touched.
+fn row_by_face(
+    laid: &LaidOutDocument,
+    label: &str,
+    faces: &mut Vec<parley::FontData>,
+) -> RenderedBlock {
+    let mut row = link_row(&laid.packet, label).clone();
+    let RenderedBlockKind::Text { glyph_runs } = &mut row.kind else {
+        panic!("{label:?} row is text");
+    };
+    for run in glyph_runs {
+        let face = laid.fonts.get(run.font_face).expect("the run's face");
+        let known = faces
+            .iter()
+            .position(|known| known.index == face.index && known.data.data() == face.data.data());
+        let index = known.unwrap_or_else(|| {
+            faces.push(face.clone());
+            faces.len() - 1
+        });
+        run.font_face = crate::types::FontFaceId(index as u32);
+    }
+    row
+}
+
+const PROBE_05_IN_PAGE: [&str; 2] = [
+    "jump to the hidden heading",
+    "jump to the hidden explicit anchor",
+];
+const NETWORK: &str = "network page load";
+
+/// Probe 05's two in-page links with a network link added above them.
+fn probe_05_with_a_network_link() -> EngineDocument {
+    let file = "navigation/probe-nav-05-closed-target.mu";
+    let (_, source) = FOLD_PAGES.iter().find(|(name, _)| *name == file).unwrap();
+    let first = "`[jump to the hidden heading";
+    assert!(source.contains(first), "probe 05 unchanged");
+    let link = format!("`[{NETWORK}`:/page/probe-nav-09-control.mu]\n{first}");
+    micron(file, &source.replacen(first, &link, 1))
+}
+
+#[test]
+fn p1c_probe_05_a_custom_in_page_glyph_paints_beside_the_network_arrow() {
+    let doc = probe_05_with_a_network_link();
+    let (arrow, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
+    let glyph = "\u{00a7} ";
+    let custom = LinkAdornment::Glyph(glyph.into());
+    let default = paint_tokens(&doc, &arrow, &arrow);
+    let themed = paint_tokens(&doc, &arrow, &custom);
+    let bare = paint_tokens(&doc, &arrow, &off);
+    let unadorned = paint_tokens(&doc, &off, &custom);
+    let mut faces = Vec::new();
+    let mut row = |laid: &LaidOutDocument, label: &str| row_by_face(laid, label, &mut faces);
+    for label in PROBE_05_IN_PAGE {
+        assert_eq!(
+            link_row_glyphs(&themed.packet, label),
+            link_row_glyphs(&bare.packet, label) + glyph.chars().count(),
+            "{label}: the glyph is painted"
+        );
+        assert_ne!(
+            row(&themed, label),
+            row(&default, label),
+            "{label}: not the arrow"
+        );
+    }
+    assert_eq!(
+        row(&themed, NETWORK),
+        row(&default, NETWORK),
+        "the network link keeps its arrow"
+    );
+    assert_eq!(
+        region(&themed.packet, NETWORK),
+        region(&default.packet, NETWORK)
+    );
+    assert_ne!(
+        row(&unadorned, NETWORK),
+        row(&themed, NETWORK),
+        "control: the network row is adorned"
+    );
+    // Laid out verbatim: spelled as the in-page arrow, the glyph paints as it.
+    let spelled = LinkAdornment::Glyph(arrow.prefix_for("#", None).unwrap().into());
+    assert_eq!(
+        paint_tokens(&doc, &arrow, &spelled).packet,
+        default.packet,
+        "verbatim"
+    );
+}
+
+#[test]
+fn p1c_probe_05_a_custom_network_glyph_leaves_the_in_page_arrows() {
+    let doc = probe_05_with_a_network_link();
+    let (arrow, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
+    let glyph = "<> ";
+    let custom = LinkAdornment::Glyph(glyph.into());
+    let default = paint_tokens(&doc, &arrow, &arrow);
+    let themed = paint_tokens(&doc, &custom, &arrow);
+    let bare = paint_tokens(&doc, &off, &arrow);
+    let unadorned = paint_tokens(&doc, &custom, &off);
+    let mut faces = Vec::new();
+    let mut row = |laid: &LaidOutDocument, label: &str| row_by_face(laid, label, &mut faces);
+    assert_eq!(
+        link_row_glyphs(&themed.packet, NETWORK),
+        link_row_glyphs(&bare.packet, NETWORK) + glyph.chars().count(),
+        "the glyph is painted"
+    );
+    assert_ne!(
+        row(&themed, NETWORK),
+        row(&default, NETWORK),
+        "not the arrow"
+    );
+    for label in PROBE_05_IN_PAGE {
+        assert_eq!(
+            row(&themed, label),
+            row(&default, label),
+            "{label}: keeps its arrow"
+        );
+        assert_eq!(
+            region(&themed.packet, label),
+            region(&default.packet, label)
+        );
+        assert_ne!(
+            row(&unadorned, label),
+            row(&themed, label),
+            "control: {label} is adorned"
+        );
+    }
+    let InteractionKind::Link { url } = &region(&default.packet, NETWORK).kind else {
+        panic!("a network link");
+    };
+    let base = crate::style_sheet::url_scheme(&doc.address);
+    let spelled = LinkAdornment::Glyph(arrow.prefix_for(url, base).unwrap().into());
+    assert_eq!(
+        paint_tokens(&doc, &spelled, &arrow).packet,
+        default.packet,
+        "verbatim"
+    );
 }
 
 #[test]

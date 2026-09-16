@@ -81,8 +81,8 @@ impl Default for TextBaseStyle {
 /// colors + hit-tests as the link).
 pub fn flatten_inline(
     spans: &[InlineSpan],
-    adornment: LinkAdornment,
-    in_page_adornment: LinkAdornment,
+    adornment: &LinkAdornment,
+    in_page_adornment: &LinkAdornment,
     base_scheme: Option<&str>,
 ) -> Flattened {
     let mut out = Flattened::default();
@@ -102,9 +102,9 @@ pub fn flatten_inline(
 
 /// The network and in-page link adornments, carried together down the span tree.
 #[derive(Clone, Copy)]
-struct Adornments {
-    link: LinkAdornment,
-    in_page: LinkAdornment,
+struct Adornments<'a> {
+    link: &'a LinkAdornment,
+    in_page: &'a LinkAdornment,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -137,7 +137,7 @@ pub struct LinkAnnotation {
 fn flatten_into(
     spans: &[InlineSpan],
     inherited: InlineStyle,
-    adornments: Adornments,
+    adornments: Adornments<'_>,
     base_scheme: Option<&str>,
     out: &mut Flattened,
 ) {
@@ -231,7 +231,7 @@ fn flatten_link(
     prefix: Option<&str>,
     inner: &[InlineSpan],
     inherited: InlineStyle,
-    adornments: Adornments,
+    adornments: Adornments<'_>,
     base_scheme: Option<&str>,
     out: &mut Flattened,
 ) {
@@ -595,8 +595,8 @@ mod tests {
     fn no_adornment_leaves_link_text_unprefixed() {
         let f = flatten_inline(
             &[link("gemini://x/")],
-            LinkAdornment::None,
-            LinkAdornment::None,
+            &LinkAdornment::None,
+            &LinkAdornment::None,
             Some("gemini"),
         );
         assert_eq!(f.text, "label");
@@ -608,8 +608,8 @@ mod tests {
     fn in_protocol_link_gets_rightwards_double_arrow() {
         let f = flatten_inline(
             &[link("gemini://x/")],
-            LinkAdornment::SchemeArrow,
-            LinkAdornment::None,
+            &LinkAdornment::SchemeArrow,
+            &LinkAdornment::None,
             Some("gemini"),
         );
         assert!(f.text.starts_with("\u{21d2} "), "got {:?}", f.text);
@@ -624,8 +624,8 @@ mod tests {
     fn external_link_gets_single_rightwards_arrow() {
         let f = flatten_inline(
             &[link("https://x/")],
-            LinkAdornment::SchemeArrow,
-            LinkAdornment::None,
+            &LinkAdornment::SchemeArrow,
+            &LinkAdornment::None,
             Some("gemini"),
         );
         assert!(f.text.starts_with("\u{2192} "), "got {:?}", f.text);
@@ -635,8 +635,8 @@ mod tests {
     fn relative_link_is_in_protocol() {
         let f = flatten_inline(
             &[link("/page")],
-            LinkAdornment::SchemeArrow,
-            LinkAdornment::None,
+            &LinkAdornment::SchemeArrow,
+            &LinkAdornment::None,
             Some("gemini"),
         );
         assert!(f.text.starts_with("\u{21d2} "), "got {:?}", f.text);
@@ -646,8 +646,8 @@ mod tests {
     fn adornment_prefix_carries_link_style() {
         let f = flatten_inline(
             &[link("https://x/")],
-            LinkAdornment::SchemeArrow,
-            LinkAdornment::None,
+            &LinkAdornment::SchemeArrow,
+            &LinkAdornment::None,
             Some("gemini"),
         );
         // Every style range over the link (the arrow prefix + the label) is a
@@ -670,8 +670,8 @@ mod tests {
         };
         let f = flatten_inline(
             &[span],
-            LinkAdornment::None,
-            LinkAdornment::SchemeArrow,
+            &LinkAdornment::None,
+            &LinkAdornment::SchemeArrow,
             Some("gemini"),
         );
         assert_eq!(f.text, "\u{21d2} Setup", "in-protocol arrow");
@@ -698,18 +698,31 @@ mod tests {
                 spans: vec![InlineSpan::Text("jump".into())],
             },
         ];
-        let prefixes = |link, in_page| {
+        let prefixes = |link: &LinkAdornment, in_page: &LinkAdornment| {
             let f = flatten_inline(&spans, link, in_page, Some("gemini"));
             f.links
                 .iter()
                 .map(|l| f.text[l.range.start..l.range.end - l.accessible_label.len()].to_owned())
                 .collect::<Vec<_>>()
         };
-        let arrow = LinkAdornment::SchemeArrow
-            .prefix_for("#", Some("gemini"))
-            .unwrap();
         let (on, off) = (LinkAdornment::SchemeArrow, LinkAdornment::None);
-        assert_eq!(prefixes(on, off), [arrow, ""], "network only");
-        assert_eq!(prefixes(off, on), ["", arrow], "in-page only");
+        let arrow = on.prefix_for("#", Some("gemini")).unwrap();
+        assert_eq!(prefixes(&on, &off), [arrow, ""], "network only");
+        assert_eq!(prefixes(&off, &on), ["", arrow], "in-page only");
+
+        // P1c: each token carries its own glyph, verbatim, beside the other's arrow.
+        let (hop, leave) = (
+            LinkAdornment::Glyph("\u{00a7} ".into()),
+            LinkAdornment::Glyph("<> ".into()),
+        );
+        assert_eq!(prefixes(&on, &hop), [arrow, "\u{00a7} "], "in-page glyph");
+        assert_eq!(prefixes(&leave, &on), ["<> ", arrow], "network glyph");
+        assert_eq!(prefixes(&leave, &hop), ["<> ", "\u{00a7} "], "both");
+        let empty = LinkAdornment::Glyph(String::new());
+        assert_eq!(
+            prefixes(&empty, &empty),
+            prefixes(&off, &off),
+            "empty is none"
+        );
     }
 }

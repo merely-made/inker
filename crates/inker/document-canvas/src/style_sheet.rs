@@ -83,7 +83,7 @@ pub enum ColorToken {
 /// arrow chosen by whether the link leaves the document's own protocol. The
 /// prefix renders as part of the link (link-colored, inside the hit region).
 /// The default is the one both link tokens start from.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LinkAdornment {
     /// No prefix; the link text renders as-is.
     None,
@@ -91,6 +91,10 @@ pub enum LinkAdornment {
     /// links that leave the document's protocol.
     #[default]
     SchemeArrow,
+    /// A theme's own prefix for every link the token covers, laid out
+    /// verbatim, so it carries its own separator as fold markers do. Empty
+    /// means no prefix.
+    Glyph(String),
 }
 
 impl LinkAdornment {
@@ -108,7 +112,7 @@ impl LinkAdornment {
     ///
     /// So the distinction is carried by weight rather than direction, in the
     /// one arrow family the body face actually has.
-    pub fn prefix_for(self, url: &str, base_scheme: Option<&str>) -> Option<&'static str> {
+    pub fn prefix_for(&self, url: &str, base_scheme: Option<&str>) -> Option<&str> {
         match self {
             LinkAdornment::None => None,
             LinkAdornment::SchemeArrow => Some(if link_is_external(url, base_scheme) {
@@ -116,6 +120,7 @@ impl LinkAdornment {
             } else {
                 "\u{21d2} " // ⇒ stays in-protocol (or relative)
             }),
+            LinkAdornment::Glyph(glyph) => Some(glyph.as_str()).filter(|glyph| !glyph.is_empty()),
         }
     }
 }
@@ -271,7 +276,8 @@ pub struct DocumentStyleSheet {
     pub vertical_padding: f32,
     /// Palette the [`ColorToken`]s resolve against.
     pub colors: ColorVocabulary,
-    /// How inline links are adorned (the `⇒` / `→` scheme arrows).
+    /// How inline links are adorned (the `⇒` / `→` scheme arrows, or a
+    /// theme's glyph).
     pub link_adornment: LinkAdornment,
     /// How in-page links are adorned, apart from `link_adornment` so a theme
     /// can tell a jump within the page from leaving it (plan decision 15).
@@ -602,6 +608,64 @@ mod tests {
             .expect("field present");
         let back: DocumentStyleSheet = serde_json::from_value(json).expect("deserialize");
         assert_eq!(back, sheet);
+    }
+
+    #[test]
+    fn glyph_adornment_prefixes_every_link_verbatim() {
+        let glyph = LinkAdornment::Glyph("\u{00a7} ".into());
+        let links = [
+            ("https://x/", Some("gemini")),
+            ("gemini://x/", Some("gemini")),
+            ("/page", Some("gemini")),
+            ("#", None),
+        ];
+        for (url, base) in links {
+            assert_eq!(glyph.prefix_for(url, base), Some("\u{00a7} "), "{url}");
+        }
+        let arrow = LinkAdornment::SchemeArrow;
+        assert_ne!(
+            arrow.prefix_for("https://x/", Some("gemini")),
+            arrow.prefix_for("/page", Some("gemini")),
+            "control: these links take different arrows"
+        );
+        let empty = LinkAdornment::Glyph(String::new());
+        assert_eq!(empty.prefix_for("/page", None), None, "empty is no prefix");
+    }
+
+    #[test]
+    fn link_adornment_serde_keeps_old_spellings_and_round_trips_glyphs() {
+        let variants = [
+            LinkAdornment::None,
+            LinkAdornment::SchemeArrow,
+            LinkAdornment::Glyph("\u{00a7} ".into()),
+        ];
+        for adornment in &variants {
+            let json = serde_json::to_string(adornment).expect("serialize");
+            let back: LinkAdornment = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(&back, adornment, "{json}");
+        }
+        // Sheets saved before the glyph variant spell the unit variants bare.
+        let spelled = |adornment: &LinkAdornment| serde_json::to_value(adornment).unwrap();
+        assert_eq!(spelled(&LinkAdornment::None), "None");
+        assert_eq!(spelled(&LinkAdornment::SchemeArrow), "SchemeArrow");
+        let mut old = serde_json::to_value(DocumentStyleSheet::default()).expect("serialize");
+        old["link_adornment"] = "None".into();
+        old["in_page_link_adornment"] = "SchemeArrow".into();
+        let loaded: DocumentStyleSheet = serde_json::from_value(old.clone()).expect("old sheet");
+        assert_eq!(loaded.link_adornment, LinkAdornment::None);
+        assert_eq!(loaded.in_page_link_adornment, LinkAdornment::SchemeArrow);
+        old["link_adornment"] = "Arrow".into();
+        assert!(
+            serde_json::from_value::<DocumentStyleSheet>(old).is_err(),
+            "control: a spelling the enum never had is refused"
+        );
+
+        let mut themed = DocumentStyleSheet::default();
+        themed.link_adornment = LinkAdornment::Glyph("<> ".into());
+        themed.in_page_link_adornment = LinkAdornment::Glyph("\u{00a7} ".into());
+        let json = serde_json::to_string(&themed).expect("serialize");
+        let back: DocumentStyleSheet = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, themed);
     }
 
     #[test]

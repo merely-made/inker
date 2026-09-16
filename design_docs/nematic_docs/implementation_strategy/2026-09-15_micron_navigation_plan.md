@@ -252,7 +252,9 @@ was. There are 10 positive controls. Logs are `p1b-*` under
   default through `LinkAdornment::default()` (`SchemeArrow`). `flatten_inline`
   takes both tokens, and each link kind reads only its own. Because it reuses
   the enum, a theme can turn in-page arrows on or off apart from network links
-  but cannot give them a glyph of their own without a new variant.
+  but cannot give them a glyph of their own without a new variant. Since
+  2026-09-16 (P1c) the enum also has `Glyph(String)`, a custom prefix laid out
+  verbatim, so either token can carry a glyph of its own.
 - **Fold markers (Inker).** `inker::FoldMarkers` sits in
   `document/navigation.rs` beside `FoldState`, and its `Default` holds the only
   copy of the glyphs. `DocumentStyleSheet.fold_markers` has that type, and
@@ -574,3 +576,10 @@ capturing them, and any change to how source bytes are stored.
   Knot's preview can read. Default render packets for all 31 committed Micron
   pages are byte-identical before and after, and there are 10 positive
   controls. A1 next.
+- 2026-09-16: P1c landed in one commit on branch `micron-nav-p1c`.
+  `LinkAdornment` gained `Glyph(String)`, so a theme can give in-page or
+  network links a custom glyph; old sheets load unchanged. Default render
+  packets for all 42 committed Micron pages, plus an inline page linking to
+  another node (no committed page reaches the external arrow), are
+  byte-identical before and after, and there are 10 positive controls. Logs are
+  `p1c-*`. A1 next.
