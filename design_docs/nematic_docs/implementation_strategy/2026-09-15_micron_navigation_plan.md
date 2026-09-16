@@ -231,6 +231,15 @@ boundary (09); link identity stable past a closed fold (inline source, since no
 fixture has a link after a fold); and the `smolweb` streaming integration test
 still passing.
 
+### P1b. Shared style tokens
+
+A small follow-up before A1 (decisions 15 and 17): an in-page link adornment
+token separate from the network link adornment, defaulting to the same arrow,
+and the fold marker defaults moved from document-canvas into an Inker style
+token that document-canvas reads and Knot can read. Done when both tokens
+exist with tests proving the defaults are unchanged on screen and that a theme
+override reaches the painted output, and every P1 test still passes.
+
 ### A1. Consumers
 
 Turnstone: switch Micron streaming from respawning a session per prefix
@@ -353,6 +362,17 @@ as a deliberate deviation.
     a live session projection waits until an app consumes one.
 14. **Resize after an anchor jump keeps pixel scroll** (settled 2026-09-16);
     stock was not captured for this.
+
+15. **In-page links get their own adornment token** (settled 2026-09-16),
+    defaulting to the same arrow as other links, so nothing changes on screen
+    now but a theme can distinguish an in-page jump from leaving the page.
+16. **A1 bumps Turnstone and Knot to current Mere main and fixes whatever the
+    bump breaks** (settled 2026-09-16), even beyond P1's own edits. Fixes land in
+    the consuming app; a fix that would edit another session's still-active Mere
+    lane is reported to Mark instead.
+17. **Fold marker defaults move into Inker** (settled 2026-09-16) as a shared
+    style token read by document-canvas and by Knot's DOM preview, so the glyph
+    choice has one source.
 
 ## Out of scope
 
@@ -517,3 +537,6 @@ capturing them, and any change to how source bytes are stored.
   state, fold-aware layout, session state, UxTree), each green in a clean worktree
   before the next, with 25 positive controls. Turnstone and Knot were re-read, not
   changed, and A1 now lists what P1 gives them. A1 next.
+- 2026-09-16: P1 landed on main (`7658de5f`..`d65382db`), developed and
+  verified in a dedicated worktree on a branch and fast-forwarded. Decisions
+  15–17 settled with Mark; P1b (two style tokens) precedes A1.
