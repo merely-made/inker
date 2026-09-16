@@ -272,14 +272,20 @@ override reaches the painted output, and every P1 test still passes.
 
 ### A1. Consumers
 
-**Knot status (2026-09-16):** partly landed on main (`6157a0c` bump to Mere
-`709dfdf2` with the `InPage` label arms, `4680eb5` preview fold state with
-click, Enter and Space toggles reconciled after each dispatch, `d13343f`
-record). Desktop library 79 passed and 1 ignored, other members 214 and 1,
-knot-site 17, knot-document 47 and 1, with 11 positive controls. The bump
-changed only the Mere revision in the lock and left the duplicate-crate tree
-unchanged. Still open: in-page scrolling (decision 18, after Cambium's scroll
-request lands) and a visible focus indicator (decision 19).
+**Knot status (2026-09-16): landed.** In two steps, both on Knot main: `6157a0c`
+(bump to Mere `709dfdf2` with the `InPage` label arms), `4680eb5` (preview fold
+state with click, Enter and Space toggles), `d13343f` (record), then `3a6ea01`
+(bump to Mere `5dff2f93`), `ba25e1a` (in-page scrolling), `45752a7` (focus rule)
+and `b02e15c` (record). An in-page link in the preview opens the closed folds
+around its target, then asks Cambium to scroll the target's top-level block to
+the window top; a link without a target is inert, and no jump writes source, the
+address or the manifest. Every Knot control has one `:focus` outline in the theme
+palette's `primary` token (decision 19); Genet has no `:focus-visible`, so
+pointer focus shows it too. Desktop library 85 passed and 1 ignored, other
+members 214 and 1, knot-site 17, knot-document 47 and 1, with 27 positive
+controls across both steps. Each bump changed only the Mere revision in the lock
+and left the duplicate-crate tree unchanged. Not yet checked in a real window:
+the outline's paint and the scroll; both belong to R1.
 
 **Order:** Cambium's scroll request in Mere, then Knot's follow-up bumped onto
 it, then Turnstone pinning that Knot and that Mere together, so Turnstone and
@@ -628,3 +634,6 @@ capturing them, and any change to how source bytes are stored.
   tests and 11 positive controls; the native host has 88 tests across ten
   suites, rootstock 40. Logs are `cscroll-*`. Recorded in the Cambium
   architecture doc. Knot's follow-up next.
+- 2026-09-16: Cambium's public scroll request landed in Mere (`1f5f13e0`,
+  `5dff2f93`) and Knot's A1 half finished on top of it (`b02e15c`). Turnstone
+  pins Mere `5dff2f93` and Knot `b02e15c` together next.
