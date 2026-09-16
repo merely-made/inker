@@ -9,16 +9,17 @@
 
 use std::any::Any;
 
+use document_canvas::InteractionKind;
 use genet_host_api::ResourceFetcher;
-use inker::DocumentCapabilities;
-use inker::DocumentCapabilityStatus;
 use inker::session_engine::{
-    DocumentSession, SessionClick, SessionEngine, SessionError, SessionLink, SessionScrollKey,
-    SessionSpawnRequest,
+    DocumentSession, SessionButtonState, SessionClick, SessionCursor, SessionEffect, SessionEngine,
+    SessionError, SessionFocusDirection, SessionKey, SessionLink, SessionModifiers,
+    SessionScrollKey, SessionSpawnRequest,
 };
+use inker::{DocumentCapabilities, DocumentCapabilityStatus, EngineDocument};
 use netrender::Scene;
 
-use crate::{SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebTheme};
+use crate::{InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebTheme};
 
 #[cfg(feature = "smolweb")]
 fn retained_document_capabilities(find_reason: impl Into<String>) -> DocumentCapabilities {
@@ -132,6 +133,18 @@ impl SmolwebDocumentSession {
     pub fn replace_body(&mut self, url: &str, body: &str) {
         self.doc.replace_body(url, body);
     }
+
+    /// Swap in an already-lowered document in place, keeping scroll and fold
+    /// state across streamed prefixes. Hosts use this rather than respawning
+    /// a session per prefix.
+    pub fn replace_document(&mut self, document: EngineDocument) {
+        self.doc.replace_document(document);
+    }
+
+    /// Drain in-page activations after a `Handled` input (plan decision 1).
+    pub fn take_in_page_navigations(&mut self) -> Vec<InPageNavigation> {
+        self.doc.take_in_page_navigations()
+    }
 }
 
 #[cfg(feature = "smolweb")]
@@ -158,17 +171,46 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
     }
     fn click_at(&mut self, x: f32, y: f32) -> SessionClick {
         let (w, h) = self.viewport;
-        match self.doc.click_at(x, y, w, h) {
-            Some(document_canvas::InteractionKind::Link { url }) => SessionClick::Navigate(url),
-            Some(document_canvas::InteractionKind::Submit { target }) => {
-                SessionClick::Submit(target)
+        self.doc.activate_at(x, y, w, h)
+    }
+    /// Enter activates the focused stop as a click does; Space toggles only a
+    /// focused heading, leaving it to the host otherwise.
+    fn key_input(
+        &mut self,
+        key: SessionKey,
+        state: SessionButtonState,
+        _modifiers: SessionModifiers,
+        _repeat: bool,
+    ) -> SessionEffect {
+        if state != SessionButtonState::Pressed
+            || !matches!(key, SessionKey::Enter | SessionKey::Space)
+        {
+            return SessionEffect::Ignored;
+        }
+        let (w, h) = self.viewport;
+        match self.doc.focused_interaction(w, h) {
+            Some(kind)
+                if key == SessionKey::Enter || matches!(kind, InteractionKind::Fold { .. }) =>
+            {
+                let click = self.doc.activate(kind);
+                self.effect_for_click(click)
             },
-            // Inert until the session owns fold state and in-page scrolling.
-            Some(
-                document_canvas::InteractionKind::Fold { .. }
-                | document_canvas::InteractionKind::InPage { .. },
-            ) => SessionClick::Miss,
-            None => SessionClick::Miss,
+            _ => SessionEffect::Ignored,
+        }
+    }
+    fn focus_move(&mut self, direction: SessionFocusDirection) -> bool {
+        let (w, h) = self.viewport;
+        self.doc.focus_move(direction, w, h)
+    }
+    fn focus_input(&mut self, focused: bool) {
+        if !focused {
+            self.doc.clear_focus();
+        }
+    }
+    fn cursor_at(&self, x: f32, y: f32) -> SessionCursor {
+        match self.doc.interaction_at(x, y) {
+            Some(_) => SessionCursor::Pointer,
+            None => SessionCursor::Default,
         }
     }
     fn links(&self) -> Vec<SessionLink> {
@@ -207,6 +249,9 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
         self
     }
 }
+
+#[cfg(all(test, feature = "smolweb"))]
+mod navigation_tests;
 
 #[cfg(all(test, feature = "smolweb"))]
 mod tests {

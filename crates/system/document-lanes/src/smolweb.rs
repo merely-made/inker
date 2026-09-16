@@ -13,15 +13,18 @@ use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
 
+#[cfg(test)]
+use document_canvas::DocumentRenderPacket;
 use document_canvas::{
     ColorVocabulary, DecodedImage, DocumentStyleSheet, InteractionKind, LaidOutDocument, Rect,
-    SemanticInteractionId, SourcePresentation, Viewport, layout_document,
+    SemanticInteractionId, SourcePresentation, Viewport, layout_document_with_folds,
     netrender_backend::scene_from_packet_with_images,
 };
 #[cfg(feature = "smolweb")]
 use genet_host_api::ResourceFetcher;
 use image::GenericImageView;
-use inker::{Block, EngineDocument, SessionScrollKey};
+use inker::session_engine::{SessionClick, SessionFocusDirection};
+use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 #[cfg(feature = "smolweb")]
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
@@ -106,6 +109,35 @@ pub struct SmolwebDocument {
     /// completed presentation boundary. Layout may exist earlier for sizing or
     /// hit-testing, but that is not an a11y publication event.
     presented: bool,
+    /// The reader's fold overrides, keyed by heading so they survive
+    /// re-lowering (plan decision 10). Session-only.
+    folds: FoldState,
+    /// Keyboard focus, never a block or region index.
+    focus: Option<Focus>,
+    /// In-page activations the host has not drained.
+    in_page: Vec<InPageNavigation>,
+    /// A reveal requested before any layout, applied by the first one.
+    pending_reveal: Option<usize>,
+}
+
+/// One in-page activation, queued for the host to drain and reflect in its
+/// address (plan decision 1). The session never touches address or history.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InPageNavigation {
+    /// A declared name resolving to `block`; `None` leaves the address alone.
+    pub fragment: Option<String>,
+    /// The revealed top-level block, in the document current when queued.
+    pub block: usize,
+}
+
+/// A keyboard focus stop, keyed to survive relayout, toggles and streaming.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Focus {
+    Fold(FoldKey),
+    /// Network and in-page links share one identity counter.
+    Link(SemanticInteractionId),
+    /// Submissions carry no identity: their target and occurrence.
+    Submit(String, usize),
 }
 
 /// One visible logical link recovered from the retained document-canvas
@@ -238,6 +270,10 @@ impl SmolwebDocument {
             scroll_x: 0.0,
             scroll_y: 0.0,
             presented: false,
+            folds: FoldState::default(),
+            focus: None,
+            in_page: Vec::new(),
+            pending_reveal: None,
         }
     }
 
@@ -272,14 +308,275 @@ impl SmolwebDocument {
     pub fn replace_body(&mut self, url: &str, body: &str) {
         let mut document = lower(url, body);
         promote_inline_image_links(&mut document, self.inline_media);
+        self.replace_document(document);
+    }
+
+    /// Replace the retained document in place with an already-lowered one,
+    /// keeping style, viewport, scroll and still-named images. Fold state is
+    /// reconciled by heading key, so it survives streamed prefixes and drops
+    /// only for an edited heading; a new address starts fresh.
+    pub fn replace_document(&mut self, document: EngineDocument) {
+        if document.address == self.document.address {
+            self.folds.reconcile(&document.navigation);
+        } else {
+            self.folds = FoldState::default();
+            self.focus = None;
+        }
         self.images.retain(|url, _| {
             document.blocks.iter().any(
                 |block| matches!(block, Block::Image { url: image_url, .. } if image_url == url),
             )
         });
         self.document = Arc::new(document);
+        self.pending_reveal = None;
+        self.invalidate_layout();
+    }
+
+    fn invalidate_layout(&mut self) {
         self.layout = None;
         self.presented = false;
+    }
+
+    /// The reader's fold state for this document.
+    pub fn folds(&self) -> &FoldState {
+        &self.folds
+    }
+
+    fn navigation_is_current(&self) -> bool {
+        self.document.navigation.is_current(&self.document.blocks)
+    }
+
+    /// Open or close `fold` of the navigation table; false when the table
+    /// has no such current fold.
+    pub fn toggle_fold(&mut self, fold: usize) -> bool {
+        if !self.navigation_is_current() || fold >= self.document.navigation.folds.len() {
+            return false;
+        }
+        self.folds.toggle(&self.document.navigation, fold);
+        self.invalidate_layout();
+        true
+    }
+
+    /// Open `block`'s closed ancestors and scroll it to the viewport top.
+    /// Later resizes keep pixel scroll (plan decision 14). Before any layout
+    /// the scroll waits for the first one. False unless `block` is a
+    /// top-level block of a current navigation table.
+    pub fn reveal_block(&mut self, block: usize) -> bool {
+        if !self.navigation_is_current() || block >= self.document.blocks.len() {
+            return false;
+        }
+        if self.folds.open_ancestors(&self.document.navigation, block) {
+            self.invalidate_layout();
+        }
+        match self.size {
+            (0, 0) => self.pending_reveal = Some(block),
+            (width, height) => {
+                self.ensure_layout(width, height);
+                self.scroll_to_block(block);
+            },
+        }
+        true
+    }
+
+    /// Reveal the block `name` resolves to; false for a missing anchor.
+    pub fn reveal_anchor(&mut self, name: &str) -> bool {
+        let target = self
+            .navigation_is_current()
+            .then(|| self.document.navigation.resolve(name))
+            .flatten();
+        target.is_some_and(|block| self.reveal_block(block))
+    }
+
+    /// In-page activations since the last drain, oldest first.
+    pub fn take_in_page_navigations(&mut self) -> Vec<InPageNavigation> {
+        std::mem::take(&mut self.in_page)
+    }
+
+    fn scroll_to_block(&mut self, block: usize) {
+        let top = self
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.packet.top_level_block(block))
+            .map(|rendered| rendered.bounds.origin.y);
+        if let Some(top) = top {
+            self.scroll_y = top.clamp(0.0, self.max_scroll());
+        }
+    }
+
+    /// Perform an interaction. Links and submissions are host actions;
+    /// folds and in-page links are handled here and issue no request.
+    pub(crate) fn activate(&mut self, kind: InteractionKind) -> SessionClick {
+        match kind {
+            InteractionKind::Link { url } => SessionClick::Navigate(url),
+            InteractionKind::Submit { target } => SessionClick::Submit(target),
+            InteractionKind::Fold { fold } => {
+                self.toggle_fold(fold);
+                SessionClick::Handled
+            },
+            InteractionKind::InPage { block, fragment } => {
+                // A missing target is an inert no-op, as stock (probes 03, 04).
+                if let Some(block) = block
+                    && self.reveal_block(block)
+                {
+                    self.in_page.push(InPageNavigation { fragment, block });
+                }
+                SessionClick::Handled
+            },
+        }
+    }
+
+    /// Resolve and perform a viewport-local click.
+    pub(crate) fn activate_at(&mut self, x: f32, y: f32, width: u32, height: u32) -> SessionClick {
+        match self.click_at(x, y, width, height) {
+            Some(kind) => self.activate(kind),
+            None => SessionClick::Miss,
+        }
+    }
+
+    /// Move keyboard focus through every interaction in document order,
+    /// wrapping as Genet's other lanes do, and scroll the stop into view.
+    pub fn focus_move(
+        &mut self,
+        direction: SessionFocusDirection,
+        width: u32,
+        height: u32,
+    ) -> bool {
+        self.ensure_layout(width, height);
+        let stops = self.focus_stops();
+        let Some(last) = stops.len().checked_sub(1) else {
+            return false;
+        };
+        let current = self
+            .focus
+            .as_ref()
+            .and_then(|focus| stops.iter().position(|(stop, _)| stop == focus));
+        let next = match (direction, current) {
+            (SessionFocusDirection::Forward, Some(index)) if index < last => index + 1,
+            (SessionFocusDirection::Forward, _) => 0,
+            (SessionFocusDirection::Backward, Some(index)) if index > 0 => index - 1,
+            (SessionFocusDirection::Backward, _) => last,
+        };
+        let (focus, regions) = &stops[next];
+        self.scroll_into_view(regions);
+        self.focus = Some(focus.clone());
+        true
+    }
+
+    /// Drop keyboard focus, as when the document loses it.
+    pub fn clear_focus(&mut self) {
+        self.focus = None;
+    }
+
+    /// The focused stop's interaction, laying out first if needed, for a
+    /// host that shows where focus is.
+    pub fn focused_interaction(&mut self, width: u32, height: u32) -> Option<InteractionKind> {
+        self.ensure_layout(width, height);
+        let regions = self.focused_regions()?;
+        Some(
+            self.layout.as_ref()?.packet.interactions[regions[0]]
+                .kind
+                .clone(),
+        )
+    }
+
+    /// Focus stops in document order, each with its region indices.
+    fn focus_stops(&self) -> Vec<(Focus, Vec<usize>)> {
+        let Some(layout) = &self.layout else {
+            return Vec::new();
+        };
+        let keys = self.document.navigation.fold_keys();
+        let mut stops: Vec<(Focus, Vec<usize>)> = Vec::new();
+        let mut positions: HashMap<Focus, usize> = HashMap::new();
+        let mut submits: HashMap<&str, usize> = HashMap::new();
+        for (index, region) in layout.packet.interactions.iter().enumerate() {
+            let focus = match (&region.kind, &region.link_semantics) {
+                (InteractionKind::Fold { fold }, _) => Focus::Fold(keys[*fold].clone()),
+                (_, Some(semantics)) => Focus::Link(semantics.identity),
+                (InteractionKind::Submit { target }, None) => {
+                    // A wrapped submission's rectangles are consecutive.
+                    if let Some((Focus::Submit(previous, _), regions)) = stops.last_mut()
+                        && previous == target
+                        && regions.last() == Some(&(index - 1))
+                    {
+                        regions.push(index);
+                        continue;
+                    }
+                    let seen = submits.entry(target).or_default();
+                    *seen += 1;
+                    Focus::Submit(target.clone(), *seen - 1)
+                },
+                _ => continue,
+            };
+            match positions.get(&focus) {
+                Some(&position) => stops[position].1.push(index),
+                None => {
+                    positions.insert(focus.clone(), stops.len());
+                    stops.push((focus, vec![index]));
+                },
+            }
+        }
+        stops
+    }
+
+    fn focused_regions(&self) -> Option<Vec<usize>> {
+        let focus = self.focus.as_ref()?;
+        self.focus_stops()
+            .into_iter()
+            .find(|(stop, _)| stop == focus)
+            .map(|(_, regions)| regions)
+    }
+
+    fn scroll_into_view(&mut self, regions: &[usize]) {
+        let Some(layout) = &self.layout else {
+            return;
+        };
+        let bounds: Vec<Rect> = regions
+            .iter()
+            .map(|&region| layout.packet.interactions[region].bounds)
+            .collect();
+        let span = |start: fn(&Rect) -> f32, end: fn(&Rect) -> f32| {
+            let first = bounds.iter().map(start).fold(f32::INFINITY, f32::min);
+            let last = bounds.iter().map(end).fold(f32::NEG_INFINITY, f32::max);
+            (first, last)
+        };
+        let (top, bottom) = span(|rect| rect.origin.y, Rect::max_y);
+        let (left, right) = span(|rect| rect.origin.x, Rect::max_x);
+        let (width, height) = (self.size.0 as f32, self.size.1 as f32);
+        self.scroll_y = into_view(self.scroll_y, top, bottom, height).clamp(0.0, self.max_scroll());
+        self.scroll_x =
+            into_view(self.scroll_x, left, right, width).clamp(0.0, self.max_scroll_x());
+    }
+
+    /// Outline the focused stop with the style sheet's indicator.
+    fn paint_focus(&self, scene: &mut Scene) {
+        let (Some(layout), Some(regions)) = (&self.layout, self.focused_regions()) else {
+            return;
+        };
+        let indicator = self.style.focus_indicator;
+        let color = self.style.token_color(indicator.color);
+        for region in regions {
+            let Some([x, y, width, height]) =
+                self.viewport_rect(layout.packet.interactions[region].bounds)
+            else {
+                continue;
+            };
+            for edge in Rect::from_xywh(x, y, width, height).outline(indicator.width) {
+                if edge.size.width > 0.0 && edge.size.height > 0.0 {
+                    scene.push_rect(
+                        edge.origin.x,
+                        edge.origin.y,
+                        edge.max_x(),
+                        edge.max_y(),
+                        color,
+                    );
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn packet(&self) -> Option<&DocumentRenderPacket> {
+        self.layout.as_ref().map(|layout| &layout.packet)
     }
 
     /// Unresolved inline-image URLs for the host fetch actor.
@@ -319,14 +616,18 @@ impl SmolwebDocument {
         // or content-height query publish that geometry under the preceding
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
-        self.layout = Some(layout_document(
+        self.layout = Some(layout_document_with_folds(
             &self.document,
             Viewport::new(size.0 as f32, size.1 as f32),
             &self.style,
+            &self.folds,
         ));
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());
+        if let Some(block) = self.pending_reveal.take() {
+            self.scroll_to_block(block);
+        }
     }
 
     fn max_scroll_x(&self) -> f32 {
@@ -355,6 +656,7 @@ impl SmolwebDocument {
         );
         let mut scene =
             scene_from_packet_with_images(&packet, &layout.fonts, &self.style.colors, &self.images);
+        self.paint_focus(&mut scene);
         scene.push_rect(
             0.0,
             0.0,
@@ -548,11 +850,28 @@ impl SmolwebDocument {
     /// Resolve a viewport-local click through the retained full-document packet.
     pub fn click_at(&mut self, x: f32, y: f32, width: u32, height: u32) -> Option<InteractionKind> {
         self.ensure_layout(width, height);
+        self.interaction_at(x, y).cloned()
+    }
+
+    /// The interaction under a viewport point in the retained layout, without
+    /// laying out.
+    pub(crate) fn interaction_at(&self, x: f32, y: f32) -> Option<&InteractionKind> {
         self.layout
             .as_ref()?
             .packet
             .interaction_at(x + self.scroll_x, y + self.scroll_y)
-            .cloned()
+    }
+}
+
+/// The scroll offset that brings `start..end` into a viewport of `extent`,
+/// moving as little as possible.
+fn into_view(scroll: f32, start: f32, end: f32, extent: f32) -> f32 {
+    if start < scroll {
+        start
+    } else if end > scroll + extent {
+        (end - extent).min(start)
+    } else {
+        scroll
     }
 }
 

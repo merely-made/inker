@@ -171,6 +171,24 @@ impl Default for FoldMarkers {
     }
 }
 
+/// The outline painted around the keyboard-focused interaction (plan
+/// decision 12). Stock NomadNet paints none; a zero `width` matches it.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FocusIndicator {
+    pub color: ColorToken,
+    /// Outline thickness in logical pixels.
+    pub width: f32,
+}
+
+impl Default for FocusIndicator {
+    fn default() -> Self {
+        Self {
+            color: ColorToken::LinkText,
+            width: 2.0,
+        }
+    }
+}
+
 /// Which role to resolve. Carries the heading level inline, since heading
 /// size is intrinsically per-level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -282,6 +300,9 @@ pub struct DocumentStyleSheet {
     /// Open and closed markers for collapsible headings.
     #[serde(default)]
     pub fold_markers: FoldMarkers,
+    /// How keyboard focus is shown.
+    #[serde(default)]
+    pub focus_indicator: FocusIndicator,
     /// Per-role style descriptors.
     pub roles: RoleStyles,
 }
@@ -393,6 +414,7 @@ impl Default for DocumentStyleSheet {
             link_adornment: LinkAdornment::SchemeArrow,
             source_presentation: SourcePresentation::Respect,
             fold_markers: FoldMarkers::default(),
+            focus_indicator: FocusIndicator::default(),
             roles: RoleStyles {
                 body: BlockStyle {
                     family: FontChoice::InheritBody,

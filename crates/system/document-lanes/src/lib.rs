@@ -47,4 +47,6 @@ pub use reader::{
 pub use remote::RemoteFetcher;
 #[cfg(feature = "smolweb")]
 pub use session::{SmolwebDocumentSession, SmolwebSessionEngine};
-pub use smolweb::{SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette, SmolwebTheme};
+pub use smolweb::{
+    InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette, SmolwebTheme,
+};
