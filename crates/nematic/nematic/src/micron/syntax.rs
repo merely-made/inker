@@ -160,6 +160,12 @@ pub fn parse(source: &str) -> Document {
                 // as confirmed by the independent table/state capture.
                 let mut spans = inline(source_line, &mut style);
                 register_explicit_anchors(&mut spans, &mut declared_anchors);
+                // Cell anchors stay on the table line so navigation can target it.
+                opening.spans.extend(
+                    spans
+                        .into_iter()
+                        .filter(|span| matches!(span, Span::Anchor { .. })),
+                );
                 table = Some((opening, body));
             }
             continue;
@@ -269,7 +275,7 @@ fn lexeme(physical: &str) -> &str {
         .unwrap_or(physical)
 }
 
-fn heading_anchor(spans: &[Span]) -> Option<String> {
+pub(super) fn heading_anchor(spans: &[Span]) -> Option<String> {
     let mut text = String::new();
     for span in spans {
         match span {
@@ -756,6 +762,14 @@ mod tests {
             doc.lines[1].kind,
             LineKind::Heading { anchor: None, .. }
         ));
+        assert_eq!(
+            doc.lines[0].spans,
+            vec![Span::Anchor {
+                name: "later".into(),
+                active: true
+            }],
+            "the cell anchor is retained on the table line"
+        );
     }
 
     #[test]
