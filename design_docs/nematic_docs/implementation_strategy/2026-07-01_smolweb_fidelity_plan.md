@@ -242,6 +242,16 @@ media remain the separate gates below.
    (30 s, 4 MiB) with no environment override. Knot additionally refused a
    malformed local target before sending and offered a stale-form discard after
    the source changed under a prepared review.
+   As of 2026-09-16 that artifact tree is gone: `C:\t\micron-headed-20260913` was
+   deleted on or before that date along with the rest of the `C:/t` Micron
+   scratch family, so the paths above are dead references, kept as the record of
+   where the work was done rather than as somewhere to look. Nothing committed
+   was lost and the acceptance stands on the tests and fixtures named in this
+   lane, which still run and pass. The shared isolated Cargo home went with it,
+   so any plan command naming
+   `CARGO_HOME=C:/t/smolweb-next-20260913/cargo-home` — here and in several
+   sibling plans — needs that home refetched before it will run. Receipt
+   artifacts now live under `Code/testing/<repo>/`, not `C:/t`.
    Still open after this acceptance: inline form widgets, partial refresh,
    outgoing request Resources, multi-segment responses, authentication and
    dynamic page hosting in Djinn. Follow-up from the receipt: Knot compares its
@@ -317,6 +327,12 @@ the resident serving integration, not a new headed or external-client receipt.
 Mere's optional backend also passed `cargo check --locked --offline -p
 mere-transport --features reticulum`. The corresponding logs are
 `djinn-rtt-locked.log` and `transport-rtt-check.log` in the same receipt directory.
+That receipt directory is also no longer present: it was deleted on or before
+2026-09-16 with the rest of the `C:/t` Micron scratch family, taking the logs,
+the lockfile snapshots and the isolated Cargo home named above with it. The
+adoption itself is unaffected — the tests and tree checks those logs recorded
+still run — but the path is now a record of where the checks ran, not a place to
+read them.
 
 ### Semantic collapses (parse layer — fix by enriching the AST)
 
@@ -576,6 +592,17 @@ Targets, not dates.
   Inline widgets, partial refresh, request Resources and multi-segment responses
   stay open, and Knot's response cap is compared after unpacking rather than
   before it.
+- **2026-09-16**: the `C:/t` Micron scratch family was deleted on or before this
+  date — `micron-headed-20260913`, `smolweb-next-20260913`,
+  `micron-reference-20260912`, `micron-forms-20260913`,
+  `nomadnet-rust-interop-20260913` and both RNS virtualenvs, gone from inside WSL
+  too and not in the Recycle Bin. It was not a blanket wipe of `C:/t` — files
+  from 2026-09-11 survive and other sessions were writing there on 2026-09-15 —
+  and the cause is unknown. Nothing committed was lost and every test the
+  2026-09-13 receipts cite still runs and passes, so what went is the artifact
+  trail, not the result. Mark ruled the same day that the docs are corrected
+  rather than the exercise re-run, and that receipt artifacts now live under
+  `Code/testing/<repo>/`.
 
 ## Cross-references
 
