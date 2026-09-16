@@ -98,12 +98,19 @@ interpreted.
 ### N1. Document model: fold extents and anchor resolution
 
 In Nematic (owner of source interpretation), in syntax line space so it is
-testable without Inker: each collapsible heading's fold extent runs to the next
-heading of equal or shallower depth or to a `<` line, whichever comes first
-(decision 5); anchor declarations are collected in order with duplicates marked
-inactive, first declaration winning; `resolve_anchor(name)` returns the winning
+testable without Inker: each collapsible heading's fold extent runs to whichever
+comes first of the next *named* heading of equal or shallower depth, an unnamed
+section (a bare `>` run, which syntax parses as a heading with no text) that is
+strictly shallower than the fold's heading, or the line before any `<`-led line
+(`<`, `<<`, `< text`), which itself sits outside the extent (decision 5, refined
+by C1b probes 11–13). No capture separates comparing an unnamed line with the
+fold heading's depth from comparing it with the depth just before it; N1 compares
+with the fold heading's depth and records that as a choice, not an observation.
+Anchor declarations are collected in order with duplicates marked inactive,
+first declaration winning; `resolve_anchor(name)` returns the winning
 declaration or nothing; `next_heading(from)` counts from the link's own line
-(decision 6) and returns nothing past the last heading.
+(decision 6), skips unnamed sections (C1b probe 11) and returns nothing past the
+last named heading.
 
 Lowering carries these as typed facts without changing any block (decision 7):
 the lowered `EngineDocument` gains a navigation table listing anchor
@@ -116,12 +123,13 @@ Micron lowers one wrapped block per source line, so indices survive the
 presentation wrappers; the unsupported-construct badge inserted at index 0 is
 accounted for. HTML export renders the new inline as label text only
 (decision 9). A `<` line gains its source-plus-diagnostic treatment, which it
-lacks today. Missing anchors and `#` past the last heading stay silent no-ops,
-as stock does.
+lacks today. An in-page missing anchor and `#` past the last named heading stay
+silent no-ops, as stock does in-page; the visible notice stock shows for a
+missing *cross-page* anchor belongs to A1.
 
 Done when the model tests over `guide-structure.mu` and the C1 and C1b probe
-pages assert extents, anchors, first-declaration-wins, the `<` stop and the
-next-heading origin; the lowering tests assert the table and the in-page targets
+pages assert extents, anchors, first-declaration-wins, the `<`-led stops, the
+unnamed-section rule and the next-heading origin; the lowering tests assert the table and the in-page targets
 by label, that `outgoing_links` excludes in-page links, that the three old
 diagnostics are gone while request links still raise theirs, and that a serde
 round trip keeps the table; and the Inker-family crates treat the new inline as
@@ -148,7 +156,9 @@ streaming test still passes. Nothing here knows about NomadNet addresses.
 Turnstone: an in-page anchor link scrolls the focused page with **zero**
 transport requests (asserted against the recorded fetch log), is a history
 entry exactly when it changes the displayed address (decision 1), and a native
-link carrying `anchor=name` fetches then scrolls. Knot: the Micron preview shows fold state
+link carrying `anchor=name` fetches once, opens any closed sections around the
+target and scrolls, or loads at the top with a visible notice when the anchor is
+missing, as stock does (C1b probe 14). Knot: the Micron preview shows fold state
 and anchor targets through the same shared lowering; toggling in the preview
 is preview state, not document state, and never writes source. Both apps keep
 their existing alias refusal and diagnostics for unqualified spellings.
