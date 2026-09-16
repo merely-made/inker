@@ -21,6 +21,7 @@
 //! later phase sources that palette from the live theme. See
 //! `design_docs/inker_docs/implementation_strategy/2026-06-21_document_style_sheet_plan.md`.
 
+use inker::FoldMarkers;
 use serde::{Deserialize, Serialize};
 
 use crate::style::ColorVocabulary;
@@ -147,29 +148,6 @@ fn link_is_external(url: &str, base_scheme: Option<&str>) -> bool {
         (None, _) => false,
         (Some(s), Some(b)) => !s.eq_ignore_ascii_case(b),
         (Some(_), None) => true,
-    }
-}
-
-/// Glyphs laid out before a collapsible heading's text, styled as that text
-/// and inside its toggle region. The defaults are stock NomadNet's.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FoldMarkers {
-    pub open: String,
-    pub closed: String,
-}
-
-impl FoldMarkers {
-    pub fn marker(&self, open: bool) -> &str {
-        if open { &self.open } else { &self.closed }
-    }
-}
-
-impl Default for FoldMarkers {
-    fn default() -> Self {
-        Self {
-            open: "\u{25be} ".into(),
-            closed: "\u{25b8} ".into(),
-        }
     }
 }
 
@@ -304,7 +282,8 @@ pub struct DocumentStyleSheet {
     /// [`SourcePresentation::Reader`] for its own contrast-safe palette.
     #[serde(default)]
     pub source_presentation: SourcePresentation,
-    /// Open and closed markers for collapsible headings.
+    /// Open and closed markers for collapsible headings. Inker's shared token
+    /// (plan decision 17), so renderers without this sheet show the same glyphs.
     #[serde(default)]
     pub fold_markers: FoldMarkers,
     /// How keyboard focus is shown.

@@ -8,7 +8,8 @@
 //! declarations and collapsible extents, keyed by top-level block index.
 //! Kept off the blocks because they relate blocks to each other, like
 //! [`BlockProvenanceMap`](super::BlockProvenanceMap). [`FoldState`] is the
-//! reader's session-only view of those extents.
+//! reader's session-only view of those extents, and [`FoldMarkers`] the style
+//! token every renderer shows that state with.
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -181,6 +182,32 @@ impl FoldState {
     }
 }
 
+/// Glyphs laid out before a collapsible heading's text, styled as that text
+/// and inside its toggle region. The shared style token for fold state (plan
+/// decision 17): document-canvas carries one on its style sheet, and a
+/// renderer without that sheet, such as Knot's preview, reads the same
+/// default here. The defaults are stock NomadNet's.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FoldMarkers {
+    pub open: String,
+    pub closed: String,
+}
+
+impl FoldMarkers {
+    pub fn marker(&self, open: bool) -> &str {
+        if open { &self.open } else { &self.closed }
+    }
+}
+
+impl Default for FoldMarkers {
+    fn default() -> Self {
+        Self {
+            open: "\u{25be} ".into(),
+            closed: "\u{25b8} ".into(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -325,5 +352,14 @@ mod tests {
         assert!(navigation.is_current(&blocks));
         blocks.insert(0, Block::Rule);
         assert!(!navigation.is_current(&blocks));
+    }
+
+    #[test]
+    fn fold_markers_pick_by_state_and_default_to_distinct_glyphs() {
+        let markers = FoldMarkers::default();
+        assert_eq!(markers.marker(true), markers.open);
+        assert_eq!(markers.marker(false), markers.closed);
+        assert!(!markers.open.is_empty() && !markers.closed.is_empty());
+        assert_ne!(markers.open, markers.closed);
     }
 }

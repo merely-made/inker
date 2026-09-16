@@ -11,12 +11,12 @@
 
 use inker::{
     Block, DocumentFold, DocumentNavigation, DocumentProvenance, DocumentTrustState, Engine,
-    EngineInput, FoldState, inline_text,
+    EngineInput, FoldMarkers, FoldState, inline_text,
 };
 use nematic::MicronEngine;
 
 use super::*;
-use crate::style_sheet::{FoldMarkers, LinkAdornment};
+use crate::style_sheet::LinkAdornment;
 
 const NODE: &str = "923706ddc70d389bd3719258c41f6592";
 
@@ -449,9 +449,10 @@ const TOKEN_PAGES: [&str; 3] = [
 #[test]
 fn p1b_probes_05_09_17_default_tokens_paint_as_p1_did() {
     let default = DocumentStyleSheet::default();
-    // P1 adorned in-page links with the network token.
+    // P1 adorned in-page links with the network token; the markers are Inker's.
     let mut p1 = default.clone();
     p1.in_page_link_adornment = p1.link_adornment;
+    p1.fold_markers = FoldMarkers::default();
     let mut unadorned = default.clone();
     unadorned.in_page_link_adornment = LinkAdornment::None;
     for file in TOKEN_PAGES {
@@ -466,6 +467,13 @@ fn p1b_probes_05_09_17_default_tokens_paint_as_p1_did() {
                 paint(&default),
                 "{file}: control, the page exercises the in-page token"
             );
+            if !doc.navigation.folds.is_empty() {
+                assert_ne!(
+                    paint(&unmarked()),
+                    paint(&default),
+                    "{file}: control, the page exercises the marker token"
+                );
+            }
         }
     }
 }

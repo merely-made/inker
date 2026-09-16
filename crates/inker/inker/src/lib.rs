@@ -72,7 +72,7 @@ pub use document::{
     Block, BlockAlignment, BlockEvaluator, BlockEvaluators, BlockPresentation, BlockProvenance,
     BlockProvenanceMap, DocumentAnchor, DocumentDiagnostic, DocumentFold, DocumentNavigation,
     DocumentProvenance, DocumentTrustState, EngineDocument, EvalOutcome, EvalOutput,
-    EvaluationPolicy, Fetched, FoldKey, FoldState, GophermapContext, InPageTarget,
+    EvaluationPolicy, Fetched, FoldKey, FoldMarkers, FoldState, GophermapContext, InPageTarget,
     InlinePresentation, InlineSpan, ResolvedProvenance, TableAlignment, TranscludeOutcome,
     TransclusionPolicy, evaluate_blocks, inline_text, parse_eval, parse_include,
     resolve_transclusions,

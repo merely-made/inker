@@ -1,6 +1,6 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1, C1b, N1 and P1 landed, A1 next. Lane 2
+**Status (2026-09-16):** accepted; C1, C1b, N1, P1 and P1b landed, A1 next. Lane 2
 of the [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
 navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
 lane is the next user-visible conformance gap.
@@ -232,6 +232,34 @@ fixture has a link after a fold); and the `smolweb` streaming integration test
 still passing.
 
 ### P1b. Shared style tokens
+
+**Status (2026-09-16): landed** on branch `micron-nav-p1b` in two commits: the
+in-page adornment token (`e526ec81`), then the Inker marker token with this
+record. Verified like P1 in `Code/worktrees/mere-micron-nav-p1b`, with Rust
+1.97.1, `--offline --locked` and P1's target directory. After the second
+commit: nematic 229, inker 122 (+1), document-canvas 74 (+4),
+mere-document-lanes with `smolweb` 33 (including the streaming integration
+test), uxtree 10 and platen 54, all passing. The format check is clean on inker
+and document-canvas, and the workspace check is clean. The default-sheet render
+packets of all 31 committed Micron pages, authored and with every fold open,
+are byte-identical before and after. The same comparison flagged 30 packets
+when the in-page default was broken on purpose and 12 when the marker default
+was. There are 10 positive controls. Logs are `p1b-*` under
+`Code/testing/mere/micron-navigation-20260916/logs/`.
+
+- **In-page adornment (document-canvas).** `DocumentStyleSheet.in_page_link_adornment`
+  is a `LinkAdornment` beside `link_adornment`, with `#[serde(default)]`. Both
+  default through `LinkAdornment::default()` (`SchemeArrow`). `flatten_inline`
+  takes both tokens, and each link kind reads only its own. Because it reuses
+  the enum, a theme can turn in-page arrows on or off apart from network links
+  but cannot give them a glyph of their own without a new variant.
+- **Fold markers (Inker).** `inker::FoldMarkers` sits in
+  `document/navigation.rs` beside `FoldState`, and its `Default` holds the only
+  copy of the glyphs. `DocumentStyleSheet.fold_markers` has that type, and
+  `document_canvas::FoldMarkers` was removed rather than re-exported. Knot's
+  preview reads `inker::FoldMarkers::default().marker(open)`, or holds a
+  `FoldMarkers` a theme can replace. That answers A1's open question of where
+  Knot's markers come from.
 
 A small follow-up before A1 (decisions 15 and 17): an in-page link adornment
 token separate from the network link adornment, defaulting to the same arrow,
@@ -540,3 +568,9 @@ capturing them, and any change to how source bytes are stored.
 - 2026-09-16: P1 landed on main (`7658de5f`..`d65382db`), developed and
   verified in a dedicated worktree on a branch and fast-forwarded. Decisions
   15–17 settled with Mark; P1b (two style tokens) precedes A1.
+- 2026-09-16: P1b landed in two commits on branch `micron-nav-p1b`. In-page
+  links gained their own adornment token, and the fold markers moved into Inker
+  as `inker::FoldMarkers`, which document-canvas's style sheet carries and
+  Knot's preview can read. Default render packets for all 31 committed Micron
+  pages are byte-identical before and after, and there are 10 positive
+  controls. A1 next.
