@@ -173,10 +173,11 @@ extent and marks the heading with its state; the heading is a hit target and
 a keyboard target (Enter/Space) that toggles; an in-page link activation asks
 the session to scroll the viewport to a block, with the target's closed
 ancestors opened first, which C1 probe 05 confirmed stock does. Fold state survives
-relayout and resize and is discarded when the source bytes change.
+relayout and resize and is keyed per decision 10.
 
 Done when document-lanes tests cover toggle by pointer and by keyboard,
-scroll-to-anchor after reflow, state reset on source change, and the `smolweb`
+scroll-to-anchor after reflow, state kept across a streamed prefix and dropped
+for an edited heading (decision 10), and the `smolweb`
 streaming test still passes. Nothing here knows about NomadNet addresses.
 
 ### A1. Consumers
@@ -254,6 +255,15 @@ as a deliberate deviation.
    anchors, and a target inside two closed sections.
 9. **HTML export renders in-page links as label text in N1** (settled
    2026-09-16). `href="#name"` and heading ids arrive with the consumers.
+
+10. **A heading's fold state is keyed by its source text and occurrence**
+    (settled 2026-09-16, refining decision 2). Streaming re-lowers the page for
+    every received prefix and Knot re-lowers on every edit, so discarding all
+    fold state whenever the source bytes change would reset folds constantly.
+    State is keyed by the heading's source text plus which occurrence of that
+    text it is: it survives streaming and edits elsewhere on the page, and a
+    heading's own state drops only when that heading is edited. It remains
+    session-only and is discarded when the page closes.
 
 ## Out of scope
 
@@ -372,3 +382,5 @@ capturing them, and any change to how source bytes are stored.
   the table when transclusion or evaluation splice blocks. The first run of
   its verification was blocked by the machine-local lock and completed in a
   clean worktree. P1 next.
+- 2026-09-16: decision 10 settled with Mark before P1: fold state keyed by
+  heading text plus occurrence. P1 starts with a read-only design pass.
