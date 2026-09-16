@@ -168,6 +168,15 @@ as a deliberate deviation.
 4. **C1 first and alone**, since N1's duplicate, missing and closed-section
    rules depend on it; then N1, P1, A1, R1, one repo at a time.
 
+5. **A `<` line ends a fold extent** (settled 2026-09-16, after C1). This matches
+   what stock renders in probe 07c: content after `<` stays visible when the
+   fold above it closes. The extent stops at the `<` line, while `<` itself keeps
+   its source and a diagnostic and acquires no depth meaning.
+6. **`#` counts "next heading" from the link's own line** (settled 2026-09-16,
+   after C1). Deterministic and testable in the model without UI state, and it
+   agrees with every capture where the origin was observable. A viewport- or
+   focus-relative jump stays a possible later session-layer refinement.
+
 ## Out of scope
 
 Forms and partial refresh, inline form widgets, media and directives (lane 4),
@@ -211,3 +220,6 @@ capturing them, and any change to how source bytes are stored.
   reference); all ten probes captured with the stock daemon's own request log.
   Probes 06 and 07 were split mid-capture when the first pages proved
   non-discriminating. Committed `navigation/` fixtures, receipt and manifest.
+- 2026-09-16: decisions 5 (`<` ends a fold extent) and 6 (`#` counts from the
+  link's line) settled with Mark from the C1 results. N1 starts with a read-only
+  design pass on how typed facts enter Inker's shared blocks.
