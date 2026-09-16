@@ -151,7 +151,7 @@ impl Engine for MicronEngine {
                 text: "Micron preview: some presentation or controls are shown without their native behavior.".into(),
             });
         }
-        let navigation = lower_navigation(&model, &first_block, offset);
+        let navigation = lower_navigation(&model, &parsed, &first_block, offset);
         for block in &mut blocks {
             for_each_in_page(block, &mut |target| {
                 // Lowering stored the target line; the blocks are now known.
@@ -190,6 +190,7 @@ fn block_at(first_block: &[usize], line: usize, offset: usize) -> Option<usize> 
 
 fn lower_navigation(
     model: &Navigation,
+    parsed: &syntax::Document,
     first_block: &[usize],
     offset: usize,
 ) -> DocumentNavigation {
@@ -212,6 +213,7 @@ fn lower_navigation(
                 // A named heading always emits exactly one block.
                 heading: first_block[fold.line] + offset,
                 source_line: fold.line,
+                source_text: parsed.lines[fold.line].source.clone(),
                 initially_open: fold.initially_open,
                 extent: first_block[fold.lines.start] + offset
                     ..first_block[fold.lines.end] + offset,

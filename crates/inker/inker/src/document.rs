@@ -55,7 +55,9 @@ pub use transclude::{
 };
 
 pub use block_provenance::{BlockProvenance, BlockProvenanceMap, ResolvedProvenance};
-pub use navigation::{DocumentAnchor, DocumentFold, DocumentNavigation, InPageTarget};
+pub use navigation::{
+    DocumentAnchor, DocumentFold, DocumentNavigation, FoldKey, FoldState, InPageTarget,
+};
 
 /// A rendered document.
 ///

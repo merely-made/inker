@@ -7,8 +7,10 @@
 //! In-page navigation facts an engine lowers beside its blocks: anchor
 //! declarations and collapsible extents, keyed by top-level block index.
 //! Kept off the blocks because they relate blocks to each other, like
-//! [`BlockProvenanceMap`](super::BlockProvenanceMap).
+//! [`BlockProvenanceMap`](super::BlockProvenanceMap). [`FoldState`] is the
+//! reader's session-only view of those extents.
 
+use std::collections::HashMap;
 use std::ops::Range;
 
 use serde::{Deserialize, Serialize};
@@ -43,8 +45,13 @@ pub struct DocumentAnchor {
 pub struct DocumentFold {
     /// Block of the collapsible heading, possibly `Presented`-wrapped.
     pub heading: usize,
-    /// Engine line identity; with the document identity, the fold-state key.
+    /// Engine line identity. Shifts when lines are inserted above, so it is
+    /// not a fold-state key; see [`FoldKey`].
     pub source_line: usize,
+    /// The heading's source spelling as the engine read it; with its
+    /// occurrence among the folds, the session fold-state key.
+    #[serde(default)]
+    pub source_text: String,
     pub initially_open: bool,
     /// Half-open block range hidden while closed; starts at `heading + 1`.
     pub extent: Range<usize>,
@@ -81,6 +88,97 @@ impl DocumentNavigation {
             .iter()
             .filter(move |fold| fold.extent.contains(&block))
     }
+
+    /// The session key of each fold, index for index.
+    pub fn fold_keys(&self) -> Vec<FoldKey> {
+        let mut seen: HashMap<&str, usize> = HashMap::new();
+        self.folds
+            .iter()
+            .map(|fold| {
+                let count = seen.entry(fold.source_text.as_str()).or_default();
+                let key = FoldKey {
+                    source_text: fold.source_text.clone(),
+                    occurrence: *count,
+                };
+                *count += 1;
+                key
+            })
+            .collect()
+    }
+}
+
+/// A fold's identity across re-lowering: its heading's source spelling and
+/// which occurrence of that spelling it is (plan decisions 10 and 11). Any
+/// edit to the heading line, its `+`/`-` marker included, is a new key.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FoldKey {
+    pub source_text: String,
+    pub occurrence: usize,
+}
+
+/// Session-only reader overrides of authored fold state (plan decision 2).
+/// Methods take the navigation table they index; callers check
+/// [`DocumentNavigation::is_current`] first.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FoldState {
+    open: HashMap<FoldKey, bool>,
+}
+
+impl FoldState {
+    /// Drop overrides for headings `navigation` no longer has (an edited
+    /// heading). Streamed prefixes only add keys, so arrived state survives.
+    pub fn reconcile(&mut self, navigation: &DocumentNavigation) {
+        let keys = navigation.fold_keys();
+        self.open.retain(|key, _| keys.contains(key));
+    }
+
+    pub fn is_open(&self, navigation: &DocumentNavigation, fold: usize) -> bool {
+        self.open_with(navigation, &navigation.fold_keys(), fold)
+    }
+
+    /// Flip `fold`; returns its new state.
+    pub fn toggle(&mut self, navigation: &DocumentNavigation, fold: usize) -> bool {
+        let keys = navigation.fold_keys();
+        let open = !self.open_with(navigation, &keys, fold);
+        self.open.insert(keys[fold].clone(), open);
+        open
+    }
+
+    /// Open every closed fold whose extent hides `block`; true when any was.
+    pub fn open_ancestors(&mut self, navigation: &DocumentNavigation, block: usize) -> bool {
+        let keys = navigation.fold_keys();
+        let mut changed = false;
+        for (fold, entry) in navigation.folds.iter().enumerate() {
+            if entry.extent.contains(&block) && !self.open_with(navigation, &keys, fold) {
+                self.open.insert(keys[fold].clone(), true);
+                changed = true;
+            }
+        }
+        changed
+    }
+
+    /// Closed extents in ascending block order, nested ones merged. A fold
+    /// inside a closed fold keeps its own state for when the outer opens.
+    pub fn hidden(&self, navigation: &DocumentNavigation) -> Vec<Range<usize>> {
+        let keys = navigation.fold_keys();
+        let mut hidden: Vec<Range<usize>> = Vec::new();
+        for (fold, entry) in navigation.folds.iter().enumerate() {
+            let covered = hidden
+                .last()
+                .is_some_and(|last| last.end >= entry.extent.end);
+            if !entry.extent.is_empty() && !covered && !self.open_with(navigation, &keys, fold) {
+                hidden.push(entry.extent.clone());
+            }
+        }
+        hidden
+    }
+
+    fn open_with(&self, navigation: &DocumentNavigation, keys: &[FoldKey], fold: usize) -> bool {
+        self.open
+            .get(&keys[fold])
+            .copied()
+            .unwrap_or(navigation.folds[fold].initially_open)
+    }
 }
 
 #[cfg(test)]
@@ -114,12 +212,14 @@ mod tests {
                 DocumentFold {
                     heading: 0,
                     source_line: 1,
+                    source_text: "`->Outer".into(),
                     initially_open: false,
                     extent: 1..4,
                 },
                 DocumentFold {
                     heading: 1,
                     source_line: 2,
+                    source_text: "`+>>Inner".into(),
                     initially_open: true,
                     extent: 2..3,
                 },
@@ -149,6 +249,72 @@ mod tests {
         assert!(
             headings(0).is_empty(),
             "a heading is outside its own extent"
+        );
+    }
+
+    #[test]
+    fn fold_keys_count_occurrences_of_the_same_source_text() {
+        let mut navigation = table();
+        navigation.folds[1].source_text = navigation.folds[0].source_text.clone();
+        let keys = navigation.fold_keys();
+        assert_eq!(
+            keys.iter().map(|key| key.occurrence).collect::<Vec<_>>(),
+            [0, 1]
+        );
+        assert_ne!(keys[0], keys[1]);
+    }
+
+    #[test]
+    fn toggle_overrides_authored_state_and_hidden_merges_nested_extents() {
+        let navigation = table();
+        let mut state = FoldState::default();
+        assert_eq!(state.hidden(&navigation), [1..4], "authored: outer closed");
+        assert!(!state.toggle(&navigation, 1), "inner closes");
+        assert_eq!(
+            state.hidden(&navigation),
+            [1..4],
+            "the closed inner lies inside the closed outer"
+        );
+        assert!(state.toggle(&navigation, 0), "outer opens");
+        assert_eq!(
+            state.hidden(&navigation),
+            [2..3],
+            "the inner kept its state"
+        );
+    }
+
+    #[test]
+    fn open_ancestors_opens_only_closed_enclosing_folds() {
+        let navigation = table();
+        let mut state = FoldState::default();
+        state.toggle(&navigation, 1);
+        assert!(state.open_ancestors(&navigation, 2));
+        assert!(state.hidden(&navigation).is_empty());
+        assert!(
+            !state.open_ancestors(&navigation, 2),
+            "nothing left to open"
+        );
+        assert!(
+            !state.open_ancestors(&navigation, 0),
+            "a heading has no ancestors here"
+        );
+    }
+
+    #[test]
+    fn reconcile_drops_state_for_a_heading_whose_source_changed() {
+        let mut navigation = table();
+        let mut state = FoldState::default();
+        state.toggle(&navigation, 0);
+        state.toggle(&navigation, 1);
+        navigation.folds[1].source_text = "`->>Inner".into();
+        state.reconcile(&navigation);
+        assert!(
+            state.is_open(&navigation, 0),
+            "untouched heading keeps state"
+        );
+        assert!(
+            state.is_open(&navigation, 1),
+            "the edited heading is back to its authored open state"
         );
     }
 
