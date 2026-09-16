@@ -241,7 +241,7 @@ commit: nematic 229, inker 122 (+1), document-canvas 74 (+4),
 mere-document-lanes with `smolweb` 33 (including the streaming integration
 test), uxtree 10 and platen 54, all passing. The format check is clean on inker
 and document-canvas, and the workspace check is clean. The default-sheet render
-packets of all 31 committed Micron pages, authored and with every fold open,
+packets of the 31 navigation probe pages and `guide-structure.mu` (42 Micron pages are committed), authored and with every fold open,
 are byte-identical before and after. The same comparison flagged 30 packets
 when the in-page default was broken on purpose and 12 when the marker default
 was. There are 10 positive controls. Logs are `p1b-*` under
@@ -583,3 +583,9 @@ capturing them, and any change to how source bytes are stored.
   another node (no committed page reaches the external arrow), are
   byte-identical before and after, and there are 10 positive controls. Logs are
   `p1c-*`. A1 next.
+- 2026-09-16: correction. P1b's byte-identity check covered 31 of the 42
+  committed Micron pages, and no committed page links to another node, so it
+  never drew the external link arrow. The glyph follow-up (`f7c9374f`) re-ran it
+  over all 42 pages plus an inline page with same-node, other-node and in-page
+  links at two node addresses: 86 of 86 packets identical, with positive
+  controls proving both the in-protocol and the external arrow are detected.
