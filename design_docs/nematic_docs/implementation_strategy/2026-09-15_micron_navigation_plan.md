@@ -1,6 +1,6 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1 landed, N1 next. Lane 2 of the
+**Status (2026-09-16):** accepted; C1 and C1b landed, N1 next. Lane 2 of the
 [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
 navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
 lane is the next user-visible conformance gap.
@@ -49,15 +49,18 @@ not qualify keeps its source and a diagnostic, as today.
   an anchor by slug, first declaration wins; `` `[label`#name] `` scrolls the
   current page and `` `[label`#] `` jumps to the next heading; an external link
   may carry `anchor=name`. Fixture: `fixtures/guide-structure.mu`.
-- **Captured since (C1, 2026-09-16).** The spellings the 2026-09-12 capture left
-  open (duplicate and missing anchors, `#` past the last heading, links into
-  closed sections, nested fold state, `<`, key toggling, in-page transport and
-  anchor history) now have a stock UI receipt at
-  `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/NAVIGATION_RECEIPT.md`;
-  the C1 Findings below summarise it. Still uncaptured: an explicit anchor on the
-  line after a heading, two explicit anchors with the same name, a target inside
-  two closed sections, and `anchor=` links to another page. The last one bears
-  on A1 and should be captured before A1 starts.
+- **Captured since (C1 and C1b, 2026-09-16).** The spellings the 2026-09-12
+  capture left open (duplicate and missing anchors, `#` past the last heading,
+  links into closed sections, nested fold state, `<`, key toggling, in-page
+  transport and anchor history) now have a stock UI receipt at
+  `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/NAVIGATION_RECEIPT.md`.
+  Its C1b section adds unnamed sections inside folds and before a `#` jump,
+  `<<` and `< text` inside a fold, an explicit anchor on the line after a
+  heading, two explicit anchors with the same name, a target inside two closed
+  sections, and `anchor=` links to another page (present, missing, and inside a
+  closed section). The C1 and C1b Findings below summarise both. The receipt
+  still keeps source and diagnostic for the depth `<` and `<<` reach, for what
+  `< text` is, and for which depth an unnamed line is compared with.
 - **Instrument rebuilt (2026-09-16).** The 2026-09-13 `C:/t` scratch family was
   deleted, so C1 rebuilt stock `nomadnet` 1.4.2, `rns` 1.5.3 and `lxmf` 1.1.1 in
   a WSL-native venv under `/var/tmp`; the package metadata digest matches the
@@ -246,6 +249,27 @@ capturing them, and any change to how source bytes are stored.
   after `<` stayed visible, from depth one and from depth two inside a closed
   depth-one fold. The receipt keeps `<` as source plus diagnostic; N1 has to
   decide how a fold extent treats that line without promoting `<` to a rule.
+- 2026-09-16 (C1b receipt): rules N1 needs beyond C1. **Unnamed sections:** a
+  bare `>` run ends a closed fold only when it is shallower than the fold's
+  heading; at equal or greater depth the lines after it stay inside, unlike a
+  named heading at equal depth (C1 probe 6a), and `#` skips it for the next named
+  heading. `syntax.rs` (~227–236) parses a bare run as `LineKind::Heading` with
+  no anchor, so N1's extent and `next_heading` must not treat it as a heading.
+  **Extent stops:** `<`, `<<` and `< text` each end the extent before their own
+  line, whether first in the fold or after body; `< text` renders its text as a
+  body row outside the fold, the other two make no row. **Cross-page
+  `anchor=`:** one request for the path without the field, a landing identical
+  to the target page's own in-page jump, and a closed section around the target
+  opened. A missing target loads at the top with `Unknown anchor: #name` in the
+  status row, unlike the silent in-page case. Back from a target returned from
+  cache, but Forward onto a page reached by `anchor=` re-requested it, where
+  C1's plain-page Forward came from cache. The stock
+  address row shows the field spelling (`` …mu`anchor=name ``), which decision 1
+  replaces with `#name`. **Anchor precedence:** an explicit anchor on the line
+  after a heading never renames it. With the slug's name, the heading row wins
+  as the first declaration; with another name, both resolve (the slug to the
+  heading row, the explicit name to the next row). Duplicate explicit anchors
+  resolve to the first, and a target inside two closed folds opens both.
 
 ## Progress
 
@@ -265,3 +289,10 @@ capturing them, and any change to how source bytes are stored.
   statements in this plan, and flagged for P1 that streaming re-lowers every
   received prefix, so fold state cannot simply be discarded whenever the source
   bytes change. Decisions 7–9 settled with Mark; C1b capture batch next.
+- 2026-09-16: C1b landed. C1's instrument was reused and re-verified (metadata
+  digest matches) with fresh profiles on a new loopback port. Probes 11 to 17
+  were captured with the node's own request log, and all 17 requests are
+  accounted for. Probe 11c was added mid-capture to test the unnamed-section
+  rule at depths one and two. Committed 14 probe pages, the receipt's C1b
+  section and the manifest digests; Micron tests still pass offline (28 passed).
+  N1 next.

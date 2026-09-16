@@ -145,6 +145,8 @@ Each of these keeps its source and a diagnostic; none is a rule.
   steps taken. `p08-d-after-down` then `p08-e-after-space` changed nothing, and
   this receipt does not claim why.
 
+The first two items were captured in [C1b](#c1b-2026-09-16) below.
+
 ## Commands
 
 ```text
@@ -162,3 +164,154 @@ Pages were opened through the client's `C-u` URL dialog as
 `923706ddc70d389bd3719258c41f6592:/page/<page>`. The node, client, tmux server
 and WSL keepalive were stopped after capture. The scripts that generated the
 pages and drove the client are kept with the durable receipts.
+
+## C1b (2026-09-16)
+
+A follow-up batch run the same way, answering decision 8 of the navigation plan:
+unnamed sections, `<<` and `< text` inside a fold, `anchor=` links to another
+page, an explicit anchor after a heading, duplicate explicit anchors, and a
+target inside two closed sections. Probes are numbered 11 to 17. The C1
+observations above are unchanged; only C1's "Not captured" list gained a
+pointer here.
+
+### Runtime and isolation
+
+- **Instrument reused and re-verified.** C1's virtualenv at
+  `/var/tmp/micron-c1-20260916/venv` still existed and was used read-only.
+  Before any capture it reported `Nomad Network Client 1.4.2`, its
+  `nomadnet-1.4.2.dist-info/METADATA` digest **matched**
+  `0916bffb68b508b13b92aec79f9660c35b74a9daa8c9e1e7c7b405ad35d584d2`, installed
+  metadata reported `rns 1.5.3` and `lxmf 1.1.1`, the launcher digest was C1's
+  `91f64c88…`, and C1's cached wheels matched the digests in the
+  [manifest](CAPTURE_MANIFEST.md).
+- **Fresh profiles.** Node, client, `HOME` and the tmux socket were new, under
+  `/var/tmp/micron-c1b-20260916`, with RNS transport and instance sharing
+  disabled. The node had a `TCPServerInterface` on `127.0.0.1:45550` and the
+  client a `TCPClientInterface` to it, a port C1 did not use. Node
+  `loglevel = 7`, client `glyphs = unicode`, browser fullscreen in 120x45 as in
+  C1. The real WSL home's top-level listing was identical before and after.
+- **Node destination** `5a77246c9fcc780468b44cff22c1ec51`, derived with the
+  public RNS API and matched to the daemon's ready line. Probe 14d's link spells
+  it out, so that single link names this run's node.
+- **Client cache.** The client profile started empty, and every transport
+  probe followed a link to a page path not visited before. The only repeat
+  visits were deliberate and are recorded: page A of probe 14 by Back, 14a's
+  target by Forward, and probe 17 by `C-r`. The node logged 17 requests in
+  total, each accounted for in the table.
+- **One page added mid-capture.** After 11a, `probe-nav-11c-unnamed-fold-depths.mu`
+  was added to test the same rule at depths one and two. Every other page was
+  proven byte-identical before the node was restarted once (10:24:43); the
+  client kept running and reconnected.
+
+### Observations
+
+Captures are named `c1b-p<probe>-<step>-<what>` in the durable directory.
+Request counts come from the node's own log, bracketed as in C1.
+
+| Probe | Page | Observed behaviour | Instrument | Captures |
+| --- | --- | --- | --- | --- |
+| 11a. Unnamed section inside a closed fold | `probe-nav-11a-unnamed-fold.mu` | With the folds closed, the lines after a bare `>>>>` in a depth-one fold (A) and after a bare `>>>>` in a depth-four fold (B) were hidden, while the lines after a bare `>` in a depth-two fold (C) stayed visible. | client; node log (1 request, the load) | `c1b-p11a-a-loaded-closed`, `c1b-p11a-b-a-opened`, `c1b-p11a-c-b-opened`, `c1b-p11a-d-c-opened` |
+| 11c. Unnamed section at other depths | `probe-nav-11c-unnamed-fold-depths.mu` | With the folds closed, the line after an equal-depth bare `>` in a depth-one fold (D) and an equal-depth bare `>>` in a depth-two fold (E) was hidden, and the line after a bare `>>` in a depth-four fold (F) stayed visible. | client; node log (1 request, the load) | `c1b-p11c-a-loaded-closed`, `c1b-p11c-b-d-opened`, `c1b-p11c-c-e-opened`, `c1b-p11c-d-f-opened` |
+| 11b. `#` and an unnamed section | `probe-nav-11b-next-heading-unnamed.mu` | `` `[label`#] `` at the top of the page skipped the bare `>>>>` line and scrolled `Named After Unnamed`, sixty lines further on, to the top of the viewport. | client; node log (0 requests) | `c1b-p11b-b-link-focused`, `c1b-p11b-c-after-next-heading-jump` |
+| 12. `<<` first inside a closed fold | `probe-nav-12-double-less-than-fold.mu` | With each fold closed, both lines after `<<` as the fold's first line stayed visible, as they did after `<` in the same position and after `<<` following a body line. | client | `c1b-p12-a-loaded-closed`, `c1b-p12-b-a-opened`, `c1b-p12-c-b-opened`, `c1b-p12-d-c-opened` |
+| 13. `< text` inside a closed fold | `probe-nav-13-less-than-text-fold.mu` | With the fold closed, the text rendered as ` TEXT ON THE LESS-THAN LINE` (a body row, leading space kept) directly under the closed heading, followed by both later lines. | client | `c1b-p13-a-loaded-closed`, `c1b-p13-b-opened` |
+| 14a. Cross-page `anchor=` | `probe-nav-14-source.mu` to `probe-nav-14a-target.mu` | Following `` `[…`:/page/probe-nav-14a-target.mu`anchor=cross-target] `` requested the target path without the field once, scrolled `Cross Target` to the top, and the address row read `` …:/page/probe-nav-14a-target.mu`anchor=cross-target ``. | client; node log (1 request) | `c1b-p14a-a-link-focused`, `c1b-p14a-b-after-follow` |
+| 14a, Back and Forward | same | Back returned to page A at its top from cache (`Done (cached)`) with no request; Forward then requested the target again once and landed on `Cross Target` again. | client; node log (0, then 1) | `c1b-p14a-c-after-back`, `c1b-p14a-d-after-forward` |
+| 14a, in-page control | `probe-nav-14a-target.mu` | B's own `#cross-target` link gave page rows identical to the cross-page landing. | client (`diff` of rows 5–41); node log (0 requests) | `c1b-p14a-e-b-top`, `c1b-p14a-f-after-inpage-control` |
+| 14b. Cross-page missing anchor | `probe-nav-14b-target-missing.mu` | The target loaded once at its top, and the status row read `Unknown anchor: #no-such-cross-anchor`. | client; node log (1 request) | `c1b-p14b-b-after-follow` |
+| 14c. Cross-page anchor inside a closed section | `probe-nav-14c-target-closed.mu` | The target loaded once with `▾ Closed Cross Outer` opened and its hidden `Closed Cross Target` heading at the top of the viewport. | client; node log (1 request) | `c1b-p14c-b-after-follow`, `c1b-p14c-d-outer-heading` |
+| 14d. Cross-page anchor, full address | `probe-nav-14d-target-full-address.mu` | The same link spelled `` 5a77…:/page/…`anchor=cross-target `` behaved exactly as 14a: one request, `Cross Target` at the top, the field in the address row. | client; node log (1 request) | `c1b-p14d-b-after-follow` |
+| 15a. Explicit anchor after a heading, same name | `probe-nav-15a-heading-anchor-same.mu` | With `>Setup` followed by `` `:setup ``, `#setup` scrolled the `Setup` heading row to the top, not the body row after the explicit anchor. | client; node log (0 requests) | `c1b-p15a-b-after-setup-jump` |
+| 15b. Explicit anchor after a heading, other name | `probe-nav-15b-heading-anchor-other.mu` | With `>Setup` followed by `` `:install ``, `#setup` scrolled the `Setup` heading row to the top and `#install` scrolled the next row, `MARKER 15B BODY`, to the top. | client; node log (0 requests each) | `c1b-p15b-c-after-setup-jump`, `c1b-p15b-e-after-install-jump` |
+| 16. Duplicate explicit anchors | `probe-nav-16-duplicate-explicit.mu` | `#dup` scrolled `MARKER DUP FIRST`, the row after the first of two `` `:dup `` declarations, to the top. | client; node log (0 requests) | `c1b-p16-c-after-jump` |
+| 17. Target inside two closed sections | `probe-nav-17-nested-closed-target.mu` | Following `#nested-deep` opened both `Outer Closed` and the `Inner Closed` fold inside it (both `▾`) and scrolled the target row to the top. | client; node log (0 requests) | `c1b-p17-c-after-jump`, `c1b-p17-d-fold-states-after-jump`, `c1b-p17-e-closed-after-reload` |
+
+Supporting detail, each read directly off the captures:
+
+- 11a, 11c: no bare `>` run produced a row of its own. Opening each fold showed
+  where the following lines sit. In A and B they follow the fold's body at six
+  columns (depth four); in D and E they follow it at the fold's own
+  indentation. In C they render flush left below the depth-two body, and in F
+  two columns in below the depth-four body, so a shallower unnamed line set the
+  depth of what followed it.
+- 11b: the jump's origin was the link row at the top, so decision 6's reference
+  point is not in question here.
+- 12: opening the `<<`-first and `<`-first folds changed only `▸` to `▾` and
+  added no row, so each fold's extent was empty; opening the third inserted only
+  `MARKER 12C BODY`. Neither `<` nor `<<` produced a row.
+- 13: the text row has body colour and no heading background. Opening the fold
+  inserted only `MARKER 13 BODY`, above the text row, so the `<` line itself is
+  outside the extent.
+- 14: the status row showed each link's field before activation
+  (``Link to :/page/probe-nav-14a-target.mu`anchor=cross-target``). Every Back
+  to page A logged no request and showed `Done (cached)`. The Forward in 14a
+  showed fresh load figures rather than `Done (cached)`.
+- 14c: `c1b-p14c-c-outer-state` shows the outer body line above the target, and
+  one more line up shows `▾ Closed Cross Outer`.
+- 15a, 15b: the line holding only the explicit anchor produced no row in either
+  page, so the heading row and the body row are adjacent and a one-row
+  difference separates the two landings.
+- 17: before the jump, one page down showed `▸ Outer Closed` directly above
+  `Sentinel After`; after `C-r` (one request) the same view returned
+  (`c1b-p17-e-closed-after-reload`), so the opened state did not survive a
+  reload, as in probe 5.
+
+Incidental, not a probe: a click on the non-collapsible `Sentinel E` heading
+changed nothing (recorded in `c1b-client-keys.log`).
+
+### Narrowed from C1's ambiguities
+
+- **`<<` versus `<`**: both end a fold extent, both as a fold's first line and
+  after a body line, and neither produces a row. They still render identically.
+- **`<` followed by text**: the text is a body row outside the fold it follows;
+  the extent ends before the `<` line.
+
+### Still ambiguous after C1b
+
+Each of these keeps its source and a diagnostic; none is a rule.
+
+- **Depth set by `<` and `<<`.** Every C1b case sat directly under a depth-one
+  heading, where depth zero and depth one render alike, so the depth each reaches
+  is still not separable. Keep source and diagnostic.
+- **`< text` as a construct.** The remainder renders as body text outside the
+  fold, but whether stock reads it as a section exit followed by a text line or
+  as something else is not separable. Keep source and diagnostic.
+- **The depth an unnamed line is compared with.** Every captured case is
+  consistent with "a bare `>` run ends a fold when it is shallower than the fold's
+  heading". No case was shallower than the depth just before it without also being
+  shallower than the heading, for example `>>` after `>>>` inside a depth-one
+  fold, so a comparison with the preceding depth is not ruled out. Keep source
+  and diagnostic for that arrangement.
+
+Behaviour that is not a spelling, recorded but not separated: why Forward
+re-requested a page reached by an `anchor=` link when C1's plain-page Forward
+did not, and why a missing anchor shows `Unknown anchor:` when reached across
+pages but nothing when followed in-page (probe 3).
+
+### Not captured in C1b
+
+- An explicit anchor on the heading line itself (`` >Setup`:install ``).
+- `anchor=` combined with other link fields, or on a link to a different node.
+- Keyboard focus order across the new pages; links were focused by stepping
+  Down until the status row named them, as in C1.
+
+### Commands
+
+```text
+HOME=/var/tmp/micron-c1b-20260916/home \
+  /var/tmp/micron-c1-20260916/venv/bin/nomadnet --daemon --console \
+  --config /var/tmp/micron-c1b-20260916/node/nomadnet \
+  --rnsconfig /var/tmp/micron-c1b-20260916/node/rns
+
+HOME=/var/tmp/micron-c1b-20260916/home TERM=xterm-256color \
+  /var/tmp/micron-c1-20260916/venv/bin/nomadnet --textui \
+  --config /var/tmp/micron-c1b-20260916/client/nomadnet \
+  --rnsconfig /var/tmp/micron-c1b-20260916/client/rns
+```
+
+Both ran inside `tmux -S /var/tmp/micron-c1b-20260916/tmux.sock -f /dev/null`.
+Pages were opened through the client's `C-u` URL dialog as
+`5a77246c9fcc780468b44cff22c1ec51:/page/<page>`. The node, client, tmux server
+and WSL keepalive were stopped after capture and no task process remained. The
+`scripts/c1b-*` files in the durable directory generated the pages and drove the
+client; `c1b-README.txt` there lists the receipts.
