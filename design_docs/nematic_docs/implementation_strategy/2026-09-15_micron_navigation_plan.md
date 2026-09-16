@@ -256,7 +256,7 @@ was. There are 10 positive controls. Logs are `p1b-*` under
 - **Fold markers (Inker).** `inker::FoldMarkers` sits in
   `document/navigation.rs` beside `FoldState`, and its `Default` holds the only
   copy of the glyphs. `DocumentStyleSheet.fold_markers` has that type, and
-  `document_canvas::FoldMarkers` was removed rather than re-exported. Knot's
+  `inker::FoldMarkers` was removed rather than re-exported. Knot's
   preview reads `inker::FoldMarkers::default().marker(open)`, or holds a
   `FoldMarkers` a theme can replace. That answers A1's open question of where
   Knot's markers come from.
@@ -303,7 +303,7 @@ again once a streamed prefix contains the target. For Knot, `inker::FoldState`
 (`knot-editor/apps/desktop/src/workspace.rs:112`), with `blocks()`
 (`scroll_site.rs:1171`) skipping `hidden` ranges of the preview lowered at
 `scroll_site.rs:1517–1534`. The stock markers live in
-`document_canvas::FoldMarkers`, which Knot does not depend on, so where Knot's
+`inker::FoldMarkers`, which Knot does not depend on, so where Knot's
 markers come from is still open.
 
 Done when Turnstone's `nomadnet` and app tests and Knot's site and desktop
