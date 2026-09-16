@@ -16,14 +16,23 @@ not qualify keeps its source and a diagnostic, as today.
 ## What exists (verified 2026-09-15)
 
 - **Syntax already retains the facts.** `nematic::micron::syntax` parses
-  `LineKind::Heading { depth, initially_open, anchor }`, `Span::Anchor { name, active }`,
-  `LinkEffect::Anchor(name)` and `section_depth` per line. Heading slugs are
-  derived (lowercase, non-alphanumeric runs to one hyphen) and an explicit
-  `` `:name `` on the following line rebinds the heading
-  (`syntax.rs` ~231–300, tests ~714–760).
+  `LineKind::Heading { depth, initially_open, anchor }`, the anchor declaration
+  `Span::Anchor { name, active }`, and `section_depth` per line. Heading slugs are
+  derived (lowercase, non-alphanumeric runs to one hyphen), and every declaration,
+  heading or explicit, competes for its name with the first winning: an explicit
+  `` `:name `` after a heading with the same slug is recorded as an inactive
+  duplicate, not a rename (`syntax.rs` ~711–731). `LinkEffect::Anchor` is the
+  cross-page `anchor=` link modifier; an in-page `#name` or `#` link is an
+  ordinary link whose target starts with `#`, which `resolve_target` rejects.
+  Anchors inside table cells reserve their name but are not retained, and a `<`
+  line parses as ordinary text at unchanged depth. *(Corrected 2026-09-16 by the
+  N1 design pass; the earlier text had the rename and link-effect facts wrong.)*
 - **Rendering drops them with a diagnostic.** `render.rs` lowers headings to
   `Block::Heading`, reports collapsible sections as "retained in syntax; shown
-  expanded" and anchors as "native anchor scrolling is not implemented";
+  expanded", anchor declarations as "native anchor scrolling is not
+  implemented", and in-page links under a third diagnostic it shares with request
+  links ("Micron request or anchor link retained…", `render.rs` ~271–277), which
+  N1 has to split;
   `resolve_target(base, "#name")` returns `None`, so an anchor link currently
   becomes plain text with an unresolved diagnostic.
 - **Consumers have no anchor path.** Turnstone's `nomadnet.rs` refuses
@@ -85,23 +94,36 @@ interpreted.
 
 ### N1. Document model: fold extents and anchor resolution
 
-In Nematic (owner of source interpretation): compute each collapsible
-heading's fold extent (line range to the next heading of equal or shallower
-depth, which C1 probe 07c showed is incomplete: stock also keeps the line after
-a `<` visible under a closed fold, so the extent rule must say what a `<` line
-does to an extent while `<` itself stays source plus diagnostic), expose `anchors()` as an ordered map from name to first line index
-with duplicates recorded, and `resolve_anchor(name)` / `next_heading(from)`
-following the captured rules. Lower these into the shared presentation as
-typed facts rather than diagnostics: `Block::Heading` gains an anchor id and
-an optional `Collapsible { initially_open, extent }`, and `Span::Anchor` /
-`LinkEffect::Anchor` lower to an in-page link kind that Inker keeps distinct
-from network links. `resolve_target` keeps returning `None` for `#name`;
-in-page targets never enter the network resolver.
+In Nematic (owner of source interpretation), in syntax line space so it is
+testable without Inker: each collapsible heading's fold extent runs to the next
+heading of equal or shallower depth or to a `<` line, whichever comes first
+(decision 5); anchor declarations are collected in order with duplicates marked
+inactive, first declaration winning; `resolve_anchor(name)` returns the winning
+declaration or nothing; `next_heading(from)` counts from the link's own line
+(decision 6) and returns nothing past the last heading.
 
-Done when the guide-structure fixture and the C1 fixtures round-trip through
-parse → lower with extents and anchors asserted, duplicate/missing cases follow
-the captured behaviour, and the two existing diagnostics for anchors and
-collapsibles are replaced by the typed facts. No IO, no consumer change.
+Lowering carries these as typed facts without changing any block (decision 7):
+the lowered `EngineDocument` gains a navigation table listing anchor
+declarations and fold extents as half-open ranges of top-level block indices,
+plus the block count they were computed against so a consumer can detect stale
+indices. In-page links lower to a new inline kind carrying the resolved target
+block and fragment, kept apart from network links so `outgoing_links`, link
+statements, clipping, gemtext link lines and `resolve_target` never see them.
+Micron lowers one wrapped block per source line, so indices survive the
+presentation wrappers; the unsupported-construct badge inserted at index 0 is
+accounted for. HTML export renders the new inline as label text only
+(decision 9). A `<` line gains its source-plus-diagnostic treatment, which it
+lacks today. Missing anchors and `#` past the last heading stay silent no-ops,
+as stock does.
+
+Done when the model tests over `guide-structure.mu` and the C1 and C1b probe
+pages assert extents, anchors, first-declaration-wins, the `<` stop and the
+next-heading origin; the lowering tests assert the table and the in-page targets
+by label, that `outgoing_links` excludes in-page links, that the three old
+diagnostics are gone while request links still raise theirs, and that a serde
+round trip keeps the table; and the Inker-family crates treat the new inline as
+inert label text. No IO, no consumer change beyond the one-line default each
+engine needs.
 
 ### P1. Shared presentation and session state
 
@@ -177,6 +199,21 @@ as a deliberate deviation.
    agrees with every capture where the origin was observable. A viewport- or
    focus-relative jump stays a possible later session-layer refinement.
 
+7. **Navigation facts travel in a table on the lowered document, not on
+   blocks** (settled 2026-09-16, replacing the earlier fields-on-heading text).
+   Fields on the heading block cannot hold explicit anchors on plain lines or in
+   table cells and cost about 42 edits; a wrapper beside the presentation
+   wrapper compiles but silently slips through four catch-all arms, including
+   Turnstone's alias refusal and Knot's preview. The accepted risk is index
+   staleness if a later step inserts or removes top-level blocks, which
+   transclusion must clear or remap as it already does for provenance.
+8. **A short capture batch (C1b) precedes N1 implementation** (settled
+   2026-09-16): unnamed sections, `<<` and `< text` inside a fold, `anchor=`
+   links to another page, an explicit anchor after a heading, duplicate explicit
+   anchors, and a target inside two closed sections.
+9. **HTML export renders in-page links as label text in N1** (settled
+   2026-09-16). `href="#name"` and heading ids arrive with the consumers.
+
 ## Out of scope
 
 Forms and partial refresh, inline form widgets, media and directives (lane 4),
@@ -223,3 +260,8 @@ capturing them, and any change to how source bytes are stored.
 - 2026-09-16: decisions 5 (`<` ends a fold extent) and 6 (`#` counts from the
   link's line) settled with Mark from the C1 results. N1 starts with a read-only
   design pass on how typed facts enter Inker's shared blocks.
+- 2026-09-16: N1 design pass (read-only, throwaway build over every fixture)
+  chose a navigation table plus an in-page inline kind, corrected three
+  statements in this plan, and flagged for P1 that streaming re-lowers every
+  received prefix, so fold state cannot simply be discarded whenever the source
+  bytes change. Decisions 7–9 settled with Mark; C1b capture batch next.
