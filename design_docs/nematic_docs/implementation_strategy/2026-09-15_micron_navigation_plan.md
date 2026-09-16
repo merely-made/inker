@@ -617,3 +617,14 @@ capturing them, and any change to how source bytes are stored.
   blocked by Cambium's crate-private scroll setters and Knot lacked any focus
   styling; decisions 18 and 19 settled with Mark. Next: Cambium's public scroll
   request, then Knot's follow-up, then Turnstone.
+- 2026-09-16: Cambium's scroll request (decision 18) landed on branch
+  `cambium-scroll-request`. An application hook calls
+  `AppCtx::scroll_into_view(node, ScrollAlign::Start | Nearest)` with the
+  `NodeId` that `painted_rect` takes, and `Host::relayout` resolves it against
+  the next layout, so both the winit and the browser source honour it. It moves
+  the nearest ancestor that scrolls vertically and has room to, otherwise the
+  window viewport. Knot's preview and workspace are `overflow: auto` boxes that
+  grow to their content, so its requests reach the window. There are 8 harness
+  tests and 11 positive controls; the native host has 88 tests across ten
+  suites, rootstock 40. Logs are `cscroll-*`. Recorded in the Cambium
+  architecture doc. Knot's follow-up next.
