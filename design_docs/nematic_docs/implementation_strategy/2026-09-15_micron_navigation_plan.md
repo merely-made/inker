@@ -1,7 +1,7 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1, C1b and N1 landed, P1 next. Lane 2 of the
-[smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
+**Status (2026-09-16):** accepted; C1, C1b, N1 and P1 landed, A1 next. Lane 2
+of the [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
 navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
 lane is the next user-visible conformance gap.
 
@@ -166,6 +166,21 @@ External consumers pin mere by rev and were not changed. On their next bump
 
 ### P1. Shared presentation and session state
 
+**Status (2026-09-16): landed** on branch `micron-nav-p1` in four commits: Inker
+fold state (`7658de5f`), fold-aware layout in document-canvas (`140149ad`),
+session state in document-lanes (`ef474e58`), and the UxTree projection with
+this record. Verified in a dedicated worktree (`Code/worktrees/mere-micron-nav-p1`)
+whose lock was generated offline from a cwd outside the repository, with every
+command run from that cwd against the worktree manifest, Rust 1.97.1,
+`--offline --locked` and a target directory of its own. Each commit was green
+before the next. After the fourth: nematic 229, inker 121, document-canvas 70,
+mere-document-lanes with `smolweb` 33 (including the streaming integration test
+and Reader's reflow identity test), uxtree 10, platen 54, all passing; the format
+check is clean on every touched crate, as it was at the branch base; the workspace
+check is clean. Each rule has a positive control that broke it and watched the
+named test fail (25 controls). Logs are `p1-c1-*` to `p1-c4-*` under
+`Code/testing/mere/micron-navigation-20260916/logs/`.
+
 Owners: Inker for the fold-state type, document-canvas for layout and
 interaction regions, document-lanes for the retained session, UxTree for
 accessible facts. Nothing here knows about NomadNet addresses.
@@ -219,24 +234,40 @@ still passing.
 ### A1. Consumers
 
 Turnstone: switch Micron streaming from respawning a session per prefix
-(`src/shell/effects.rs` ~1074–1079) to `replace_document`; this compiles either
-way, so a missed switch fails silently and must be asserted by a test. Drain the
-in-page queue after a `Handled` click (`src/shell/input.rs` ~374 and ~1125,
-`src/shell/lens.rs` ~539) and apply decision 1. Route keys through the session
-before the scroll bindings in `src/shell/keys.rs`, where Space is bound to page
-down today, or Space never toggles a heading. An in-page anchor link scrolls the
-focused page with **zero** transport requests (asserted against the recorded
-fetch log), is a history entry exactly when it changes the displayed address
-(decision 1), and a native link carrying `anchor=name` fetches once, opens any
-closed sections around the target and scrolls, or loads at the top with a
-visible notice when the anchor is missing, as stock does (C1b probe 14). Also
-the N1 test literal at `src/nomadnet.rs` ~517.
+(`src/shell/effects.rs` ~1079–1085, the respawn at :1083; the spawn inserts the
+session at :1047) to `replace_document`; this compiles either way, so a missed
+switch fails silently and must be asserted by a test. Drain the in-page queue
+after a `Handled` click (`src/shell/input.rs` ~374 and ~1125, `src/shell/lens.rs`
+~539) and apply decision 1. Route keys through the session before the scroll
+bindings in `src/shell/keys.rs` (`deliver_content_key` ~211–237), where Space is
+bound to page down today (:71–72), or Space never toggles a heading. An in-page
+anchor link scrolls the focused page with **zero** transport requests (asserted
+against the recorded fetch log), is a history entry exactly when it changes the
+displayed address (decision 1), and a native link carrying `anchor=name` fetches
+once, opens any closed sections around the target and scrolls, or loads at the
+top with a visible notice when the anchor is missing, as stock does (C1b probe
+14). Also the N1 test literal at `src/nomadnet.rs` ~517.
 
 Knot: the Micron preview holds an Inker `FoldState` and renders fold state and
 anchor targets from the same shared lowering; toggling is preview state, never
 document state, and never writes source. It gains the two `InPage` arms N1
 listed. Both apps keep their existing alias refusal and diagnostics for
 unqualified spellings.
+
+What P1 gives them (2026-09-16): `SmolwebDocumentSession::replace_document` and
+`take_in_page_navigations`; `SmolwebDocument::reveal_anchor` (false for a missing
+anchor, where A1 shows the notice), `reveal_block`, `toggle_fold`, `folds` and
+`focused_interaction`; focus and Enter/Space through `input()` as
+`SessionInput::FocusMove` and `SessionInput::Key`. Any replacement drops a
+reveal requested before layout, so an `anchor=` landing calls `reveal_anchor`
+again once a streamed prefix contains the target. For Knot, `inker::FoldState`
+(`reconcile` on each re-lowering, `toggle`, `open_ancestors`, `hidden`) keyed by
+`DocumentFold.source_text`, held in `DesktopState`
+(`knot-editor/apps/desktop/src/workspace.rs:112`), with `blocks()`
+(`scroll_site.rs:1171`) skipping `hidden` ranges of the preview lowered at
+`scroll_site.rs:1517–1534`. The stock markers live in
+`document_canvas::FoldMarkers`, which Knot does not depend on, so where Knot's
+markers come from is still open.
 
 Done when Turnstone's `nomadnet` and app tests and Knot's site and desktop
 tests cover anchor scroll, next-heading jump, fold toggle, the streaming switch
@@ -408,6 +439,39 @@ capturing them, and any change to how source bytes are stored.
   are unformatted at HEAD, so `cargo fmt --check` fails on those two crates for
   reasons outside N1.
 
+- 2026-09-16 (P1 implementation): what the code settled beyond the design
+  note. **In-page links are links for styling too:** under `SchemeArrow` they
+  take the in-protocol arrow, as a relative link does, where the note said only
+  "link-styled". `LinkAnnotation.url` became `kind` (`Link` or `InPage`) so both
+  share one identity counter, and a table that no longer describes the blocks
+  makes every in-page target inert at layout. **Fold region:** it spans the
+  heading row's available width and is inserted before the heading's own link
+  regions, so a link inside a heading still wins the hit test. **Default
+  callers:** `layout_document` and `uxtree::project_document` apply authored
+  state, so a closed extent is absent from any default layout or projection
+  (`platen::build_document_scene` and `project_document` have no callers).
+  **Focus:** a submission has no link identity, so it is keyed by target and
+  occurrence, merging consecutive rectangles; `focus_move` wraps and a stale
+  focus restarts at the first stop, as Livery's does; Tab is not bound in
+  `key_input`, since hosts send `FocusMove`; Enter on a submission returns
+  `Submit` through `form_submission`, as a click does. `focused_interaction` is
+  public because a build without `smolweb` found it otherwise unused. **Style:**
+  `DocumentStyleSheet.focus_indicator` is a colour token and a width (default the
+  link colour at 2 px; 0 matches stock), painted by `SmolwebDocument::frame` as
+  four rectangles from `Rect::outline`; `fold_markers` defaults to stock's `▾ `
+  and `▸ `. **Replacement:** `replace_document` also clears focus when the
+  address changes, and drops a pending reveal on any replacement. **Counts:** 12
+  committed pages carry a collapsible heading, not 13 as the note said; the
+  layout tests iterate all 12. **Lock:** document-canvas and uxtree gained
+  `nematic` as a dev-dependency to lower fixtures; `cargo update --workspace
+  --offline` added exactly those two lines to the worktree lock, and the shared
+  lock needs the same on integration. **Instruments:** grep and the compiler
+  found every consumer: exhaustive `InteractionKind` matches in document-lanes
+  `session.rs` and `reader.rs` and in document-canvas's layout tests, none in
+  Turnstone, Knot or Pelt, and no construction of `LinkAnnotation`,
+  `DocumentStyleSheet` or `DocumentFold` outside mere. Turnstone's Micron
+  respawn moved to `effects.rs` ~1079–1085; A1 is corrected.
+
 ## Progress
 
 - 2026-09-15: plan drafted after the forms lane closed; nothing implemented.
@@ -449,3 +513,7 @@ capturing them, and any change to how source bytes are stored.
   that the badge shifts block indices mid-stream while text-and-occurrence keys
   held on every fixture. Measured skip set, filtered copy and cull; chose the
   skip set. P1 and A1 rewritten accordingly; decisions 11–14 settled with Mark.
+- 2026-09-16: P1 landed in four commits on branch `micron-nav-p1` (Inker fold
+  state, fold-aware layout, session state, UxTree), each green in a clean worktree
+  before the next, with 25 positive controls. Turnstone and Knot were re-read, not
+  changed, and A1 now lists what P1 gives them. A1 next.
