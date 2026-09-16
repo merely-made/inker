@@ -100,6 +100,18 @@ impl Rect {
     pub fn max_y(&self) -> f32 {
         self.origin.y + self.size.height
     }
+
+    /// Four edge strips `width` thick just inside this rect, for an outline.
+    pub fn outline(&self, width: f32) -> [Rect; 4] {
+        let width = width.min(self.size.width * 0.5).min(self.size.height * 0.5);
+        let Rect { origin, size } = *self;
+        [
+            Rect::from_xywh(origin.x, origin.y, size.width, width),
+            Rect::from_xywh(origin.x, self.max_y() - width, size.width, width),
+            Rect::from_xywh(origin.x, origin.y, width, size.height),
+            Rect::from_xywh(self.max_x() - width, origin.y, width, size.height),
+        ]
+    }
 }
 
 /// One positioned glyph in a glyph run. Position is relative to the run's
@@ -250,6 +262,15 @@ pub enum InteractionKind {
     Link { url: String },
     /// A submission endpoint. Hosts must not treat it as navigation.
     Submit { target: String },
+    /// A collapsible heading, by index into the document's navigation folds.
+    /// Activation toggles session fold state; never navigation.
+    Fold { fold: usize },
+    /// A link within this document. Activation reveals `block`; never a URL
+    /// or a fetch. `block: None` is inert (a missing anchor or a stale table).
+    InPage {
+        block: Option<usize>,
+        fragment: Option<String>,
+    },
 }
 
 /// The output of [`crate::layout_document`]. A pure-data record describing
@@ -330,7 +351,9 @@ impl DocumentRenderPacket {
             .filter(|r| rect_contains(r.bounds, x, y))
             .find_map(|r| match &r.kind {
                 InteractionKind::Link { url } => Some(url.as_str()),
-                InteractionKind::Submit { .. } => None,
+                InteractionKind::Submit { .. }
+                | InteractionKind::Fold { .. }
+                | InteractionKind::InPage { .. } => None,
             })
     }
 
@@ -341,6 +364,14 @@ impl DocumentRenderPacket {
             .rev()
             .find(|r| rect_contains(r.bounds, x, y))
             .map(|r| &r.kind)
+    }
+
+    /// The top-level rendered block laid out from `source_index`. Group
+    /// children reuse low synthetic indices, so only top-level blocks qualify.
+    pub fn top_level_block(&self, source_index: usize) -> Option<&RenderedBlock> {
+        self.blocks
+            .iter()
+            .find(|block| block.source_block_index == source_index)
     }
 
     /// The deepest rendered block whose bounds contain `(x, y)` (full-document

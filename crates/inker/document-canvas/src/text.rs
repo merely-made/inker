@@ -104,11 +104,13 @@ pub struct Flattened {
 }
 
 /// One flattened link's visual range and retained semantic text.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LinkAnnotation {
     /// Byte range of the rendered link hit region, including decoration.
     pub range: Range<usize>,
-    pub url: String,
+    /// [`InteractionKind::Link`] or [`InteractionKind::InPage`]; both take a
+    /// link identity.
+    pub kind: InteractionKind,
     /// The author-lowered link text, excluding decorative adornment.
     pub accessible_label: String,
 }
@@ -158,26 +160,15 @@ fn flatten_into(
             },
             InlineSpan::Link {
                 url, spans: inner, ..
-            } => {
-                let link_start = out.text.len();
-                // Scheme-arrow prefix, styled + ranged as part of the link.
-                if let Some(prefix) = adornment.prefix_for(url, base_scheme) {
-                    let p_start = out.text.len();
-                    out.text.push_str(prefix);
-                    out.styles
-                        .push((p_start..out.text.len(), inherited.with_link()));
-                }
-                let label_start = out.text.len();
-                flatten_into(inner, inherited.with_link(), adornment, base_scheme, out);
-                let link_end = out.text.len();
-                if link_start < link_end {
-                    out.links.push(LinkAnnotation {
-                        range: link_start..link_end,
-                        url: url.clone(),
-                        accessible_label: out.text[label_start..link_end].to_string(),
-                    });
-                }
-            },
+            } => flatten_link(
+                InteractionKind::Link { url: url.clone() },
+                adornment.prefix_for(url, base_scheme),
+                inner,
+                inherited,
+                adornment,
+                base_scheme,
+                out,
+            ),
             InlineSpan::Submit {
                 target,
                 spans: inner,
@@ -189,10 +180,22 @@ fn flatten_into(
                     out.submissions.push((start..end, target.clone()));
                 }
             },
-            // Inert label text until the session owns in-page scrolling.
-            InlineSpan::InPage { spans: inner, .. } => {
-                flatten_into(inner, inherited, adornment, base_scheme, out);
-            },
+            InlineSpan::InPage {
+                target,
+                spans: inner,
+            } => flatten_link(
+                InteractionKind::InPage {
+                    block: target.block,
+                    fragment: target.fragment.clone(),
+                },
+                // A same-document reference is in-protocol, like a relative link.
+                adornment.prefix_for("#", base_scheme),
+                inner,
+                inherited,
+                adornment,
+                base_scheme,
+                out,
+            ),
             InlineSpan::SoftBreak => {
                 out.text.push(' ');
             },
@@ -200,6 +203,34 @@ fn flatten_into(
                 out.text.push('\n');
             },
         }
+    }
+}
+
+/// A link's optional adornment prefix and label, styled and ranged as one link.
+fn flatten_link(
+    kind: InteractionKind,
+    prefix: Option<&str>,
+    inner: &[InlineSpan],
+    inherited: InlineStyle,
+    adornment: LinkAdornment,
+    base_scheme: Option<&str>,
+    out: &mut Flattened,
+) {
+    let link_start = out.text.len();
+    if let Some(prefix) = prefix {
+        out.text.push_str(prefix);
+        out.styles
+            .push((link_start..out.text.len(), inherited.with_link()));
+    }
+    let label_start = out.text.len();
+    flatten_into(inner, inherited.with_link(), adornment, base_scheme, out);
+    let link_end = out.text.len();
+    if link_start < link_end {
+        out.links.push(LinkAnnotation {
+            range: link_start..link_end,
+            kind,
+            accessible_label: out.text[label_start..link_end].to_string(),
+        });
     }
 }
 
@@ -438,9 +469,7 @@ pub(crate) fn layout_text_block_with_link_identity_base(
             .map(|(link_index, link)| {
                 (
                     &link.range,
-                    InteractionKind::Link {
-                        url: link.url.clone(),
-                    },
+                    link.kind.clone(),
                     Some(LinkSemantics {
                         identity: link_identity_base.offset(link_index),
                         accessible_label: link.accessible_label.clone(),
@@ -599,7 +628,7 @@ mod tests {
     }
 
     #[test]
-    fn in_page_link_is_inert_label_text() {
+    fn in_page_link_flattens_as_an_in_protocol_link() {
         let span = InlineSpan::InPage {
             target: inker::InPageTarget {
                 fragment: Some("setup".into()),
@@ -608,11 +637,18 @@ mod tests {
             spans: vec![InlineSpan::Text("Setup".into())],
         };
         let f = flatten_inline(&[span], LinkAdornment::SchemeArrow, Some("gemini"));
-        assert_eq!(f.text, "Setup", "no scheme arrow");
-        assert!(f.links.is_empty() && f.submissions.is_empty());
-        assert!(
-            f.styles.iter().all(|(_, style)| !style.link),
-            "no link style"
+        assert_eq!(f.text, "\u{21d2} Setup", "in-protocol arrow");
+        assert!(f.styles.iter().all(|(_, style)| style.link), "link style");
+        let [link] = f.links.as_slice() else {
+            panic!("one link annotation: {:?}", f.links);
+        };
+        assert_eq!(link.accessible_label, "Setup");
+        assert_eq!(
+            link.kind,
+            InteractionKind::InPage {
+                block: Some(0),
+                fragment: Some("setup".into()),
+            }
         );
     }
 }

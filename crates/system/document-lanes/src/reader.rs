@@ -568,6 +568,11 @@ impl DocumentSession<Scene> for ReaderDocumentSession {
             Some(document_canvas::InteractionKind::Submit { target }) => {
                 SessionClick::Submit(target)
             },
+            // Inert until the session owns fold state and in-page scrolling.
+            Some(
+                document_canvas::InteractionKind::Fold { .. }
+                | document_canvas::InteractionKind::InPage { .. },
+            ) => SessionClick::Miss,
             None => SessionClick::Miss,
         }
     }

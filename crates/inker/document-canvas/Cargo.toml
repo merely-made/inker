@@ -49,3 +49,5 @@ paint_list_render = { workspace = true, optional = true }
 [dev-dependencies]
 # Serde round-trip test for the document style sheet (config-shaped).
 serde_json = { workspace = true }
+# Fold-aware layout tests lower the committed Micron probe pages.
+nematic = { workspace = true }

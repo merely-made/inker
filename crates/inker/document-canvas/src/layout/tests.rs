@@ -181,7 +181,7 @@ fn paragraph_with_link_emits_interaction_region() {
     let region = &packet.interactions[0];
     match &region.kind {
         InteractionKind::Link { url } => assert_eq!(url, "https://x.test/"),
-        InteractionKind::Submit { .. } => panic!("expected navigation link"),
+        other => panic!("expected navigation link, got {other:?}"),
     }
     assert_eq!(
         region
@@ -317,7 +317,7 @@ fn submission_span_emits_a_non_navigation_interaction() {
 }
 
 #[test]
-fn in_page_span_emits_no_interaction_region() {
+fn in_page_span_in_a_stale_table_is_an_inert_link_region() {
     let packet = layout_document(
         &doc(vec![Block::Paragraph {
             spans: vec![InlineSpan::InPage {
@@ -332,10 +332,20 @@ fn in_page_span_emits_no_interaction_region() {
         &DocumentStyleSheet::default(),
     )
     .packet;
-    assert!(
-        packet.interactions.is_empty(),
-        "an in-page link is inert label text until P1"
+    let [region] = packet.interactions.as_slice() else {
+        panic!("one region: {:?}", packet.interactions);
+    };
+    assert_eq!(
+        region.kind,
+        InteractionKind::InPage {
+            block: None,
+            fragment: None
+        },
+        "the default table does not describe these blocks"
     );
+    assert!(region.link_semantics.is_some());
+    let (x, y) = (region.bounds.origin.x + 1.0, region.bounds.origin.y + 1.0);
+    assert_eq!(packet.link_at(x, y), None);
 }
 
 #[test]

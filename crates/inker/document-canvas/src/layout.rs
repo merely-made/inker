@@ -11,7 +11,9 @@
 //! no scrolling. Width fills the available content width; height grows
 //! to fit content (may exceed `viewport.height`).
 
-use inker::{Block, BlockAlignment, EngineDocument, InlineSpan, TableAlignment};
+use std::collections::HashMap;
+
+use inker::{Block, BlockAlignment, EngineDocument, FoldState, InlineSpan, TableAlignment};
 
 use crate::font_table::{FontInterner, FontTable};
 use crate::style_sheet::{
@@ -22,8 +24,8 @@ use crate::text::{
     layout_text_block_with_link_identity_base,
 };
 use crate::types::{
-    DocumentRenderPacket, InteractionRegion, LinkSemantics, Point, Rect, RenderedBlock,
-    RenderedBlockKind, SemanticInteractionId, Size, Viewport,
+    DocumentRenderPacket, InteractionKind, InteractionRegion, LinkSemantics, Point, Rect,
+    RenderedBlock, RenderedBlockKind, SemanticInteractionId, Size, Viewport,
 };
 
 /// A laid-out document: the serializable [`DocumentRenderPacket`] plus the
@@ -43,19 +45,56 @@ pub struct LaidOutDocument {
 /// downstream renderers paint, plus the font sidecar that resolves each
 /// run's [`FontFaceId`](crate::FontFaceId) to the real face bytes parley
 /// shaped against.
+///
+/// Collapsible sections take their authored state; see
+/// [`layout_document_with_folds`].
 pub fn layout_document(
     document: &EngineDocument,
     viewport: Viewport,
     style: &DocumentStyleSheet,
 ) -> LaidOutDocument {
+    layout_document_with_folds(document, viewport, style, &FoldState::default())
+}
+
+/// Lay out under a reader's fold state. Blocks inside a closed extent are
+/// skipped but still reserve their link identities, so identity does not
+/// depend on fold state. Each collapsible heading gains its style-sheet
+/// marker and an [`InteractionKind::Fold`] region. A navigation table that
+/// no longer describes the blocks is ignored.
+pub fn layout_document_with_folds(
+    document: &EngineDocument,
+    viewport: Viewport,
+    style: &DocumentStyleSheet,
+    folds: &FoldState,
+) -> LaidOutDocument {
     let mut env = LayoutEnvironment::new();
     // The document's own scheme classifies its links as in-protocol vs
     // external for the `⇒` / `→` adornment.
     let base_scheme = crate::style_sheet::url_scheme(&document.address).map(str::to_string);
-    let mut layouter = DocumentLayouter::new(viewport, style, &mut env, base_scheme);
+    let navigation = &document.navigation;
+    let current = navigation.is_current(&document.blocks);
+    let mut layouter = DocumentLayouter::new(viewport, style, &mut env, base_scheme, current);
+    let (hidden, headings) = if current {
+        let headings: HashMap<usize, (usize, bool)> = (0..navigation.folds.len())
+            .map(|fold| {
+                let open = folds.is_open(navigation, fold);
+                (navigation.folds[fold].heading, (fold, open))
+            })
+            .collect();
+        (folds.hidden(navigation), headings)
+    } else {
+        Default::default()
+    };
 
     for (idx, block) in document.blocks.iter().enumerate() {
-        layouter.lay_out_block(block, idx, 0);
+        if hidden.iter().any(|range| range.contains(&idx)) {
+            let count = layouter.link_identities(block);
+            layouter.reserve_link_identities(count);
+        } else {
+            layouter.fold_heading = headings.get(&idx).copied();
+            layouter.lay_out_block(block, idx, 0);
+            layouter.fold_heading = None;
+        }
     }
 
     layouter.finish()
@@ -100,6 +139,10 @@ struct DocumentLayouter<'a> {
     /// Wrapped rectangles reserve only one identity and share it.
     next_link_identity: SemanticInteractionId,
     alignment: BlockAlignment,
+    /// Whether in-page targets index this document's blocks.
+    in_page_current: bool,
+    /// Fold index and state while laying out a collapsible heading.
+    fold_heading: Option<(usize, bool)>,
 }
 
 impl<'a> DocumentLayouter<'a> {
@@ -108,6 +151,7 @@ impl<'a> DocumentLayouter<'a> {
         style: &'a DocumentStyleSheet,
         env: &'a mut LayoutEnvironment,
         base_scheme: Option<String>,
+        in_page_current: bool,
     ) -> Self {
         Self {
             viewport,
@@ -121,6 +165,58 @@ impl<'a> DocumentLayouter<'a> {
             base_scheme,
             next_link_identity: SemanticInteractionId::from_lowered_ordinal(1),
             alignment: BlockAlignment::Start,
+            in_page_current,
+            fold_heading: None,
+        }
+    }
+
+    fn flatten(&self, spans: &[InlineSpan]) -> Flattened {
+        let mut flattened = flatten_inline(
+            spans,
+            self.style.link_adornment,
+            self.base_scheme.as_deref(),
+        );
+        if !self.in_page_current {
+            // Indices from another document's table must not scroll this one.
+            for link in &mut flattened.links {
+                if let InteractionKind::InPage { block, fragment } = &mut link.kind {
+                    *block = None;
+                    *fragment = None;
+                }
+            }
+        }
+        flattened
+    }
+
+    /// The link identities `render_block` reserves for `block`.
+    fn link_identities(&self, block: &Block) -> usize {
+        let links = |spans: &[InlineSpan]| self.flatten(spans).links.len();
+        match block {
+            Block::Presented { block, .. } => self.link_identities(block),
+            Block::Heading { spans, .. } | Block::Paragraph { spans } => links(spans),
+            Block::Table { header, rows, .. } => header
+                .iter()
+                .chain(rows.iter().flatten())
+                .map(|cell| links(cell))
+                .sum(),
+            Block::Quote { blocks } => blocks.iter().map(|b| self.link_identities(b)).sum(),
+            Block::List { items, .. } => items
+                .iter()
+                .flatten()
+                .map(|b| self.link_identities(b))
+                .sum(),
+            Block::Image { .. } => 1,
+            Block::FeedHeader { source_url, .. } => usize::from(source_url.is_some()),
+            Block::FeedEntry {
+                article_url,
+                source_url,
+                ..
+            } => usize::from(article_url.is_some()) + usize::from(source_url.is_some()),
+            Block::CodeBlock { .. }
+            | Block::Preformatted { .. }
+            | Block::Rule
+            | Block::MetadataRow { .. }
+            | Block::Badge { .. } => 0,
         }
     }
 
@@ -260,14 +356,44 @@ impl<'a> DocumentLayouter<'a> {
     ) -> RenderedBlock {
         let resolved = self.style.resolve(BlockRole::Heading(level));
         let base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
-        self.render_text_block_with_spacing(
+        let Some((fold, open)) = self.fold_heading.take() else {
+            return self.render_text_block_with_spacing(
+                source_index,
+                indent_level,
+                spans,
+                base,
+                resolved.spacing_above,
+                resolved.spacing_below,
+            );
+        };
+        let marker = InlineSpan::Text(self.style.fold_markers.marker(open).to_owned());
+        let spans = [std::slice::from_ref(&marker), spans].concat();
+        let first_region = self.interactions.len();
+        let rendered = self.render_text_block_with_spacing(
             source_index,
             indent_level,
-            spans,
+            &spans,
             base,
             resolved.spacing_above,
             resolved.spacing_below,
-        )
+        );
+        // The whole heading row toggles; inserted first so a link inside the
+        // heading still wins the hit test.
+        let row = Rect::from_xywh(
+            self.content_left(indent_level),
+            rendered.bounds.origin.y,
+            self.available_width(indent_level),
+            (rendered.bounds.size.height - resolved.spacing_below).max(0.0),
+        );
+        self.interactions.insert(
+            first_region,
+            InteractionRegion {
+                bounds: row,
+                kind: InteractionKind::Fold { fold },
+                link_semantics: None,
+            },
+        );
+        rendered
     }
 
     fn render_paragraph(
@@ -297,11 +423,7 @@ impl<'a> DocumentLayouter<'a> {
         spacing_above: f32,
         spacing_below: f32,
     ) -> RenderedBlock {
-        let flattened = flatten_inline(
-            spans,
-            self.style.link_adornment,
-            self.base_scheme.as_deref(),
-        );
+        let flattened = self.flatten(spans);
         self.render_flattened_with_spacing(
             source_index,
             indent_level,
@@ -358,26 +480,12 @@ impl<'a> DocumentLayouter<'a> {
         // throwaway font table and never allocates document link identities.
         let mut flattened_rows: Vec<(bool, Vec<Flattened>)> = Vec::new();
         if !header.is_empty() {
-            flattened_rows.push((
-                true,
-                header
-                    .iter()
-                    .map(|cell| {
-                        flatten_inline(cell, self.style.link_adornment, self.base_scheme.as_deref())
-                    })
-                    .collect(),
-            ));
+            flattened_rows.push((true, header.iter().map(|cell| self.flatten(cell)).collect()));
         }
-        flattened_rows.extend(rows.iter().map(|row| {
-            (
-                false,
-                row.iter()
-                    .map(|cell| {
-                        flatten_inline(cell, self.style.link_adornment, self.base_scheme.as_deref())
-                    })
-                    .collect(),
-            )
-        }));
+        flattened_rows.extend(
+            rows.iter()
+                .map(|row| (false, row.iter().map(|cell| self.flatten(cell)).collect())),
+        );
 
         let available = self.available_width(indent_level);
         // Keep a metric-sized minimum cell. If the viewport cannot contain
@@ -708,7 +816,7 @@ impl<'a> DocumentLayouter<'a> {
         let identity = self.reserve_link_identities(1);
         self.interactions.push(InteractionRegion {
             bounds,
-            kind: crate::types::InteractionKind::Link { url: url.clone() },
+            kind: InteractionKind::Link { url: url.clone() },
             link_semantics: Some(LinkSemantics {
                 identity,
                 accessible_label: alt.clone(),
@@ -948,5 +1056,7 @@ fn align_table_cell(
     }
 }
 
+#[cfg(test)]
+mod fold_tests;
 #[cfg(test)]
 mod tests;

@@ -53,12 +53,12 @@ pub mod netrender_backend;
 
 pub use font::{FontResolver, NoFontResolver};
 pub use font_table::FontTable;
-pub use layout::{LaidOutDocument, layout_document};
+pub use layout::{LaidOutDocument, layout_document, layout_document_with_folds};
 pub use paint_list::{InkerPaintList, paint_list_from_packet, paint_list_from_packet_with_images};
 pub use style::{ColorVocabulary, InlineStyle};
 pub use style_sheet::{
-    BlockRole, BlockStyle, ColorToken, DocumentStyleSheet, FontChoice, HeadingStyle, LinkAdornment,
-    ResolvedBlockStyle, RoleStyles, SizeSpec, SourcePresentation, WrapPolicy,
+    BlockRole, BlockStyle, ColorToken, DocumentStyleSheet, FoldMarkers, FontChoice, HeadingStyle,
+    LinkAdornment, ResolvedBlockStyle, RoleStyles, SizeSpec, SourcePresentation, WrapPolicy,
 };
 pub use types::{
     DecodedImage, DocumentRenderPacket, FontFaceId, GlyphRun, InteractionKind, InteractionRegion,

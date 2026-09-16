@@ -148,6 +148,29 @@ fn link_is_external(url: &str, base_scheme: Option<&str>) -> bool {
     }
 }
 
+/// Glyphs laid out before a collapsible heading's text, styled as that text
+/// and inside its toggle region. The defaults are stock NomadNet's.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FoldMarkers {
+    pub open: String,
+    pub closed: String,
+}
+
+impl FoldMarkers {
+    pub fn marker(&self, open: bool) -> &str {
+        if open { &self.open } else { &self.closed }
+    }
+}
+
+impl Default for FoldMarkers {
+    fn default() -> Self {
+        Self {
+            open: "\u{25be} ".into(),
+            closed: "\u{25b8} ".into(),
+        }
+    }
+}
+
 /// Which role to resolve. Carries the heading level inline, since heading
 /// size is intrinsically per-level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -256,6 +279,9 @@ pub struct DocumentStyleSheet {
     /// [`SourcePresentation::Reader`] for its own contrast-safe palette.
     #[serde(default)]
     pub source_presentation: SourcePresentation,
+    /// Open and closed markers for collapsible headings.
+    #[serde(default)]
+    pub fold_markers: FoldMarkers,
     /// Per-role style descriptors.
     pub roles: RoleStyles,
 }
@@ -366,6 +392,7 @@ impl Default for DocumentStyleSheet {
             colors: ColorVocabulary::default(),
             link_adornment: LinkAdornment::SchemeArrow,
             source_presentation: SourcePresentation::Respect,
+            fold_markers: FoldMarkers::default(),
             roles: RoleStyles {
                 body: BlockStyle {
                     family: FontChoice::InheritBody,
