@@ -219,7 +219,7 @@ async fn selected_page_survives_authenticated_peer_transfer_and_receiver_reopen(
     let directory = tempfile::tempdir().expect("temporary receiver store");
     {
         let mut receiver =
-            eidetic_fjall::FjallStore::open(directory.path()).expect("open receiver store");
+            eidetic::fjall::FjallStore::open(directory.path()).expect("open receiver store");
         bootstrap_fleece_annotation_schema(&mut receiver)
             .await
             .expect("seed known schema");
@@ -238,7 +238,7 @@ async fn selected_page_survives_authenticated_peer_transfer_and_receiver_reopen(
     }
 
     let mut reopened =
-        eidetic_fjall::FjallStore::open(directory.path()).expect("reopen receiver store");
+        eidetic::fjall::FjallStore::open(directory.path()).expect("reopen receiver store");
     let reopened_record = load_fleece_annotation(&mut reopened, received.annotation_manifest.id)
         .await
         .expect("load received annotation")

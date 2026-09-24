@@ -689,7 +689,7 @@ fn target_position(target: &WebAnnotationTarget) -> (u64, u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use eidetic_fjall::FjallStore;
+    use eidetic::fjall::FjallStore;
     use genet_static_dom::StaticDocument;
     use oxjsonld::{JsonLdParser, JsonLdRemoteDocument};
     use oxrdf::{BlankNode, Dataset, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term};
