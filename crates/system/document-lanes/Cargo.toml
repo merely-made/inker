@@ -32,6 +32,7 @@ genet-static-dom = { workspace = true }
 fleece = { workspace = true }
 netrender = { workspace = true }
 document-canvas = { workspace = true, features = ["netrender"] }
+tabard = { workspace = true }
 # The smolweb lane decodes whatever a capsule serves, so this keeps genet's
 # full codec set rather than mere's png-only ingest pin.
 image = { version = "0.25", default-features = false, features = ["avif", "rayon", "bmp", "gif", "ico", "jpeg", "png", "webp"] }

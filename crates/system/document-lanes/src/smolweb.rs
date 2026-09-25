@@ -29,36 +29,11 @@ use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
 
-/// How an engine-native smolweb document is colored.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum SmolwebTheme {
-    /// A stable palette derived from the capsule host.
-    #[default]
-    Site,
-    /// A neutral light palette.
-    Plain,
-    /// A warm fixed light palette.
-    Light,
-    /// A fixed dark palette.
-    Dark,
-    /// Colors supplied by the application host.
-    App(SmolwebPalette),
-    /// Host-resolved system theme. Light is the fallback.
-    System,
-}
-
-/// Compatibility palette used by current Pelt and Mere hosts.
-///
-/// New engine-native callers may configure [`DocumentStyleSheet`] directly
-/// through [`SmolwebDocument::from_document`].
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SmolwebPalette {
-    pub bg: String,
-    pub fg: String,
-    pub link: String,
-    pub quote: String,
-    pub pre_bg: String,
-}
+// The smolweb palette and theme are tabard's. Hosts on the compatibility
+// palette (current Pelt and Mere) keep these paths; new engine-native callers
+// may configure [`DocumentStyleSheet`] directly through
+// [`SmolwebDocument::from_document`].
+pub use tabard::smolweb::{SmolwebPalette, SmolwebTheme};
 
 /// Host policy for promoting image-shaped gemtext links into inline images.
 ///
@@ -1006,15 +981,7 @@ fn style_for_theme(
     url: &str,
     content_type: &str,
 ) -> (DocumentStyleSheet, [f32; 4]) {
-    let palette = match theme {
-        SmolwebTheme::Site => site_palette(url),
-        SmolwebTheme::Plain => fixed_palette("#ffffff", "#1a1a1a", "#0b57d0", "#555555", "#f4f4f4"),
-        SmolwebTheme::Light | SmolwebTheme::System => {
-            fixed_palette("#fbfaf7", "#23211c", "#1a6e57", "#5b574e", "#f0eee8")
-        },
-        SmolwebTheme::Dark => fixed_palette("#16181c", "#e6e3dc", "#7db4ff", "#a8a49a", "#21242a"),
-        SmolwebTheme::App(palette) => palette.clone(),
-    };
+    let palette = SmolwebPalette::for_theme(theme, url);
     let defaults = ColorVocabulary::default();
     let background = parse_color(&palette.bg).unwrap_or([1.0, 1.0, 1.0, 1.0]);
     let foreground = parse_color(&palette.fg).unwrap_or(defaults.body_text);
@@ -1046,68 +1013,6 @@ fn style_for_theme(
         placeholder_image: pre,
     };
     (style, background)
-}
-
-fn fixed_palette(bg: &str, fg: &str, link: &str, quote: &str, pre_bg: &str) -> SmolwebPalette {
-    SmolwebPalette {
-        bg: bg.into(),
-        fg: fg.into(),
-        link: link.into(),
-        quote: quote.into(),
-        pre_bg: pre_bg.into(),
-    }
-}
-
-fn site_palette(url: &str) -> SmolwebPalette {
-    let hue = hue_from_host(url);
-    let css = |saturation, lightness| {
-        let [r, g, b, _] = hsl(hue as f32, saturation, lightness);
-        format!(
-            "rgb({}, {}, {})",
-            (r * 255.0).round() as u8,
-            (g * 255.0).round() as u8,
-            (b * 255.0).round() as u8
-        )
-    };
-    SmolwebPalette {
-        // A restrained capsule tint: legibility stays stable while related
-        // pages retain a little identity. `App` remains the host-theme path.
-        bg: css(0.22, 0.975),
-        fg: css(0.20, 0.14),
-        link: css(0.62, 0.34),
-        quote: css(0.15, 0.38),
-        pre_bg: css(0.24, 0.93),
-    }
-}
-
-fn hue_from_host(url: &str) -> u16 {
-    let host = url
-        .split_once("://")
-        .map(|(_, rest)| rest)
-        .unwrap_or(url)
-        .split('/')
-        .next()
-        .unwrap_or("");
-    let hash = host.bytes().fold(5381_u32, |hash, byte| {
-        hash.wrapping_mul(33).wrapping_add(u32::from(byte))
-    });
-    (hash % 360) as u16
-}
-
-fn hsl(hue: f32, saturation: f32, lightness: f32) -> [f32; 4] {
-    let chroma = (1.0 - (2.0 * lightness - 1.0).abs()) * saturation;
-    let sector = (hue.rem_euclid(360.0)) / 60.0;
-    let x = chroma * (1.0 - (sector.rem_euclid(2.0) - 1.0).abs());
-    let (r, g, b) = match sector as u8 {
-        0 => (chroma, x, 0.0),
-        1 => (x, chroma, 0.0),
-        2 => (0.0, chroma, x),
-        3 => (0.0, x, chroma),
-        4 => (x, 0.0, chroma),
-        _ => (chroma, 0.0, x),
-    };
-    let m = lightness - chroma / 2.0;
-    [r + m, g + m, b + m, 1.0]
 }
 
 fn parse_color(value: &str) -> Option<[f32; 4]> {
