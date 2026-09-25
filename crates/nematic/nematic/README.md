@@ -4,7 +4,7 @@
 Genet and its hosts. Its fifteen engines lower protocol and authored formats
 into Inker's `EngineDocument` model for stored, authored, and worker-shippable
 content. Cambium-native projections over Errand's protocol ASTs live
-separately in `cambium-nematic`.
+separately in `cambium`'s `nematic` feature.
 
 > **Home:** [`merely-made/genet`](https://github.com/merely-made/genet), at
 > `components/nematic` (adopted 2026-07). The former standalone repository is archived
@@ -138,8 +138,8 @@ fetch -> Inker route -> Nematic engine -> EngineDocument
 - `document-canvas` lowers `EngineDocument` into a windowable `PaintList`.
 - `genet-documents` retains the document, layout, scroll, and interaction
   state for Genet hosts.
-- [`cambium-nematic`](https://crates.io/crates/cambium-nematic) is a separate
-  presentation option over Errand's native protocol ASTs.
+- [`cambium`](https://crates.io/crates/cambium)'s `nematic` feature is a
+  separate presentation option over Errand's native protocol ASTs.
 - [`mere`](https://crates.io/crates/mere) — composes nematic into the
   product.
 
