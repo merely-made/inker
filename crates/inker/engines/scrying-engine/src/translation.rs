@@ -436,12 +436,12 @@ pub fn map_capabilities(caps: ScryingCapabilities) -> InkerWebSurfaceCapabilitie
             ),
         },
         document: DocumentCapabilities {
-            find_in_page: WebFeatureStatus::Partial {
-                detail: "find support depends on the concrete system webview backend".into(),
-            },
-            page_zoom: WebFeatureStatus::Partial {
-                detail: "zoom settings are forwarded to the concrete system webview backend".into(),
-            },
+            find_in_page: WebFeatureStatus::unsupported(
+                "scrying-engine does not forward Inker's document find commands or results",
+            ),
+            page_zoom: WebFeatureStatus::unsupported(
+                "scrying-engine forwards legacy zoom settings but does not implement typed set_page_zoom or its outcome",
+            ),
             // P1 defines a correlated capture protocol. The legacy CPU
             // snapshot capability cannot satisfy it until this adapter accepts
             // requests and emits correlated completions.
@@ -453,17 +453,32 @@ pub fn map_capabilities(caps: ScryingCapabilities) -> InkerWebSurfaceCapabilitie
                     .into(),
             },
         },
-        pdf: WebFeatureStatus::Partial {
-            detail: "PDF handling depends on the concrete system webview backend".into(),
-        },
-        downloads: capability_status(features.downloads),
+        pdf: WebFeatureStatus::unsupported(
+            "scrying-engine does not expose the backend's PDF export commands or completions",
+        ),
+        downloads: projected_event_capability(
+            features.downloads,
+            "download requests are projected, but destination decisions, correlated lifecycle, and controls are not",
+        ),
         devtools: capability_status(features.devtools),
-        popups: capability_status(features.popups),
-        permissions: WebFeatureStatus::Partial {
-            detail: "permission prompts are backend-specific".into(),
+        popups: projected_event_capability(
+            features.popups,
+            "new-window requests are projected, but popup-widget surfaces are not",
+        ),
+        permissions: WebFeatureStatus::unsupported(
+            "scrying-engine does not expose retained permission requests or forward Inker's answers",
+        ),
+        auth: WebFeatureStatus::unsupported(
+            "scrying-engine emits authentication diagnostics but does not forward Inker's credential answers",
+        ),
+        context_menus: match backend {
+            ScryingBackend::WebView2 | ScryingBackend::WkWebView => WebFeatureStatus::Partial {
+                detail: "context-menu position and link/image targets are projected; backend menu items and decisions are not".into(),
+            },
+            _ => WebFeatureStatus::unsupported(
+                "scrying-engine has no verified context-menu event source for this backend",
+            ),
         },
-        auth: WebFeatureStatus::Supported,
-        context_menus: WebFeatureStatus::Supported,
         drag_drop: DragDropCapabilities {
             host_to_page: WebFeatureStatus::unsupported(
                 "scrying's portable DragInput does not carry DataTransfer items",
@@ -478,8 +493,12 @@ pub fn map_capabilities(caps: ScryingCapabilities) -> InkerWebSurfaceCapabilitie
                 "string payload forwarding is not present in scrying's portable drag API",
             ),
         },
-        ime_observability: capability_status(features.ime),
-        accessibility: capability_status(features.accessibility),
+        ime_observability: WebFeatureStatus::unsupported(
+            "scrying-engine emits text-input diagnostics but does not project composition or caret geometry",
+        ),
+        accessibility: WebFeatureStatus::unsupported(
+            "scrying-engine does not project an accessibility tree through Inker",
+        ),
         degradation_reasons: std::iter::once(caps.reason.to_owned())
             .chain(features.degradation_reasons.into_iter().map(str::to_owned))
             .chain([
@@ -487,6 +506,24 @@ pub fn map_capabilities(caps: ScryingCapabilities) -> InkerWebSurfaceCapabilitie
                 format!("native_child_overlay={overlay_supported:?}"),
             ])
             .collect(),
+    }
+}
+
+// A projected request event is useful without completing the backend's control
+// path. Keep that implemented subset partial, including the backend's own
+// limits, rather than inheriting its fuller producer capability.
+fn projected_event_capability(
+    status: ScryingCapabilityStatus,
+    projection: &str,
+) -> WebFeatureStatus {
+    match status {
+        ScryingCapabilityStatus::Supported => WebFeatureStatus::Partial {
+            detail: projection.into(),
+        },
+        ScryingCapabilityStatus::Partial(detail) => WebFeatureStatus::Partial {
+            detail: format!("{detail}; {projection}"),
+        },
+        status => capability_status(status),
     }
 }
 
@@ -720,7 +757,142 @@ pub fn wrap_web_message(payload: String) -> WebMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use inker::{CapabilityStatus, PhysicalPosition, PointerButtons};
+    use inker::{
+        CapabilityStatus, DocumentFindDirection, DocumentFindQuery, HttpAuthenticationAnswer,
+        PermissionAnswer, PhysicalPosition, PointerButtons, SurfaceProducer, UserAgentRequestId,
+        WebSurface,
+    };
+
+    fn optimistic_backend_capabilities(backend: ScryingBackend) -> ScryingCapabilities {
+        let mut caps = ScryingCapabilities::probe(None);
+        caps.backend = backend;
+        caps.features.downloads = ScryingCapabilityStatus::Supported;
+        caps.features.popups = ScryingCapabilityStatus::Supported;
+        caps.features.ime = ScryingCapabilityStatus::Supported;
+        caps.features.accessibility = ScryingCapabilityStatus::Supported;
+        caps
+    }
+
+    struct OptimisticProducer;
+
+    impl scrying::WebSurfaceProducer for OptimisticProducer {
+        fn capabilities(&self) -> ScryingCapabilities {
+            optimistic_backend_capabilities(ScryingBackend::WebView2)
+        }
+
+        fn acquire_frame(&mut self) -> Result<WebSurfaceFrame, WebSurfaceError> {
+            Ok(WebSurfaceFrame::OverlayOnly)
+        }
+    }
+
+    #[test]
+    fn capabilities_reject_commands_without_adapter_forwarding() {
+        let mut producer =
+            crate::producer::ScryingProducer::new(Box::new(OptimisticProducer), None);
+        let caps = producer.capabilities();
+        for status in [
+            caps.document.find_in_page,
+            caps.document.page_zoom,
+            caps.pdf,
+            caps.permissions,
+            caps.auth,
+            caps.ime_observability,
+            caps.accessibility,
+        ] {
+            assert!(
+                matches!(status, CapabilityStatus::Unsupported { reason } if !reason.is_empty())
+            );
+        }
+
+        // Exercise the public adapter, not just the projection: backend
+        // support cannot bypass the unimplemented Inker command boundary.
+        assert!(matches!(
+            producer.document_find(
+                &DocumentFindQuery::new("needle"),
+                DocumentFindDirection::Next,
+                false
+            ),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.clear_document_find(),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.set_page_zoom(1.5),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.answer_permission(UserAgentRequestId::new(1), PermissionAnswer::Grant),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.answer_http_authentication(
+                UserAgentRequestId::new(2),
+                &HttpAuthenticationAnswer::Cancel
+            ),
+            Err(SurfaceError::Unsupported(_))
+        ));
+    }
+
+    #[test]
+    fn capabilities_keep_projected_request_events_partial() {
+        let caps = map_capabilities(optimistic_backend_capabilities(ScryingBackend::WebView2));
+        assert!(matches!(caps.downloads, CapabilityStatus::Partial { .. }));
+        assert!(matches!(caps.popups, CapabilityStatus::Partial { .. }));
+        assert!(matches!(
+            caps.context_menus,
+            CapabilityStatus::Partial { .. }
+        ));
+        assert!(matches!(
+            map_web_event(ScryingNavEvent::DownloadStarted {
+                id: scrying::DownloadId(7),
+                url: "https://example.test/file".into(),
+                suggested_filename: "file.txt".into(),
+                destination_path: "file.txt".into(),
+                total_bytes_expected: Some(12),
+            }),
+            Some(WebSurfaceEvent::DownloadRequested { url, suggested_name })
+                if url == "https://example.test/file" && suggested_name.as_deref() == Some("file.txt")
+        ));
+        assert!(matches!(
+            map_web_event(ScryingNavEvent::ContextMenuRequested {
+                page_url: "https://example.test/page".into(),
+                x: 12.0,
+                y: 34.0,
+                link_url: Some("https://example.test/link".into()),
+                image_url: None,
+            }),
+            Some(WebSurfaceEvent::ContextMenuRequested { x, y, link_url: Some(_), .. })
+                if x == 12.0 && y == 34.0
+        ));
+        assert!(matches!(
+            map_web_event(ScryingNavEvent::NewWindowRequested {
+                url: "https://example.test/new".into()
+            }),
+            Some(WebSurfaceEvent::NewWindowRequested { .. })
+        ));
+    }
+
+    #[test]
+    fn capabilities_preserve_backend_refusals_and_partial_details() {
+        let mut caps = optimistic_backend_capabilities(ScryingBackend::Unknown);
+        caps.features.downloads = ScryingCapabilityStatus::Unsupported(
+            scrying::native_frame::UnsupportedReason::PlatformNotImplemented,
+        );
+        caps.features.popups = ScryingCapabilityStatus::Partial("backend popup limit");
+        let caps = map_capabilities(caps);
+        assert!(matches!(
+            caps.downloads,
+            CapabilityStatus::Unsupported { .. }
+        ));
+        assert!(matches!(
+            caps.context_menus,
+            CapabilityStatus::Unsupported { .. }
+        ));
+        assert!(matches!(caps.popups, CapabilityStatus::Partial { detail }
+            if detail.contains("backend popup limit") && detail.contains("new-window requests")));
+    }
 
     fn touch_pointer(pointer_id: i32, phase: InkerPointerPhase) -> InkerPointerEvent {
         InkerPointerEvent {
@@ -864,9 +1036,12 @@ mod tests {
         .document;
         assert!(matches!(
             caps.find_in_page,
-            CapabilityStatus::Partial { .. }
+            CapabilityStatus::Unsupported { .. }
         ));
-        assert!(matches!(caps.page_zoom, CapabilityStatus::Partial { .. }));
+        assert!(matches!(
+            caps.page_zoom,
+            CapabilityStatus::Unsupported { .. }
+        ));
         assert!(matches!(
             caps.page_capture,
             CapabilityStatus::Unsupported { .. }
