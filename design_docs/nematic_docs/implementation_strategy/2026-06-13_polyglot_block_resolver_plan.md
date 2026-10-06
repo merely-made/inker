@@ -1,7 +1,9 @@
 # Polyglot Block Resolver Plan — every knot block, one seam
 
 **Date**: 2026-06-13
-**Status**: Planned. Extends the
+**Status (2026-10-06):** Planned; nothing built. P0 is unbuilt (no
+`BlockHandler` and no `resolve_blocks` exist), and the transclusion and
+evaluation passes still keep separate `BlockProvenanceMap`s. Extends the
 knot evaluation + export plan (`genet/design_docs/archive_docs/2026-09-02/2026-06-12_knot_evaluation_export_plan.md`)
 (K1 transclude, K2 eval, K5 export, all landed) with the forward
 architecture: a single registry that resolves *any* fenced block by its tag,
@@ -16,6 +18,12 @@ question Mark asked: how polyglot, and how do we keep it coherent.
 kernel (graph query), eidetic (search), platen (diagram swatches), and the
 existing `register-mod-loader`/extism seam (wasm). Shell surfacing stays
 gated; the probe pattern is the demo home until then.
+
+**Corrected 2026-10-06 (S14 pass):** the eval menu is Rhai only. `RhaiEvaluator`
+is the one `BlockEvaluator` implementation (`crates/script/rhai/src/lib.rs`,
+line 85); the piccolo Lua path was "demonstrated by a local probe" (in
+`6de9a486`'s own message) and never landed as a backend. This holds for the
+Progress entry's "Rhai + Lua" too. The wasm seam has moved as well: see P3.
 
 ---
 
@@ -139,6 +147,13 @@ through the seam the workspace already has.
   (text in, text/blocks out), no ambient capability. This is the path for a
   language with no Rust interpreter: compile it (AssemblyScript, Grain,
   TinyGo, Rust itself) to wasm and run it here.
+
+  **Corrected 2026-10-06 (S14 pass):** there is no `register-mod-loader`
+  crate and no extism. `3430ba2b` (2026-09-23) folded it into the `registry`
+  crate (`WasmModRuntime` in `crates/system/registry/src/mod_loader.rs`), no
+  manifest depends on extism, and the only `WasmModRuntime` implementation is
+  `crates/script/document-host/src/runtime.rs`, on wasmtime 45. The
+  Sequencing section's "the extism seam exists" reads the same way.
 - **Browser caveat (recorded)**: wasmtime is a JIT and is *out* of the
   browser delivery (the no-JIT rule, browser/PWA memory). So the wasm block
   kind is **native/desktop-only** for now; the browser target keeps the
@@ -200,3 +215,8 @@ arrive.
   concrete. The eval kind now has a working menu (Rhai + Lua); this plan is
   the registry that makes the other kinds peers of it. No spine code yet;
   P0 is the next build when prioritized.
+- **2026-10-06 (S14 pass).** Status and claims corrected against the tree at
+  mere 535bca11, from the D2 record in
+  support/doc-audit/d2/batch_50_s14_phase_b12.md: the status is dated and
+  records P0 as unbuilt, the eval menu is corrected to Rhai only, and P3's
+  seam is corrected to `registry::mod_loader` on wasmtime.
