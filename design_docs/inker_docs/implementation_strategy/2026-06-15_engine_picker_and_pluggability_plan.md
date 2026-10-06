@@ -1,18 +1,23 @@
 # Engine picker + pluggability — implementation plan
 
 **Date**: 2026-06-15
-**Status**: **Phases 0–3 shipped + verified** (route → activate → manage → pick):
-meerkat now routes both altitudes through `EngineRoutePolicy` (0a/0b), and the
-activation model (global default + per-session override), the apparatus engine
-manager, and the per-node picker all landed. **Remaining:** Phase 4 (no-handler UX +
-local-file sniff), Phase 2b (per-host overrides + per-session toggle), Phase 5
-(verso flip), and the register-viewer harvest. *(The §2 "Findings" below are the
-point-in-time pre-Phase-0 state; the "gap" it names is now closed, see the Progress
-log.)*
-**Page capture P1 (2026-08-30): landed at the Inker boundary.** The shared
-contract now has host-minted request ids, viewport-only requests, typed PNG
-outputs, explicit unknown CSS facts, and a correlated hosted completion event.
-No engine declares capture support yet; adapters remain honestly unsupported.
+**Status (2026-10-06):** Phases 0 to 3 (route, activate, manage, pick) landed
+in meerkat on 2026-06-15 (`d4a1350`, `1966183`, `e90825e`, `b4706c6`,
+`c5f63d8`, `a7e609e`), retired with it 2026-07-18 (`c5f01064`);
+`EngineActivation`, `engine_pins` and `route_document_engine` left with it.
+Surviving library parts: `EngineRoutePolicy` (`route_filtered`,
+`per_host_overrides`) and `is_surface_engine` in `inker::routing`, consumed by
+Pelt, `crates/import`'s web clip, the `mere::routing` facade and Turnstone;
+pandect's `disabled_engines` settings field, with no consumer outside pandect;
+and the graft and weld `SurfaceEngine` impls (`f5c3d9cb`). Page capture P1
+landed at the Inker boundary on 2026-08-30 (host-minted request ids,
+viewport-only requests, typed PNG outputs, explicit unknown CSS facts, a
+correlated hosted completion event); no engine declares capture support yet.
+Open: Phase 2b (per-host override editor, per-session toggle), Phase 4
+(no-handler UX, local-file sniff), Phase 5 (the verso flip and the
+`ScryingTileEngine`/`ProducerFactory` registry fold-in) and the register-viewer
+harvest, none of which has had a host since meerkat left. *(The §2 "Findings"
+below are the pre-Phase-0 state.)*
 **Scope**: The user-facing engine **picker** (an inker affordance), the
 **pluggability / extension model** that makes engines build-, session-, and
 activation-managable, the no-handler fallback, local-file ingestion, and the
@@ -153,6 +158,16 @@ that is `engine_available`, the current choice ✓-marked; picking writes `engin
 menu shows Auto ✓ / Genet / System WebView (Wry filtered out); clicking System
 WebView flips the node from genet to a live WebView2.
 
+**Corrected 2026-10-06 (S14 pass):** Phases 0 to 3 were built in meerkat, which
+was deleted in `c5f01064` (2026-07-18): `EngineActivation`, `engine_pins` and
+`route_document_engine` have no hits in code at mere 535bca11. What
+survives is the library half: `EngineRoutePolicy` and `is_surface_engine` in
+`crates/inker/inker/src/routing.rs`, consumed by Pelt
+(`ports/pelt/core/src/workspace.rs`), `crates/import/src/web_clip.rs`, the
+`mere::routing` facade (`crates/mere/src/routing.rs`) and Turnstone; and
+pandect's `disabled_engines` settings field, which nothing outside pandect
+reads.
+
 **Phase 4 — no-handler UX + local files**
 - Surface `route_degraded` in the picker; "open externally" affordance. Content-sniffer for `file://` feeding `content_type`; genet as the web-standard default for local files.
 - *Done when:* opening a local `.md` routes to nematic.markdown, a local `.html` to genet, and an unhandled scheme shows the explicit "no engine / open externally" state.
@@ -198,3 +213,18 @@ WebView flips the node from genet to a live WebView2.
 - 2026-06-15: **Phase 1 shipped + verified (meerkat e90825e).** `engine_available` = `engine_present && engine_active`; `EngineActivation` (global default from `settings.json` `disabled_engines` + in-memory per-session override); host lanes exempt. Verified: engine_activation 4/4, settings_store 7/7; headed, `scrying.web` disabled → `>compat_view` node falls back to genet with no producer, re-enable spawns it again.
 - 2026-06-15: **Phases 1b / 3 / 2 shipped + verified (b4706c6, c5f63d8, a7e609e).** 1b: the constellation passes its deactivated set to each spawned actor, which registers only enabled engines (disabled `nematic.gemtext` → synthesized fallback). 3: the single-node context menu offers Auto + "Open in \<engine\>" (✓-marked), writing `engine_pins`; clicking System WebView flips a node to a live WebView2. 2: the apparatus "Engines" section toggles each engine's global activation, persisted to `settings.json`. **The whole picker arc (route → activate → manage → pick) is in and verified. Remaining: Phase 4 (no-handler / local files), Phase 5 (weld/graft + verso flip), Phase 2b (per-host overrides + per-session toggle), register-viewer harvest.**
 - 2026-06-24: the cross-repo grand audit (`genet/docs/2026-06-24_grand_audit.md`) (§5 sidequest 4) endorses registering graft(Servo) + weld(CEF) as tier-2 `SurfaceEngine` impls over the existing `wgpu-graft` / `wgpu-weld` texture-import producers — this is **Phase 5** here (weld/graft, distinct from the verso flip). The audit also re-confirms a still-open item the picker's Phase 0 did *not* close: meerkat's shipped scry pool routes its *pin* through the policy (Phase 0a/0b) but still binds `PlatformWebSurfaceProducer` **concretely** for frame transport, bypassing the `SurfaceEngine` registry (the WebView2 handle-handoff protocol the type-erased lane drops). Folding the producer construction into the registry is the natural Phase-5 companion to graft/weld.
+
+  **Corrected 2026-10-06 (S14 pass):** Phase 5's weld and graft half has
+  landed: `GraftEngine` (`crates/inker/engines/graft-engine/src/engine.rs`)
+  and `WeldEngine` (`crates/inker/engines/weld-engine/src/engine.rs`)
+  implement `SurfaceEngine` (added `f5c3d9cb`). The verso flip and the registry
+  fold-in remain. The [scrying tile plan](../../mere_docs/implementation_strategy/2026-06-10_scrying_tile_plan.md)
+  calls that fold-in this plan's Phase 0; Phase 0 routed only the pin, and the
+  fold-in is the Phase-5 companion named here.
+- **2026-10-06 (S14 pass).** Status and claims corrected against the tree at
+  mere 535bca11, from the D2 record in
+  support/doc-audit/d2/batch_47_s14_phase_b9.md: Phases 0 to 3 recorded as
+  landed in meerkat and retired with it (`c5f01064`), the surviving routing,
+  settings and engine parts named, the graft and weld `SurfaceEngine` impls
+  recorded as landed, and the Phase 0 versus Phase-5 naming of the registry
+  fold-in reconciled with the scrying tile plan.

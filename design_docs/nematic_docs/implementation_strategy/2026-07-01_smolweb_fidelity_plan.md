@@ -1,12 +1,17 @@
 # Smolweb Fidelity Plan — enrich the ASTs, trust in the native lane, bespoke only where boxes fail
 
 **Date**: 2026-07-01
-**Status**: planning (with Mark). Extends the
-[native smolweb rendering plan](2026-06-27_native_smolweb_rendering_plan.md)
-(that effort shipped: transport → parse → native themed render → scene → window,
-with scroll, link nav, per-site/app theming). This one recovers the
-spec-faithfulness the flavour-neutral pipeline collapses, and closes the security
-posture the native lane currently drops.
+**Status (2026-10-06):** in progress. Extends the
+[native smolweb rendering plan](2026-06-27_native_smolweb_rendering_plan.md).
+Micron's reading slice and both consumer integrations landed 2026-09-13, and
+lane 3 (forms) closed the same day; lane 2 runs in the
+[Micron navigation plan](2026-09-15_micron_navigation_plan.md), which carries
+its own status; lane 1's headed qualification and lane 4 are open. WS1 is
+partial: feeds keep `guid` and enclosures (`5630e256`), and the Spartan `=:`
+prompt is typed (`080a2141`, as `SpartanLine::Prompt`; a fork in §3); the feed
+date and content split, the channel `ttl`, and, now in gopher-protocol,
+gopher's `raw_type`, the `8`/`T` fix and CSO are open. WS2 and WS3 have not
+started.
 
 > **Home refinement, 2026-08-03**: WS1's AST enrichment lands wherever the
 > grammar lives at the time, per the
@@ -77,6 +82,15 @@ documented by the version-matched Guide.
 | Portable preview | Text, bold/italic, headings, literal text, dividers, ordinary native links and pipe-table cells lower to shared Inker blocks. Tables now have document-canvas geometry, wrapping and link hit regions. | Color, underline, alignment, indentation, folding, anchor scrolling, forms and partials require additional presentation or interaction support. Unsupported constructs have explicit diagnostics; images use an alt-text placeholder. |
 | Link authority | Native same-node `:/page/...` resolves against a real destination. File-context aliases remain explicit for the host's active-site manifest to resolve. | An arbitrary file acquires no native destination. Bare and relative native targets remain unqualified. |
 | Dynamic requests | Stock-client captures establish selected fields, empty and masked values, checkbox aggregation, edited radio state, fixed variables, Unicode and multiline text. A subsequent Retinue receipt verifies the native string-map value in both directions. | Retinue's bounded map API is the packet-sized transport prerequisite. Consumer field state, submission and partial refresh remain inert; outgoing request Resources are unsupported. |
+
+**Corrected 2026-10-06 (S14 pass):** two "still open" cells have moved. In the
+portable preview row, color, underline, alignment and indentation landed with
+the 2026-09-13 reading slice (below), and folding and anchor scrolling with
+lane 2 in the [Micron navigation plan](2026-09-15_micron_navigation_plan.md)
+(`SmolwebDocument` holds `folds: FoldState` and `in_page`); forms and partials
+stay open. In the dynamic requests row, consumer field state and submission
+landed with lane 3 (Knot `fae329c`, Turnstone `d710af9`); partial refresh and
+outgoing request Resources stay open.
 
 This is broader syntax preservation and a usable native preview, **not full
 Micron conformance**. Completing an interaction requires an independent
@@ -169,6 +183,13 @@ media remain the separate gates below.
    receipts; opening a local anchor must issue zero transport requests. Further
    stock captures must establish ambiguous section-exit, escape, table and
    malformed-control behavior before the parser interprets those spellings.
+
+   **Corrected 2026-10-06 (S14 pass):** this lane runs in the
+   [Micron navigation plan](2026-09-15_micron_navigation_plan.md). C1, C1b, N1,
+   P1, P1b, P1c, Cambium's scroll request and A1's Knot half landed there on
+   2026-09-16; A1's Turnstone half and R1's headed receipts are open. Its stock
+   receipts are under
+   `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/`.
 3. **Forms: bounded consumers, headed acceptance taken.** The 2026-09-13
    [typed request receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
    closes the packet-sized transport prerequisite: stock NomadNet and Retinue
@@ -242,6 +263,10 @@ media remain the separate gates below.
    (30 s, 4 MiB) with no environment override. Knot additionally refused a
    malformed local target before sending and offered a stale-form discard after
    the source changed under a prepared review.
+
+   **Corrected 2026-10-06 (S14 pass):** Knot has had environment overrides,
+   `KNOT_NOMADNET_*`, since `d460670`.
+
    As of 2026-09-16 that artifact tree is gone: `C:\t\micron-headed-20260913` was
    deleted on or before that date along with the rest of the `C:/t` Micron
    scratch family, so the paths above are dead references, kept as the record of
@@ -265,6 +290,12 @@ media remain the separate gates below.
    preview pane loses its scroll offset during submission redraws, making the
    cancel control hard to hit on long pages, and the previous reply text survives
    closing and reopening a form (values themselves reset).
+
+   **Corrected 2026-10-06 (S14 pass):** all three Knot follow-ups are fixed on
+   knot-editor main: the response cap is checked before unpacking (`6d6e7eb`,
+   2026-09-13), the reply text no longer survives a form close (`b88440b`,
+   2026-09-13), and the scroll offset survives submission redraws (`6f0a3b3`,
+   2026-09-14).
 4. **Refresh, media and directives.** Qualify partial replacement, refresh timing,
    image targets and page/cache directives separately. Reuse the host's existing
    subresource and request lifecycle with configurable cadence, fanout, byte and
@@ -273,6 +304,13 @@ media remain the separate gates below.
    feature has bounded fetching, cancellation, stale-completion, offline/failure
    and both-consumer receipts. An unsupported feature keeps its source and a
    diagnostic. Full conformance requires this matrix, not just successful parsing.
+
+**Open, raised by the S14 pass (2026-10-06):** where does the Micron
+conformance programme live? It is about 250 lines of §1, and lanes 1 to 4 each
+carry done-conditions that §6 does not. Options: extract lanes 1, 3 and 4 into
+a dedicated Micron conformance plan, as lane 2 already was; keep them here and
+add Micron to §6's sequencing; extract only the open lanes 1 and 4 and leave
+the closed lane 3 here as history.
 
 The evidence lane can proceed alongside reading fidelity. Forms do not gate
 ordinary static serving. Djinn's persistent serving contract lives in
@@ -348,6 +386,21 @@ read them.
 | Spartan | `=:` prompt-upload line (its defining feature) | becomes body text; `GemLine` has no prompt variant |
 | **all** | **trust posture** (gemini TOFU / spartan-unauthenticated / misfin-signed) | carried by neither the ASTs nor the native views |
 
+**Corrected 2026-10-06 (S14 pass):** four rows and the line references are out
+of date. `FeedEntry` now has `enclosures: Vec<FeedEnclosure>` and `guid`,
+filled from `guid` or `id` (`5630e256`, 2026-09-04;
+`crates/system/errand/src/parse/feed.rs:71`, `feed.rs:66` and `feed.rs:308`).
+`rel="enclosure"` links go to the enclosures (`feed.rs:236`); only alternate or
+rel-less links are still first-wins (`feed.rs:203`). Spartan `=:` parses to
+`SpartanLine::Prompt { target, label }` in errand's Spartan grammar, and
+Nematic lowers it with `push_submit` (`080a2141`;
+`crates/nematic/nematic/src/spartan.rs:71`); gemini-protocol 0.1.7's `GemLine`
+has no prompt variant. The summary merge is now at `feed.rs:330`, the date
+merge at `feed.rs:325` and link handling at `feed.rs:203`. Errand's
+`gopher.rs` is a 20-line re-export: the gopher grammar is gopher-protocol
+0.1.1 (its `menu.rs`, lines 166-173), pinned `=0.1.1` in Mere's workspace
+manifest.
+
 ### Presentation collapses (box-substrate artifacts — the regime-B candidates)
 
 - **Gemtext text runs** join consecutive lines with a space, so hard line breaks
@@ -366,6 +419,17 @@ posture: a spartan page (unauthenticated by design), a gemini page (TOFU), and a
 misfin message (signed sender) render with the same neutral chrome. The transport
 already knows the outcome (Phase A installs `InMemoryTofu`; a pin mismatch fails the
 load) and then discards it.
+
+**Corrected 2026-10-06 (S14 pass):** the native lane no longer bypasses the
+engine output. `SmolwebDocument` holds `document: Arc<EngineDocument>`, which
+is Nematic's lowering (`crates/system/document-lanes/src/smolweb.rs:74`), and
+has held an `EngineDocument` since its first commit (`8460ed46`, 2026-09-02),
+so both lanes carry `EngineDocument.trust`. Nothing populates it: every
+Nematic engine sets `DocumentTrustState::Unknown` (`gemtext.rs:68`,
+`gopher.rs:99`, `feed.rs:76`, `micron.rs:71`, `nex.rs:112`, `spartan.rs:90`
+and `:108`), and document-lanes never sets it. What WS2 still needs is the
+transport descriptor, a populated `trust`, and host chrome that shows it; §4
+carries the open question of WS2's scope.
 
 **Correction (2026-07-01 review): the card lane's trust is structurally present but
 empty in practice.** Every nematic smolweb engine emits `trust:
@@ -436,6 +500,15 @@ the new fields feed the article reader, the podcast affordance, and read-state.
   And errand's manifest is publish-shaped (crates.io metadata, keywords, readme), so
   the field set should settle through WS1 *before* any crates.io publish; churning
   public struct fields post-publish is a semver treadmill.
+
+  **Corrected 2026-10-06 (S14 pass):** errand is no longer a sibling repo. It
+  landed in Mere as a workspace member on 2026-09-03 (`crates/system/errand`,
+  version 0.3.4, `publish = true`), so errand, Nematic's lowerings and
+  `feed_view` change together in Mere rather than through a cross-repo pass.
+  The publish this flag wanted WS1 to precede has happened: DOC_POLICY records
+  errand 0.1.0 published 2026-07-04. The gemtext and gopher grammars are
+  crates.io pins of gemini-protocol `=0.1.7` and gopher-protocol `=0.1.1`, so a
+  change there goes through a release of that crate and a Mere repin.
 - **`content` is an HTML fragment — the article reader needs a lane decision.** Feed
   bodies (`<content>`/`<content:encoded>`) are HTML. Rendering them inside
   `feed_view` would pull HTML rendering into the smolweb document lane, against the two-family
@@ -455,10 +528,27 @@ stays `Search` here; the input affordance is Workstream 3.
 never carries it). Spartan then renders it as an upload affordance instead of body
 text.
 
+**Corrected 2026-10-06 (S14 pass):** errand's `gopher.rs` and `gemtext.rs` are
+now 20-line re-exports. The gopher grammar is gopher-protocol 0.1.1 and the
+gemtext grammar gemini-protocol 0.1.7, as the 2026-08-03 home refinement
+anticipated, so `raw_type`, the `8`/`T` fix and CSO are open there. The
+Spartan prompt landed in errand's Spartan grammar instead, as
+`SpartanLine::Prompt` (`080a2141`), which Nematic lowers to a submit action.
+
+**Open, raised by the S14 pass (2026-10-06):** does the Spartan prompt's
+landed shape meet WS1? Options: record `SpartanLine::Prompt` as an accepted
+deviation and mark WS1's Spartan done-condition met; reopen it, for example if
+the prompt is wanted in gemini-protocol.
+
 **Cross-repo note:** struct-field additions are visible to mere/genet through the
 gitignored `.cargo/config.toml` path override at build time, so the local edit loop
 works. A clean or CI build needs the errand push (unlike the *feature*-resolution
 wall the native plan hit, plain field additions do not need a feature gate).
+
+**Corrected 2026-10-06 (S14 pass):** no path override or errand push is
+involved now. Errand is a Mere workspace member (see the correction under the
+lockstep flag above), and gemtext and gopher grammar changes ship as
+gemini-protocol and gopher-protocol releases followed by a Mere repin.
 
 ---
 
@@ -488,13 +578,35 @@ same whether shown as a card or a focused tile.
   > contributing only what it adds on top (misfin's signed sender, gemini's client
   > certificate). The mapping above stays correct for the TCP/TLS carrier, which is
   > the only one wired today; it must not be read as a scheme lookup.
+
+  **Corrected 2026-10-06 (S14 pass):** TCP/TLS is no longer the only carrier
+  wired. NomadNet and Micron pages are fetched over Reticulum through Retinue
+  (Turnstone `a596f18`, Knot `4d88091`; §1's 2026-09-13 entries), and the
+  mapping above has no entry for that carrier yet; extending it is WS2 work.
 - **Carry through the view.** `SmolwebDocument` gains `trust: DocumentTrustState`
   (+ optional `signer`). The native view body does not change; the host reads the
   field.
+
+  **Corrected 2026-10-06 (S14 pass):** `SmolwebDocument` already holds the
+  `EngineDocument` that carries `trust` (see the correction under §1's trust
+  gap); nothing populates it yet.
+
+  **Open, raised by the S14 pass (2026-10-06):** what is WS2's scope now that
+  the two lanes carry one document? Options: drop the "`SmolwebDocument` gains
+  `trust`" step and restate WS2 as the transport descriptor, then a populated
+  `EngineDocument.trust`, then chrome; keep a separate native-view field for
+  the misfin `signer`.
 - **Surface in the host.** The meerkat smolweb lane (`ensure_smolweb` in
   `content/handlers.rs`) captures the fetch trust and exposes it so the tile chrome
   shows the posture. This is the host-integration touchpoint; see
   smolweb host integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md`).
+
+  **Corrected 2026-10-06 (S14 pass):** no `ensure_smolweb` exists in the tree;
+  meerkat left the workspace on 2026-07-18 (`c5f01064`), as the 2026-09-02
+  re-check below says. The hosts that surface trust are Turnstone and Mere's
+  own, and the
+  [smolweb host integration plan](../../mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md)
+  is a historical meerkat receipt by its own 2026-09-05 note.
 - **Home for the shared type.** Decide with Mark whether `DocumentTrustState` moves to
   a small shared crate both errand and inker depend on, or errand defines its own and
   the host maps between them at the lane boundary. Default: errand defines a minimal
@@ -518,6 +630,20 @@ same whether shown as a card or a focused tile.
   open — a file beside the profile, or eidetic engrams — is therefore still
   open and belongs to this workstream: start file-backed, migrate when
   persona/keys land fully.
+
+  **Corrected 2026-10-06 (S14 pass):** the `InMemoryTofu` install is in
+  mere-document-lanes (`crates/system/document-lanes/src/remote.rs:226`); genet's
+  `genet-documents` has no reference to it. A durable store did exist on the
+  re-check's date: Turnstone has had a file-backed `GeminiTrustStore`
+  (`gemini_trust.json`; Turnstone's `gemini_trust.rs`, lines 7-23) since
+  `dca3207` (2026-08-18). It implements `fetch::SmolwebTofuStore` and is
+  installed through `fetch::install_smolweb_tofu` in Turnstone's shell.
+
+  **Open, raised by the S14 pass (2026-10-06):** what settles the TOFU store
+  question for Mere? Options: Turnstone's file-backed store settles the
+  pattern, and Mere copies it or shares it through `fetch`; the question stays
+  open for Mere (a file beside the profile, or eidetic engrams); Turnstone's
+  store is promoted into `fetch` as the stack's shared durable store.
 
 ---
 
@@ -574,6 +700,10 @@ Targets, not dates.
 - **The native lane carries no trust** (nothing trust-shaped in `errand/src/parse/`;
   `SmolwebDocument` emits no posture). The `Block` lane has `DocumentTrustState`; the
   genet lane, which the host uses for focused tiles, drops it.
+
+  **Corrected 2026-10-06 (S14 pass):** the native lane now carries
+  `EngineDocument.trust` through `SmolwebDocument`, unpopulated in both lanes
+  (see the correction under §1's trust gap).
 - **Gopher is the sole clear regime-B candidate.** Gemtext, feed, nex, finger,
   spartan, guppy, scroll, misfin are all box-flow-shaped; gopher's fixed-width typed
   column is the one line model the box substrate visibly distorts.
@@ -592,6 +722,9 @@ Targets, not dates.
   Inline widgets, partial refresh, request Resources and multi-segment responses
   stay open, and Knot's response cap is compared after unpacking rather than
   before it.
+
+  **Corrected 2026-10-06 (S14 pass):** Knot's response cap was fixed the same
+  day in `6d6e7eb` (see lane 3's follow-ups).
 - **2026-09-16**: the `C:/t` Micron scratch family was deleted on or before this
   date — `micron-headed-20260913`, `smolweb-next-20260913`,
   `micron-reference-20260912`, `micron-forms-20260913`,
@@ -603,6 +736,13 @@ Targets, not dates.
   trail, not the result. Mark ruled the same day that the docs are corrected
   rather than the exercise re-run, and that receipt artifacts now live under
   `Code/testing/<repo>/`.
+- **2026-10-06 (S14 pass).** Status and claims corrected against the tree at
+  mere 535bca11, from the D2 record in
+  support/doc-audit/d2/batch_51_s14_phase_b13.md: the status records the
+  Micron lanes and WS1's partial landing, and dated corrections cover the feed
+  and Spartan rows, the native lane's trust, the TOFU store, meerkat's
+  touchpoint, errand as a Mere member, lane 2's plan and Knot's lane 3 fixes;
+  four forks are written in for this plan's lane.
 
 ## Cross-references
 
@@ -611,7 +751,15 @@ Targets, not dates.
   crate/dependency direction it defines.
 - smolweb host integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md`)
   — the meerkat genet lane; Workstream 2's trust surfacing lands against its P3/P4.
+
+  **Corrected 2026-10-06 (S14 pass):** that plan is now a historical meerkat
+  receipt by its own 2026-09-05 note; trust surfacing lands in Turnstone and
+  Mere's hosts (§4).
 - TERMINOLOGY.md (`mere/design_docs/TERMINOLOGY.md`) — the trust ladder and the
   protocol-faithfulness rule this plan operationalizes.
 - errand (sibling repo `mark-ik/errand`) — owns the parse ASTs Workstream 1 enriches
   and the transport Workstream 2 reads trust from.
+
+  **Corrected 2026-10-06 (S14 pass):** errand is a Mere workspace member
+  (`crates/system/errand`, landed 2026-09-03), and the gemtext and gopher
+  grammars are the crates.io crates gemini-protocol and gopher-protocol (§3).
