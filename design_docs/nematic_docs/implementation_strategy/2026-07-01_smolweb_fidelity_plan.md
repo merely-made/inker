@@ -2,7 +2,7 @@
 
 **Date**: 2026-07-01
 **Status (2026-10-06):** in progress. Extends the
-[native smolweb rendering plan](2026-06-27_native_smolweb_rendering_plan.md).
+[native smolweb rendering plan](../../archive_docs/2026-10-06_completed_plans/2026-06-27_native_smolweb_rendering_plan.md).
 Micron's reading slice and both consumer integrations landed 2026-09-13, and
 lane 3 (forms) closed the same day; lane 2 runs in the
 [Micron navigation plan](2026-09-15_micron_navigation_plan.md), which carries
@@ -18,6 +18,17 @@ started.
 > smolweb home decision (`smolweb/design_docs/technical_architecture/2026-08-03_smolweb_home_decision.md`)
 > (spec-accurate grammars follow the wire crates into the smolweb workspace;
 > WS2/WS3 are implementation-side and stay in genet/cambium-nematic).
+
+**Received 2026-10-06 (S14 archive pass):** Mere host integration and
+interactive eyeballing, under ruling S66: the EngineDocument lane is the
+single smolweb render path, so this plan enriches the parse ASTs that feed
+it and extends EngineDocument with the block kind it lacks (a typed-column
+block first), every host getting the result through the lane rather than
+through bespoke per-format views; the per-format views in
+`cambium::nematic` retire as a follow-on code task. From the archived
+[native smolweb rendering plan](../../archive_docs/2026-10-06_completed_plans/2026-06-27_native_smolweb_rendering_plan.md)
+(rulings S61 and S66 of the
+[stack seams plan](../../mere_docs/implementation_strategy/2026-10-04_stack_seams_plan.md)).
 
 **The three principles** (Mark's call, 2026-07-01):
 
@@ -599,13 +610,13 @@ same whether shown as a card or a focused tile.
 - **Surface in the host.** The meerkat smolweb lane (`ensure_smolweb` in
   `content/handlers.rs`) captures the fetch trust and exposes it so the tile chrome
   shows the posture. This is the host-integration touchpoint; see
-  smolweb host integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md`).
+  smolweb host integration plan (`mere/design_docs/archive_docs/2026-10-06_completed_plans/2026-06-28_smolweb_host_integration_plan.md`).
 
   **Corrected 2026-10-06 (S14 pass):** no `ensure_smolweb` exists in the tree;
   meerkat left the workspace on 2026-07-18 (`c5f01064`), as the 2026-09-02
   re-check below says. The hosts that surface trust are Turnstone and Mere's
   own, and the
-  [smolweb host integration plan](../../mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md)
+  [smolweb host integration plan](../../archive_docs/2026-10-06_completed_plans/2026-06-28_smolweb_host_integration_plan.md)
   is a historical meerkat receipt by its own 2026-09-05 note.
 - **Home for the shared type.** Decide with Mark whether `DocumentTrustState` moves to
   a small shared crate both errand and inker depend on, or errand defines its own and
@@ -746,10 +757,10 @@ Targets, not dates.
 
 ## Cross-references
 
-- [native smolweb rendering plan](2026-06-27_native_smolweb_rendering_plan.md) — the
+- [native smolweb rendering plan](../../archive_docs/2026-10-06_completed_plans/2026-06-27_native_smolweb_rendering_plan.md) — the
   shipped transport → parse → native render this extends; the two-family model and the
   crate/dependency direction it defines.
-- smolweb host integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-28_smolweb_host_integration_plan.md`)
+- smolweb host integration plan (`mere/design_docs/archive_docs/2026-10-06_completed_plans/2026-06-28_smolweb_host_integration_plan.md`)
   — the meerkat genet lane; Workstream 2's trust surfacing lands against its P3/P4.
 
   **Corrected 2026-10-06 (S14 pass):** that plan is now a historical meerkat

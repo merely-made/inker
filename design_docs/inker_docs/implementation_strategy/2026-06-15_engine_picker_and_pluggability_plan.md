@@ -28,9 +28,9 @@ sequenced here as the final phase.
 **Related**:
 
 - [verso compatibility-view charter](../../verso_docs/technical_architecture/2026-06-10_compatibility_view_charter.md) — ownership split (picker = inker, flip = verso), one-hop invariant, sequencing gate. This plan is the picker half of that charter's step 2.
-- engine profile boundary plan (`mere/design_docs/mere_docs/implementation_strategy/2026-05-14_engine_profile_boundary_plan.md`) — `EngineProfileBinding` (Persona/Session/Graph scoping). The activation model here mirrors that tiering.
+- engine profile boundary plan (`mere/design_docs/archive_docs/2026-10-06_retired_plans/2026-05-14_engine_profile_boundary_plan.md`) — `EngineProfileBinding` (Persona/Session/Graph scoping). The activation model here mirrors that tiering.
 - browser multiplexer framing (`mere/design_docs/mere_docs/research/2026-05-11_browser_multiplexer_framing.md`) §5.4, §7, §8 — engines as replaceable producers; "engine route override" capability; `engine.route_chosen` / `engine.route_degraded` diagnostics.
-- modular integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-02_modular_integration_plan.md`) §1.9, §6 — the `register-viewer` vs `inker::routing` dual-routing reconcile, gated on "meerkat first routes >1 content engine."
+- modular integration plan (`mere/design_docs/archive_docs/2026-10-06_superseded_plans/2026-06-02_modular_integration_plan.md`) §1.9, §6 — the `register-viewer` vs `inker::routing` dual-routing reconcile, gated on "meerkat first routes >1 content engine."
 - engine peers + scrying library brief (`mere/design_docs/mere_docs/research/2026-05-11_engine_peers_and_scrying_library_brief.md`) — `scrying.web` / `wry.web` as opt-in engines.
 
 ---
@@ -69,7 +69,7 @@ The scry tier-2 engine is real: [`ScryingTileEngine`](../../../crates/inker/engi
 
 **The gap.** *(Closed by Phase 0, shipped 2026-06-15; this paragraph is the
 pre-Phase-0 record, kept for the Findings narrative.)* meerkat does **not** route
-through `EngineRoutePolicy` at all. It registers `nematic::engines()` only for snapshot cards, drives live content through the constellation, and runs scry through an ad-hoc `compat_pins: HashSet<GraphMemberId>` bool (the path the 2026-06-15 multi-tile work extended). The modular integration plan §6 (`mere/design_docs/mere_docs/implementation_strategy/2026-06-02_modular_integration_plan.md`) names the same gap: `register-viewer` (mime→viewer) duplicates `inker::routing`; reconcile when meerkat first routes >1 content engine. That moment is Phase 0.
+through `EngineRoutePolicy` at all. It registers `nematic::engines()` only for snapshot cards, drives live content through the constellation, and runs scry through an ad-hoc `compat_pins: HashSet<GraphMemberId>` bool (the path the 2026-06-15 multi-tile work extended). The modular integration plan §6 (`mere/design_docs/archive_docs/2026-10-06_superseded_plans/2026-06-02_modular_integration_plan.md`) names the same gap: `register-viewer` (mime→viewer) duplicates `inker::routing`; reconcile when meerkat first routes >1 content engine. That moment is Phase 0.
 
 ## 3. Architecture decisions
 
@@ -218,7 +218,7 @@ reads.
   landed: `GraftEngine` (`crates/inker/engines/graft-engine/src/engine.rs`)
   and `WeldEngine` (`crates/inker/engines/weld-engine/src/engine.rs`)
   implement `SurfaceEngine` (added `f5c3d9cb`). The verso flip and the registry
-  fold-in remain. The [scrying tile plan](../../mere_docs/implementation_strategy/2026-06-10_scrying_tile_plan.md)
+  fold-in remain. The [scrying tile plan](../../archive_docs/2026-10-06_completed_plans/2026-06-10_scrying_tile_plan.md)
   calls that fold-in this plan's Phase 0; Phase 0 routed only the pin, and the
   fold-in is the Phase-5 companion named here.
 - **2026-10-06 (S14 pass).** Status and claims corrected against the tree at
