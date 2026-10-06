@@ -1,9 +1,13 @@
 # Micron Navigation Plan — anchors and collapsible sections
 
-**Status (2026-09-16):** accepted; C1, C1b, N1, P1 and P1b landed, A1 next. Lane 2
-of the [smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
-navigation"). Lane 3 (forms) closed on 2026-09-13 with headed receipts; this
-lane is the next user-visible conformance gap.
+**Status (2026-10-06):** accepted, in progress. C1, C1b, N1, P1, P1b, P1c
+(`f7c9374f`), Cambium's scroll request (`1f5f13e0`, `5dff2f93`) and A1's Knot
+half (Knot `6157a0c` to `b02e15c`, on Knot main) landed 2026-09-16. A1's
+Turnstone half is next and has not started: Turnstone's pins already carry
+those revisions, but its main (`c3b14cb`) still respawns a session for every
+Micron prefix. R1 follows. Lane 2 of the
+[smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md) ("Document
+navigation"); lane 3 (forms) closed on 2026-09-13 with headed receipts.
 
 ## Objective
 
@@ -247,6 +251,11 @@ when the in-page default was broken on purpose and 12 when the marker default
 was. There are 10 positive controls. Logs are `p1b-*` under
 `Code/testing/mere/micron-navigation-20260916/logs/`.
 
+**Corrected 2026-10-06 (S14 pass):** the `navigation/` fixture directory holds
+30 `.mu` pages, so this check covered 30 navigation pages and
+`guide-structure.mu`: 31 pages and 62 packets, as the 2026-09-16 correction in
+Progress records (31 of the 42 committed pages).
+
 - **In-page adornment (document-canvas).** `DocumentStyleSheet.in_page_link_adornment`
   is a `LinkAdornment` beside `link_adornment`, with `#[serde(default)]`. Both
   default through `LinkAdornment::default()` (`SchemeArrow`). `flatten_inline`
@@ -305,6 +314,15 @@ displayed address (decision 1), and a native link carrying `anchor=name` fetches
 once, opens any closed sections around the target and scrolls, or loads at the
 top with a visible notice when the anchor is missing, as stock does (C1b probe
 14). Also the N1 test literal at `src/nomadnet.rs` ~517.
+
+**Corrected 2026-10-06 (S14 pass):** at Turnstone main `c3b14cb` these line
+numbers have drifted: the per-prefix respawn (`SpawnContent`) is at
+`effects.rs:1147` and the session insert at ~1111; the `Handled` arms are at
+`input.rs` ~377 and ~1098 and `lens.rs` ~538; `deliver_content_key` is at
+`keys.rs` ~238–266, with Space bound to page down at :72–73. The switch has not
+started: Turnstone never calls `replace_document`, `take_in_page_navigations`
+or `reveal_anchor`. The N1 test literal is done: Turnstone `67aedb3`
+(2026-09-17) added `navigation: Default::default()` (`nomadnet.rs:525`).
 
 Knot: the Micron preview holds an Inker `FoldState` and renders fold state and
 anchor targets from the same shared lowering; toggling is preview state, never
@@ -637,3 +655,12 @@ capturing them, and any change to how source bytes are stored.
 - 2026-09-16: Cambium's public scroll request landed in Mere (`1f5f13e0`,
   `5dff2f93`) and Knot's A1 half finished on top of it (`b02e15c`). Turnstone
   pins Mere `5dff2f93` and Knot `b02e15c` together next.
+
+  **Corrected 2026-10-06 (S14 pass):** overtaken. Turnstone now pins Mere
+  `bd5912fb` and Knot `3dfb70b0`, descendants of both, without A1's switch.
+- **2026-10-06 (S14 pass).** Status and claims corrected against the tree at
+  mere 26060e88, from the D2 record in
+  support/doc-audit/d2/batch_37_s14_phase_a3.md: the status now records P1c,
+  Cambium's scroll request and A1's Knot half as landed and A1's Turnstone half
+  as next, and dated corrections cover P1b's page count, A1's Turnstone line
+  numbers, the done N1 literal and the overtaken pin note.
