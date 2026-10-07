@@ -47,7 +47,10 @@ destination) filling `EngineDocument.trust`; S4, WS4's tail, R6
 (`gopher-protocol` 0.2.0). Each Turnstone stage opens with its failing
 tests. Turnstone's accessibility-first ruling (its U2) puts S2 with its S8
 right after S1 and its Pelt convergence stage, so S1's and S2's halves come
-first.
+first. Its S8's Mere half, smolweb and Micron sessions implementing
+`accessibility_projection`, is not this plan's: Turnstone's U16 gives it to
+the Turnstone unusual-protocols lane, with the rest of the accessibility
+path.
 
 **The three principles** (Mark's call, 2026-07-01):
 
