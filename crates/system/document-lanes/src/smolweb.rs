@@ -29,6 +29,11 @@ use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
 
+#[cfg(feature = "smolweb")]
+mod a11y;
+#[cfg(feature = "smolweb")]
+pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
+
 // The smolweb palette and theme are tabard's. Hosts on the compatibility
 // palette (current Pelt and Mere) keep these paths; new engine-native callers
 // may configure [`DocumentStyleSheet`] directly through
@@ -93,6 +98,9 @@ pub struct SmolwebDocument {
     in_page: Vec<InPageNavigation>,
     /// A reveal requested before any layout, applied by the first one.
     pending_reveal: Option<usize>,
+    /// Counts layouts built, so the accessibility projection's revision
+    /// changes with every new geometry.
+    layout_generation: u64,
 }
 
 /// One in-page activation, queued for the host to drain and reflect in its
@@ -249,6 +257,7 @@ impl SmolwebDocument {
             focus: None,
             in_page: Vec::new(),
             pending_reveal: None,
+            layout_generation: 0,
         }
     }
 
@@ -591,6 +600,7 @@ impl SmolwebDocument {
         // or content-height query publish that geometry under the preceding
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
+        self.layout_generation = self.layout_generation.wrapping_add(1);
         self.layout = Some(layout_document_with_folds(
             &self.document,
             Viewport::new(size.0 as f32, size.1 as f32),
