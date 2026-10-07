@@ -33,6 +33,22 @@ through bespoke per-format views; the per-format views in
 (rulings S61 and S66 of the
 [stack seams plan](../../mere_docs/implementation_strategy/2026-10-04_stack_seams_plan.md)).
 
+**Received 2026-10-07 (Turnstone U3):** Turnstone's
+unusual-protocols browser plan
+(`turnstone/design_docs/2026-10-06_unusual_protocols_browser_plan.md`) gives
+this plan the Mere halves of its stages S1 to S4, with Turnstone as the
+forcing consumer. Mark: **"Mere's smolweb fidelity lane (Recommended)"**.
+The halves are: S1, document-lanes chooses its lowering by content type
+before scheme for `text/plain` and `text/markdown`, and XML bodies that
+sniff as RSS or Atom reach the feed engine; S2, smolweb sessions gain find,
+per-node page zoom, and text selection with copy; S3, WS2's trust posture
+per carrier (TLS TOFU state, unauthenticated TCP, a proven Reticulum
+destination) filling `EngineDocument.trust`; S4, WS4's tail, R6
+(`gopher-protocol` 0.2.0). Each Turnstone stage opens with its failing
+tests. Turnstone's accessibility-first ruling (its U2) puts S2 with its S8
+right after S1 and its Pelt convergence stage, so S1's and S2's halves come
+first.
+
 **The three principles** (Mark's call, 2026-07-01):
 
 1. **Share the synonymous parts through the box substrate.** A gemtext paragraph
