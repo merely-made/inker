@@ -19,19 +19,19 @@ use inker::{
 /// A frame produced by a [`GraftSurface`]: the shared GPU texture handle the host
 /// imports, plus the `resource_epoch` it maps straight onto `inker::SurfaceFrame`.
 pub struct GraftFrame {
-    /// The platform shared-texture handle (Windows: a DX12 shared HANDLE from the
-    /// adapter's `current_dx12_shared_texture()`; Linux: a DMA-BUF fd; macOS: an
-    /// IOSurface ref). The host imports this on its own wgpu device.
+    /// A platform handle or owned payload paired with the host's importer.
+    /// Owned payloads retain native custody, or a texture already imported on
+    /// the host device. The host validates the concrete engine payload.
     pub texture: NativeTextureHandle,
     pub sync: SurfaceSyncHandle,
     pub width: u32,
     pub height: u32,
     pub format: SurfaceTextureFormat,
-    /// Monotonic generation of the underlying shared allocation (from grafting's
-    /// `ImportedTexture::generation`): bumps on (re)allocation (first frame / resize
-    /// / context restart), constant while graft overwrites the same allocation in
-    /// place. Maps straight to `inker::SurfaceFrame::resource_epoch`, so the host's
-    /// import cache re-imports only when it changes — no escape hatch needed.
+    /// Identity of the underlying allocation, following SurfaceFrame's epoch
+    /// contract. A host which returns a fresh normalized texture each paint
+    /// advances this every paint. Grafting's content generation alone is not
+    /// proof that a shared allocation was replaced; producer/importer pairing
+    /// owns that distinction and synchronization is required for every paint.
     pub resource_epoch: u64,
 }
 
@@ -41,10 +41,12 @@ pub struct GraftFrame {
 /// and the host wires it. The live grafting/Servo calls each method maps to,
 /// when the Servo lane is built:
 ///
-/// - [`resize`](GraftSurface::resize) → adapter + `WebView` resize.
+/// - [`resize`](GraftSurface::resize) → `WebView::resize`, which owns the
+///   rendering-context resize as well as the document viewport update.
 /// - [`acquire_frame`](GraftSurface::acquire_frame) → `Servo::spin_event_loop()`,
-///   then the adapter's `current_dx12_shared_texture()` (Windows shared-handle
-///   path) / `import_current_frame_default()` / `read_full_frame()`.
+///   then `WebView::paint()` and the adapter's pre-present
+///   `take_imported_texture()` path. Importing the GL buffer after its swap can
+///   select stale content. CPU readback is a separately reported transport.
 /// - [`load_url`](GraftSurface::load_url) / [`load_html`](GraftSurface::load_html)
 ///   → `WebViewBuilder` / `WebView::load`.
 /// - `go_back` / `go_forward` → `WebView::go_back` / `go_forward`.
@@ -52,7 +54,7 @@ pub struct GraftFrame {
 /// - `poll_*` → drained from the `WebViewDelegate` callbacks the host registers.
 ///
 /// Not `Send`: a graft surface owns Servo's non-`Send` GL context; the host
-/// drives it from one thread per surface (the `inker::SurfaceProducer` contract).
+/// drives all views sharing one process-owned Servo instance on its UI thread.
 pub trait GraftSurface {
     fn resize(&mut self, width: u32, height: u32) -> Result<(), SurfaceError>;
 
@@ -83,6 +85,16 @@ pub trait GraftSurface {
     fn poll_navigation_event(&mut self) -> Option<NavigationEvent>;
     fn poll_cursor_shape(&mut self) -> Option<CursorShape>;
     fn poll_web_message(&mut self) -> Option<WebMessage>;
+
+    /// Drain one event in the producer's callback order. Hosts with a single
+    /// delegate queue override this method to retain ordering across navigation,
+    /// title/address changes, messages, and correlated completions. The default
+    /// preserves the legacy separate-queue behavior for existing implementers.
+    fn poll_web_event(&mut self) -> Option<WebSurfaceEvent> {
+        self.poll_navigation_event()
+            .map(WebSurfaceEvent::Navigation)
+            .or_else(|| self.poll_web_message().map(WebSurfaceEvent::WebMessage))
+    }
 
     fn web_capabilities(&self) -> WebSurfaceCapabilities {
         let mut caps = WebSurfaceCapabilities {
@@ -295,20 +307,6 @@ impl WebSurface for GraftProducer {
     }
 
     fn poll_web_event(&mut self) -> Option<WebSurfaceEvent> {
-        if let Some(event) = self.inner.poll_navigation_event().map(nav_to_web_event) {
-            return Some(event);
-        }
-        self.inner
-            .poll_web_message()
-            .map(WebSurfaceEvent::WebMessage)
-    }
-}
-
-fn nav_to_web_event(event: NavigationEvent) -> WebSurfaceEvent {
-    match event {
-        NavigationEvent::Started { .. }
-        | NavigationEvent::Committed { .. }
-        | NavigationEvent::Finished { .. }
-        | NavigationEvent::Failed { .. } => WebSurfaceEvent::Navigation(event),
+        self.inner.poll_web_event()
     }
 }
