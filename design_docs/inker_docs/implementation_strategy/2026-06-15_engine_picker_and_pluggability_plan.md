@@ -187,11 +187,43 @@ reads.
 
 ## Findings
 
+- 2026-10-06: Turnstone's direct Welding 0.15 consumer exposed two input gaps
+  in `crates/inker/engines/weld-engine/src/welding_0_15.rs`: mouse
+  `PointerEvent` always entered the touch-only mapper, and raw key events did
+  not deliver composed text through CEF's separate CHAR path. Native lowercase
+  input needs the character code in CHAR's `windows_key_code`; virtual A (65)
+  inserts uppercase A even when the supplied text is lowercase a.
+
 - 2026-06-15: Routing precedence, `pinned_engine`, `per_host_overrides`, `route_filtered`, and the `host.external-protocol` fallback are all already implemented in [routing.rs](../../../crates/inker/inker/src/routing.rs). The two registries ([engine.rs](../../../crates/inker/inker/src/engine.rs), [surface_engine.rs](../../../crates/inker/inker/src/surface_engine.rs)) cleanly encode the user's two-tier model, and that split coincides with the charter's glass/black-box fidelity axis and the wasm/native build axis. The single missing piece for a picker is consumption: meerkat routes nothing through the policy today.
 - 2026-06-15: The verso charter (Mark, 2026-06-10) already assigns the picker to inker and reserves verso for the flip. The user's "verso = engine switcher" framing resolves to picker (inker) + flip (verso) composed.
 - 2026-06-15: meerkat's content routing is **two-altitude**, and that is inherent, not accidental: at nav time the host has the url (scheme + pin) but not the content-type, which only the off-thread actor learns post-fetch. The policy is built for this (scheme/pin first pass, content-type second pass), so Phase 0 splits cleanly into 0a (UI-thread tier + pin) and 0b (actor content-type), both consulting one `route_policy`. The `is_available` closure must report *true* for the lanes meerkat handles without a document-registry entry (genet html, mere:// internal, external-protocol, linked-data) or an http node would wrongly fall through to the OS hand-off.
 
 ## Progress
+
+- **2026-10-06, shared Weld input follow-up, in progress.** The direct adapter
+  routes mouse pointers through `send_mouse_input`, retaining changed buttons,
+  keyboard modifiers and the held primary/secondary/auxiliary button mask.
+  Touch/pen retain their native contact route. Raw down/up keep virtual and
+  scan codes; pressed composed text follows raw down as separate CHAR events
+  in string order. A producer failure stops the remaining input sequence.
+  Ordered browser completions and owned native-frame custody are unchanged.
+  Library validation: `cargo test --offline --locked -p weld-engine --features
+  welding-0-15 --target-dir C:/t/cargo-targets/mere` passed 11 tests and zero
+  doctests. The five new dispatch tests cover lowercase/BMP text,
+  down/up ordering, failures, rich mouse input, contact routing and the same
+  ordered completion queue. The feature-disabled package's three tests passed
+  too. The full active-doc audit retains 55 missing known-root paths and seven
+  stale historical annotations elsewhere; focused HEAD/working audits of this
+  plan both report zero findings. Consumer done-condition: immutable adapter source
+  adoption with one Inker type identity passes Turnstone's real two-page
+  input/find/zoom, permission and teardown scenarios before removing its host
+  bridge. Broader Mere/Genet repins remain a separate integration decision.
+  Supplementary Unicode is not qualified: pinned Welding's
+  `cef_input::send_key` casts a Rust scalar directly to `u16`; native UTF-16
+  delivery and OS IME require separate supplier/host work. Native consumer
+  evidence lives at
+  `turnstone/docs/receipts/browser_scry_windows_20261006/`; this library pass
+  does not extend those receipts to its new source.
 
 - 2026-08-30: **Page capture P1 contract landed.** Removed the old synchronous
   `SurfaceProducer::capture_snapshot_png` seam without a compatibility shim.
