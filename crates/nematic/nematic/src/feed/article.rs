@@ -15,8 +15,8 @@
 
 use errand::parse::feed::FeedEntry;
 use inker::{
-    Block, DocumentDiagnostic, DocumentProvenance, DocumentTrustState, EngineDocument,
-    EngineInput, InlineSpan,
+    Block, DocumentDiagnostic, DocumentProvenance, DocumentTrustState, EngineDocument, EngineInput,
+    InlineSpan,
 };
 
 /// The address of `guid`'s own document within the feed at `feed_address`.
@@ -124,7 +124,9 @@ fn body_blocks(
 fn resolve_blocks(blocks: &mut [Block], base: &url::Url) {
     for block in blocks {
         match block {
-            Block::Presented { block, .. } => resolve_blocks(std::slice::from_mut(&mut **block), base),
+            Block::Presented { block, .. } => {
+                resolve_blocks(std::slice::from_mut(&mut **block), base)
+            },
             Block::Heading { spans, .. } | Block::Paragraph { spans } => resolve_spans(spans, base),
             Block::Quote { blocks } => resolve_blocks(blocks, base),
             Block::List { items, .. } => {
@@ -225,7 +227,12 @@ mod tests {
 
     #[test]
     fn fragments_round_trip_awkward_guids() {
-        for guid in ["post-1", "urn:uuid:1225c695-cfb8", "tag:x.test,2026:/a b#c", "é"] {
+        for guid in [
+            "post-1",
+            "urn:uuid:1225c695-cfb8",
+            "tag:x.test,2026:/a b#c",
+            "é",
+        ] {
             let address = entry_address("gemini://x.test/feed.xml#old", guid);
             assert!(address.starts_with("gemini://x.test/feed.xml#"));
             assert_eq!(address.matches('#').count(), 1, "{address}");
@@ -233,6 +240,10 @@ mod tests {
             assert_eq!(decode_fragment(fragment), guid);
         }
         assert_eq!(decode_fragment("100%"), "100%", "a bare percent stays");
-        assert_eq!(decode_fragment("%é"), "%é", "a percent before a wide char stays");
+        assert_eq!(
+            decode_fragment("%é"),
+            "%é",
+            "a percent before a wide char stays"
+        );
     }
 }

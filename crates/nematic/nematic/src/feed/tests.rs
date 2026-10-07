@@ -375,7 +375,6 @@ fn end_to_end_via_default_policy_with_content_type() {
         )
         .expect("dispatch");
     assert_eq!(doc.title.as_deref(), Some("Example Feed"));
-
 }
 
 const BODIED: &str = r#"<?xml version="1.0"?>
@@ -436,9 +435,17 @@ fn entries_carry_dates_guid_enclosures_and_an_address_for_their_body() {
             byte_length: Some(1234),
         }]
     );
-    let address = content_address.as_deref().expect("a bodied entry has an address");
-    assert!(address.starts_with("gemini://x.test/feed.xml#"), "{address}");
-    let Block::FeedEntry { content_address, .. } = entries[1] else {
+    let address = content_address
+        .as_deref()
+        .expect("a bodied entry has an address");
+    assert!(
+        address.starts_with("gemini://x.test/feed.xml#"),
+        "{address}"
+    );
+    let Block::FeedEntry {
+        content_address, ..
+    } = entries[1]
+    else {
         unreachable!()
     };
     assert_eq!(*content_address, None, "an entry without a body has none");
@@ -466,7 +473,10 @@ fn an_entry_address_renders_the_entry_as_its_own_document() {
         Some("https://x.test/post"),
         "the article URL is the canonical link"
     );
-    assert!(matches!(&article.blocks[0], Block::Heading { level: 1, .. }));
+    assert!(matches!(
+        &article.blocks[0],
+        Block::Heading { level: 1, .. }
+    ));
     assert!(
         article
             .blocks
@@ -476,7 +486,10 @@ fn an_entry_address_renders_the_entry_as_its_own_document() {
         article.blocks
     );
     let text = article.to_text();
-    assert!(!text.contains("alert"), "scripts never reach the document: {text}");
+    assert!(
+        !text.contains("alert"),
+        "scripts never reach the document: {text}"
+    );
     assert!(
         article.outgoing_links().contains(&"https://x.test/more"),
         "relative links resolve against the article URL: {:?}",
@@ -491,7 +504,10 @@ fn an_entry_without_a_body_shows_its_summary_and_a_link_out() {
     assert!(article.to_text().contains("No body here."));
     let unknown = feed_render("gemini://x.test/feed.xml#nobody", BODIED);
     assert!(
-        unknown.blocks.iter().any(|block| matches!(block, Block::FeedHeader { .. })),
+        unknown
+            .blocks
+            .iter()
+            .any(|block| matches!(block, Block::FeedHeader { .. })),
         "an unknown fragment renders the feed itself"
     );
 }

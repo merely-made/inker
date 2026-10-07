@@ -651,8 +651,16 @@ fn menu_label_column_starts_at_one_x_in_every_row() {
             label: vec![link("gopher://h/1/", labels[1])],
             target: None,
         },
-        menu_row(MenuItemKind::Directory, labels[2], Some("gopher://h/1/phlog")),
-        menu_row(MenuItemKind::Document, labels[3], Some("gopher://h/0/about.txt")),
+        menu_row(
+            MenuItemKind::Directory,
+            labels[2],
+            Some("gopher://h/1/phlog"),
+        ),
+        menu_row(
+            MenuItemKind::Document,
+            labels[3],
+            Some("gopher://h/0/about.txt"),
+        ),
         MenuRow {
             kind: MenuItemKind::Search,
             marker: Some('7'),
@@ -684,7 +692,11 @@ fn menu_label_column_starts_at_one_x_in_every_row() {
     }
     assert!(label_xs[0] > lines[0][0], "the type column comes first");
 
-    assert_eq!(packet.interactions.len(), 5, "four links and one submission");
+    assert_eq!(
+        packet.interactions.len(),
+        5,
+        "four links and one submission"
+    );
     assert!(matches!(
         &packet.interactions[3].kind,
         InteractionKind::Submit { target } if target == "gopher://h/7/find"
@@ -767,7 +779,10 @@ fn a_feed_entry_with_a_body_offers_its_own_document_first() {
             _ => None,
         })
         .collect();
-    assert_eq!(urls, ["gemini://x.test/feed.xml#post-1", "https://x.test/post"]);
+    assert_eq!(
+        urls,
+        ["gemini://x.test/feed.xml#post-1", "https://x.test/post"]
+    );
 }
 
 #[test]

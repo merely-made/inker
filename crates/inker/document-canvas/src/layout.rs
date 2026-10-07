@@ -138,9 +138,7 @@ fn preserve_soft_breaks(spans: &[InlineSpan]) -> Vec<InlineSpan> {
                 target: target.clone(),
                 spans: preserve_soft_breaks(spans),
             },
-            InlineSpan::Text(_)
-            | InlineSpan::Code(_)
-            | InlineSpan::LineBreak => span.clone(),
+            InlineSpan::Text(_) | InlineSpan::Code(_) | InlineSpan::LineBreak => span.clone(),
         })
         .collect()
 }

@@ -1388,7 +1388,11 @@ mod tests {
         );
         let _ = doc.frame(640, 480);
         let links: Vec<_> = doc.links().into_iter().map(|(url, _)| url).collect();
-        assert_eq!(links, ["gopher://x.test/1/phlog"], "the search row is not a link");
+        assert_eq!(
+            links,
+            ["gopher://x.test/1/phlog"],
+            "the search row is not a link"
+        );
     }
 
     /// An entry's own address fetches the feed without its fragment and renders

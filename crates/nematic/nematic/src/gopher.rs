@@ -244,7 +244,11 @@ mod tests {
         let kinds: Vec<_> = rows(&doc).iter().map(|row| row.kind).collect();
         assert_eq!(
             kinds,
-            [MenuItemKind::Info, MenuItemKind::Directory, MenuItemKind::Info]
+            [
+                MenuItemKind::Info,
+                MenuItemKind::Directory,
+                MenuItemKind::Info
+            ]
         );
     }
 
@@ -298,7 +302,10 @@ mod tests {
             line('T', "tn3270", "", "example.test", "23"),
         );
         let doc = render(&body);
-        let got: Vec<_> = rows(&doc).iter().map(|row| (row.kind, row.marker)).collect();
+        let got: Vec<_> = rows(&doc)
+            .iter()
+            .map(|row| (row.kind, row.marker))
+            .collect();
         assert_eq!(
             got,
             [

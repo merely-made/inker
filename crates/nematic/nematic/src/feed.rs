@@ -157,7 +157,8 @@ fn parse_json(body: &str) -> Result<Feed, EngineError> {
         // The full body for the entry's own document: HTML as given, plain text
         // kept verbatim inside a preformatted block.
         let content = trimmed_some(item.content_html.clone()).or_else(|| {
-            trimmed_some(item.content_text.clone()).map(|text| format!("<pre>{}</pre>", escape_html(&text)))
+            trimmed_some(item.content_text.clone())
+                .map(|text| format!("<pre>{}</pre>", escape_html(&text)))
         });
 
         // Mirror the XML path: prefer summary, then plain-text content, then HTML
@@ -194,7 +195,9 @@ fn parse_json(body: &str) -> Result<Feed, EngineError> {
 
 /// Escape text for an HTML body.
 fn escape_html(text: &str) -> String {
-    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Trim a JSON string field, dropping it if empty after trimming.
