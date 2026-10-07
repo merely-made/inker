@@ -1,0 +1,12 @@
+[package]
+name = "mere-page-load"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = true
+description = "Mere's fetch vocabulary and the sans-IO page load: one document's request identity, supersede, Stop, streaming and typed outcome, with no transport or clock of its own."
+
+[lib]
+name = "page_load"
+path = "src/lib.rs"
