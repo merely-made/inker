@@ -260,3 +260,16 @@ reads.
   settings and engine parts named, the graft and weld `SurfaceEngine` impls
   recorded as landed, and the Phase 0 versus Phase-5 naming of the registry
   fold-in reconciled with the scrying tile plan.
+
+- **2026-10-06 Graft ordered host events.** `GraftSurface::poll_web_event`
+  now permits a host's single delegate queue to preserve ordering across
+  navigation, title/address changes, messages and correlated completions.
+  `GraftProducer` forwards that queue directly. The default retains the old
+  separate navigation/message polling behavior for existing implementers.
+  Four focused Graft library tests pass, including a mixed-kind ordering
+  regression whose legacy queue hooks reject accidental splitting.
+  The frame seam now describes owned payload custody, per-paint synchronization,
+  content generation versus allocation identity, and WebView-owned resize.
+  This is a shared adapter qualification, not an upstream Servo construction
+  or headed consumer receipt. Turnstone's process-owned Servo host and native
+  page/input/resize/teardown gates remain separate implementation work.

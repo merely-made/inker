@@ -87,7 +87,10 @@ mod tests {
 
     /// Minimal surface stub: navigable, no frames, no events. Drives the spawn
     /// pipeline through the registry without a Servo instance.
-    struct StubSurface;
+    #[derive(Default)]
+    struct StubSurface {
+        ordered_events: Option<std::collections::VecDeque<inker::WebSurfaceEvent>>,
+    }
 
     impl GraftSurface for StubSurface {
         fn resize(&mut self, _: u32, _: u32) -> Result<(), SurfaceError> {
@@ -143,13 +146,26 @@ mod tests {
             Ok(())
         }
         fn poll_navigation_event(&mut self) -> Option<NavigationEvent> {
+            assert!(
+                self.ordered_events.is_none(),
+                "ordered host must not be split into legacy queues"
+            );
             None
         }
         fn poll_cursor_shape(&mut self) -> Option<CursorShape> {
             None
         }
         fn poll_web_message(&mut self) -> Option<WebMessage> {
+            assert!(
+                self.ordered_events.is_none(),
+                "ordered host must not be split into legacy queues"
+            );
             None
+        }
+        fn poll_web_event(&mut self) -> Option<inker::WebSurfaceEvent> {
+            self.ordered_events
+                .as_mut()
+                .and_then(|events| events.pop_front())
         }
         fn apply_settings(&mut self, _: &SurfaceSettings) -> Result<(), SurfaceError> {
             Ok(())
@@ -159,7 +175,7 @@ mod tests {
     struct StubFactory;
     impl GraftProducerFactory for StubFactory {
         fn build(&self, _: &SurfaceSpawnRequest) -> Result<Box<dyn GraftSurface>, SurfaceError> {
-            Ok(Box::new(StubSurface))
+            Ok(Box::new(StubSurface::default()))
         }
     }
 
@@ -211,7 +227,7 @@ mod tests {
 
     #[test]
     fn graft_capture_stays_unsupported_until_the_protocol_is_wired() {
-        let caps = StubSurface.web_capabilities().document;
+        let caps = StubSurface::default().web_capabilities().document;
         assert!(matches!(
             caps.find_in_page,
             CapabilityStatus::Unsupported { .. }
@@ -229,5 +245,33 @@ mod tests {
         let engine = GraftEngine::new(Arc::new(FailFactory));
         let result = engine.spawn(&stub_request());
         assert!(matches!(result, Err(SurfaceError::SpawnFailed(_))));
+    }
+
+    #[test]
+    fn producer_retains_host_callback_order_across_event_kinds() {
+        use inker::{WebRequestId, WebSurface, WebSurfaceEvent};
+        let events = [
+            WebSurfaceEvent::TitleChanged {
+                title: "first".into(),
+            },
+            WebSurfaceEvent::ScriptCompleted {
+                id: WebRequestId::new(7),
+                result: Ok("second".into()),
+            },
+            WebSurfaceEvent::Navigation(NavigationEvent::Finished {
+                url: "https://servo.org/".into(),
+                title: Some("third".into()),
+            }),
+            WebSurfaceEvent::AddressChanged {
+                url: "https://servo.org/#fourth".into(),
+            },
+        ];
+        let mut producer = GraftProducer::new(Box::new(StubSurface {
+            ordered_events: Some(events.clone().into()),
+        }));
+        for expected in events {
+            assert_eq!(producer.poll_web_event(), Some(expected));
+        }
+        assert_eq!(producer.poll_web_event(), None);
     }
 }
