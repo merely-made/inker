@@ -169,6 +169,7 @@ fn write_html_block(block: &Block, out: &mut String) {
             summary,
             article_url,
             source_url,
+            ..
         } => {
             out.push_str("<article class=\"feed-entry\">\n<h2>");
             escape_text(title, out);

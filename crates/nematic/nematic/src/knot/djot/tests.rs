@@ -213,6 +213,11 @@ fn feed_entry_div_reads_attributes() {
             summary: Some("A summary.".into()),
             article_url: Some("https://blog.test/post".into()),
             source_url: None,
+            published: None,
+            updated: None,
+            guid: None,
+            enclosures: Vec::new(),
+            content_address: None,
         }]
     );
 }

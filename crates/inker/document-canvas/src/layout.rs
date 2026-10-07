@@ -291,8 +291,13 @@ impl<'a> DocumentLayouter<'a> {
             Block::FeedEntry {
                 article_url,
                 source_url,
+                content_address,
                 ..
-            } => usize::from(article_url.is_some()) + usize::from(source_url.is_some()),
+            } => {
+                usize::from(content_address.is_some())
+                    + usize::from(article_url.is_some())
+                    + usize::from(source_url.is_some())
+            },
             Block::Menu { rows } => links(&menu_spans(rows)),
             Block::CodeBlock { .. }
             | Block::Preformatted { .. }
@@ -411,12 +416,15 @@ impl<'a> DocumentLayouter<'a> {
                 summary,
                 article_url,
                 source_url,
+                content_address,
+                ..
             } => Some(self.render_feed_entry(
                 source_index,
                 indent_level,
                 title,
                 date.as_deref(),
                 summary.as_deref(),
+                content_address.as_deref(),
                 article_url.as_deref(),
                 source_url.as_deref(),
             )),
@@ -1003,6 +1011,7 @@ impl<'a> DocumentLayouter<'a> {
         title: &str,
         date: Option<&str>,
         summary: Option<&str>,
+        content_address: Option<&str>,
         article_url: Option<&str>,
         source_url: Option<&str>,
     ) -> RenderedBlock {
@@ -1019,6 +1028,17 @@ impl<'a> DocumentLayouter<'a> {
         if let Some(s) = summary {
             composed.push(Block::Paragraph {
                 spans: vec![InlineSpan::Text(s.to_string())],
+            });
+        }
+        // The entry's own document, read from the feed's copy of its body.
+        if let Some(url) = content_address {
+            composed.push(Block::Paragraph {
+                spans: vec![InlineSpan::Link {
+                    url: url.to_string(),
+                    title: None,
+                    spans: vec![InlineSpan::Text("Read here".to_string())],
+                    predicate: None,
+                }],
             });
         }
         if let Some(url) = article_url {

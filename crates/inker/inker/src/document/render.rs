@@ -303,6 +303,7 @@ impl Block {
                 summary,
                 article_url,
                 source_url,
+                ..
             } => {
                 out.push_str(&format!("## {title}\n\n"));
                 if let Some(date) = date {
@@ -481,6 +482,7 @@ impl Block {
                 summary,
                 article_url,
                 source_url,
+                ..
             } => {
                 out.push_str(&format!("## {title}\n"));
                 if let Some(date) = date {
@@ -543,6 +545,7 @@ impl Block {
                 summary,
                 article_url,
                 source_url,
+                ..
             } => {
                 out.push_str("```feed-entry\n");
                 out.push_str(&format!("title: {title}\n"));

@@ -251,10 +251,28 @@ pub enum Block {
     /// One entry in a syndication feed (RSS `<item>` / Atom `<entry>`).
     FeedEntry {
         title: String,
+        /// One date to show: the first the entry carries.
         date: Option<String>,
         summary: Option<String>,
         article_url: Option<String>,
         source_url: Option<String>,
+        /// First published (RSS `pubDate`, Atom `published`).
+        #[serde(default)]
+        published: Option<String>,
+        /// Last changed (Atom `updated`).
+        #[serde(default)]
+        updated: Option<String>,
+        /// Stable entry identity (RSS `guid`, Atom `id`).
+        #[serde(default)]
+        guid: Option<String>,
+        /// Attached media (podcast audio, video).
+        #[serde(default)]
+        enclosures: Vec<FeedEnclosure>,
+        /// The entry's own document when the feed carries its body: the feed
+        /// address with the guid as its fragment. Opening it renders the body
+        /// offline, as its own document.
+        #[serde(default)]
+        content_address: Option<String>,
     },
     /// Label / value pair (`Login: alice`, `Language: en-US`,
     /// `Last-Modified: …`). Projection renders as a definition-list row.
@@ -344,6 +362,17 @@ pub fn menu_fallback_blocks(rows: &[MenuRow]) -> Vec<Block> {
     }
     flush(&mut run, &mut blocks);
     blocks
+}
+
+/// Media attached to a [`Block::FeedEntry`] (RSS `<enclosure>`, Atom
+/// `rel="enclosure"`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeedEnclosure {
+    pub url: String,
+    #[serde(default)]
+    pub media_type: Option<String>,
+    #[serde(default)]
+    pub byte_length: Option<u64>,
 }
 
 /// One row of a [`Block::Menu`].
@@ -618,12 +647,16 @@ fn collect_block_link_urls<'a>(block: &'a Block, out: &mut Vec<&'a str>) {
         Block::FeedEntry {
             article_url,
             source_url,
+            content_address,
             ..
         } => {
             if let Some(url) = article_url {
                 out.push(url.as_str());
             }
             if let Some(url) = source_url {
+                out.push(url.as_str());
+            }
+            if let Some(url) = content_address {
                 out.push(url.as_str());
             }
         },
@@ -735,6 +768,11 @@ mod tests {
                 summary: None,
                 article_url: Some("https://feed.test/post-1".into()),
                 source_url: Some("https://feed.test/".into()),
+                published: None,
+                updated: None,
+                guid: None,
+                enclosures: Vec::new(),
+                content_address: None,
             },
         ]);
         assert_eq!(

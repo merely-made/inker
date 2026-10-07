@@ -454,6 +454,11 @@ fn feed_entry_composes_into_group_with_h2_summary_link() {
             summary: Some("Summary text.".into()),
             article_url: Some("https://feed.test/x".into()),
             source_url: None,
+            published: None,
+            updated: None,
+            guid: None,
+            enclosures: Vec::new(),
+            content_address: None,
         }]),
         viewport(),
         &DocumentStyleSheet::default(),
@@ -733,6 +738,36 @@ fn soft_breaks_reflow_by_default_and_are_kept_when_preserved() {
     let lines = |packet: &DocumentRenderPacket| line_glyph_xs(&packet.blocks[0]).len();
     assert_eq!(lines(&reflowed), 1, "reflow joins the lines with spaces");
     assert_eq!(lines(&preserved), 3, "preserve keeps every source line");
+}
+
+#[test]
+fn a_feed_entry_with_a_body_offers_its_own_document_first() {
+    let packet = layout_document(
+        &doc(vec![Block::FeedEntry {
+            title: "Post".into(),
+            date: None,
+            summary: Some("Teaser.".into()),
+            article_url: Some("https://x.test/post".into()),
+            source_url: None,
+            published: None,
+            updated: None,
+            guid: Some("post-1".into()),
+            enclosures: Vec::new(),
+            content_address: Some("gemini://x.test/feed.xml#post-1".into()),
+        }]),
+        viewport(),
+        &DocumentStyleSheet::default(),
+    )
+    .packet;
+    let urls: Vec<_> = packet
+        .interactions
+        .iter()
+        .filter_map(|region| match &region.kind {
+            InteractionKind::Link { url } => Some(url.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(urls, ["gemini://x.test/feed.xml#post-1", "https://x.test/post"]);
 }
 
 #[test]

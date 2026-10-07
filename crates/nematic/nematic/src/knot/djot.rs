@@ -292,6 +292,11 @@ impl DivCtx {
                 summary,
                 article_url: self.url,
                 source_url: None,
+                published: None,
+                updated: None,
+                guid: None,
+                enclosures: Vec::new(),
+                content_address: None,
             },
             "feed-header" => Block::FeedHeader {
                 title: self.title.unwrap_or_default(),

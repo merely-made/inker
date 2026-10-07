@@ -134,7 +134,7 @@ impl SmolwebDocument {
         theme: SmolwebTheme,
     ) -> Result<Self, String> {
         let bytes = fetcher
-            .fetch(url)
+            .fetch(without_fragment(url))
             .ok_or_else(|| format!("could not load {url}"))?;
         Ok(Self::parse(url, &String::from_utf8_lossy(&bytes), theme))
     }
@@ -148,7 +148,7 @@ impl SmolwebDocument {
         policy: SmolwebInlineMediaPolicy,
     ) -> Result<Self, String> {
         let bytes = fetcher
-            .fetch(url)
+            .fetch(without_fragment(url))
             .ok_or_else(|| format!("could not load {url}"))?;
         Ok(Self::parse_with_inline_media(
             url,
@@ -898,6 +898,14 @@ fn image_link(block: &Block) -> Option<(String, String)> {
     Some((url.clone(), inline_text(spans)))
 }
 
+/// `url` without its fragment: a fragment names a place in the document and is
+/// never sent. The engine still sees the whole address, so a feed can render
+/// the entry a fragment names (smolweb fidelity plan WS4, R4).
+#[cfg(feature = "smolweb")]
+fn without_fragment(url: &str) -> &str {
+    url.split_once('#').map_or(url, |(base, _)| base)
+}
+
 #[cfg(feature = "smolweb")]
 fn looks_like_image_url(url: &str) -> bool {
     let path = url.split(['?', '#']).next().unwrap_or(url);
@@ -1381,6 +1389,69 @@ mod tests {
         let _ = doc.frame(640, 480);
         let links: Vec<_> = doc.links().into_iter().map(|(url, _)| url).collect();
         assert_eq!(links, ["gopher://x.test/1/phlog"], "the search row is not a link");
+    }
+
+    /// An entry's own address fetches the feed without its fragment and renders
+    /// the entry alone (smolweb fidelity plan WS4, R4).
+    #[test]
+    fn an_entry_address_loads_the_feed_and_renders_the_entry() {
+        const FEED: &str = r#"<?xml version="1.0"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel><title>Log</title>
+    <item>
+      <title>Post</title>
+      <link>https://x.test/post</link>
+      <guid>post-1</guid>
+      <description>Teaser.</description>
+      <content:encoded><![CDATA[<p>The whole post.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>"#;
+        struct Recording(std::sync::Mutex<Vec<String>>);
+        impl ResourceFetcher for Recording {
+            fn fetch(&self, url: &str) -> Option<Vec<u8>> {
+                self.0.lock().unwrap().push(url.to_string());
+                Some(FEED.as_bytes().to_vec())
+            }
+        }
+
+        let feed = SmolwebDocument::parse("gemini://x.test/feed.xml", FEED, SmolwebTheme::Plain);
+        let address = feed
+            .document()
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                Block::FeedEntry {
+                    content_address: Some(address),
+                    ..
+                } => Some(address.clone()),
+                _ => None,
+            })
+            .expect("the entry carries its own address");
+
+        let fetcher = Recording(Default::default());
+        let article = SmolwebDocument::load(&fetcher, &address, SmolwebTheme::Plain).unwrap();
+        assert_eq!(
+            *fetcher.0.lock().unwrap(),
+            ["gemini://x.test/feed.xml"],
+            "the fragment is not sent"
+        );
+        let document = article.document();
+        assert_eq!(document.title.as_deref(), Some("Post"));
+        assert_eq!(
+            document.provenance.canonical_uri.as_deref(),
+            Some("https://x.test/post")
+        );
+        assert!(inline_text_of(document).contains("The whole post."));
+    }
+
+    fn inline_text_of(document: &EngineDocument) -> String {
+        document
+            .walk_inline_spans()
+            .into_iter()
+            .map(|span| inline_text(std::slice::from_ref(span)))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     /// A fixed-width menu format keeps one typeface across its column grid

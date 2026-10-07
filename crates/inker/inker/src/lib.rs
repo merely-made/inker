@@ -71,7 +71,7 @@ pub use capabilities::{
 pub use document::{
     Block, BlockAlignment, BlockEvaluator, BlockEvaluators, BlockPresentation, BlockProvenance,
     BlockProvenanceMap, DocumentAnchor, DocumentDiagnostic, DocumentFold, DocumentNavigation,
-    DocumentProvenance, DocumentTrustState, EngineDocument, EvalOutcome, EvalOutput,
+    DocumentProvenance, DocumentTrustState, EngineDocument, EvalOutcome, EvalOutput, FeedEnclosure,
     EvaluationPolicy, Fetched, FoldKey, FoldMarkers, FoldState, GophermapContext, InPageTarget,
     InlinePresentation, InlineSpan, MenuItemKind, MenuRow, ResolvedProvenance, TableAlignment,
     TranscludeOutcome,

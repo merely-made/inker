@@ -16,11 +16,17 @@
 //! one [`Block::FeedEntry`] per item. Summaries are de-tagged to plain
 //! text (lossy v1), and the count of stripped entries surfaces as a
 //! `DegradedRendering` diagnostic.
+//!
+//! An entry that carries its body gets a `content_address`: the feed address
+//! with the entry's guid as its fragment. Asked for that address, the engine
+//! renders the entry as its own document (see `article`).
+
+mod article;
 
 use errand::parse::feed::{Feed, FeedEntry, parse as parse_feed_xml, strip_html_tags};
 use inker::{
     Block, DocumentDiagnostic, DocumentProvenance, DocumentTrustState, Engine, EngineDocument,
-    EngineError, EngineInput,
+    EngineError, EngineInput, FeedEnclosure,
 };
 use serde::Deserialize;
 
@@ -54,9 +60,12 @@ impl Engine for FeedEngine {
         } else {
             parse_feed_xml(&input.body).map_err(|e| EngineError::InvalidContent(e.to_string()))?
         };
+        if let Some(entry) = article::entry_for(&input.address, &feed.entries) {
+            return Ok(article::render(input, entry, self.engine_id()));
+        }
         let title = feed.title.clone();
         let lang = feed.lang.clone();
-        let (blocks, diagnostics) = build_document_blocks(feed);
+        let (blocks, diagnostics) = build_document_blocks(feed, &input.address);
 
         let default_content_type = if is_json {
             "application/feed+json"
@@ -142,7 +151,14 @@ fn parse_json(body: &str) -> Result<Feed, EngineError> {
         let guid = trimmed_some(item.id);
         let title = trimmed_some(item.title).or_else(|| guid.clone());
         let link = trimmed_some(item.url).or_else(|| trimmed_some(item.external_url));
-        let date = trimmed_some(item.date_published).or_else(|| trimmed_some(item.date_modified));
+        let published = trimmed_some(item.date_published);
+        let updated = trimmed_some(item.date_modified);
+        let date = published.clone().or_else(|| updated.clone());
+        // The full body for the entry's own document: HTML as given, plain text
+        // kept verbatim inside a preformatted block.
+        let content = trimmed_some(item.content_html.clone()).or_else(|| {
+            trimmed_some(item.content_text.clone()).map(|text| format!("<pre>{}</pre>", escape_html(&text)))
+        });
 
         // Mirror the XML path: prefer summary, then plain-text content, then HTML
         // content; strip tags and count the strip for the degraded hint.
@@ -164,13 +180,21 @@ fn parse_json(body: &str) -> Result<Feed, EngineError> {
                 title,
                 link,
                 date,
+                published,
+                updated,
                 summary,
+                content,
                 ..FeedEntry::default()
             });
         }
     }
 
     Ok(out)
+}
+
+/// Escape text for an HTML body.
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 /// Trim a JSON string field, dropping it if empty after trimming.
@@ -186,7 +210,7 @@ fn trimmed_some(value: Option<String>) -> Option<String> {
 /// metadata, then one [`Block::FeedEntry`] per item. These semantic blocks
 /// preserve RSS / Atom intent (a feed entry is distinct from "a paragraph with a
 /// link in it") so downstream intelligence can match on type, not just text.
-fn build_document_blocks(feed: Feed) -> (Vec<Block>, Vec<DocumentDiagnostic>) {
+fn build_document_blocks(feed: Feed, address: &str) -> (Vec<Block>, Vec<DocumentDiagnostic>) {
     let mut blocks = Vec::with_capacity(feed.entries.len() + 1);
 
     let header_has_content = feed.title.is_some() || feed.subtitle.is_some() || feed.link.is_some();
@@ -200,12 +224,29 @@ fn build_document_blocks(feed: Feed) -> (Vec<Block>, Vec<DocumentDiagnostic>) {
     }
 
     for entry in feed.entries {
+        let content_address = match (&entry.content, &entry.guid) {
+            (Some(_), Some(guid)) => Some(article::entry_address(address, guid)),
+            _ => None,
+        };
         blocks.push(Block::FeedEntry {
             title: entry.title.unwrap_or_default(),
             date: entry.date,
             summary: entry.summary,
             article_url: entry.link,
             source_url: None,
+            published: entry.published,
+            updated: entry.updated,
+            guid: entry.guid,
+            enclosures: entry
+                .enclosures
+                .into_iter()
+                .map(|enclosure| FeedEnclosure {
+                    url: enclosure.url,
+                    media_type: enclosure.media_type,
+                    byte_length: enclosure.byte_length,
+                })
+                .collect(),
+            content_address,
         });
     }
 
