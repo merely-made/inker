@@ -713,6 +713,13 @@ impl Builder<'_> {
                 id
             },
             Block::Rule => return None,
+            // A blank line (Micron lowers each one to an empty block) is
+            // space, not something to stop on.
+            Block::CodeBlock { text, .. } | Block::Preformatted { text }
+                if text.trim().is_empty() =>
+            {
+                return None;
+            },
             Block::CodeBlock { text, .. } | Block::Preformatted { text } => self.text_block(
                 DocumentA11yRole::StaticText,
                 text.clone(),
@@ -1314,5 +1321,80 @@ mod tests {
             rows.windows(2).all(|pair| pair[0] < pair[1]),
             "each row has its own line: {rows:?}"
         );
+    }
+
+    fn nomadnet(file: &str, source: &str) -> SmolwebDocumentSession {
+        use inker::{Engine, EngineInput};
+
+        let address = format!("abb3ebcd03cb2388a838e70c001291f9:/page/{file}");
+        let document = nematic::MicronEngine::new()
+            .render(&EngineInput::new(address, source))
+            .expect("the probe page lowers");
+        let document = SmolwebDocument::from_document_with_theme(document, SmolwebTheme::Plain);
+        let mut session = SmolwebDocumentSession::new(document, (640, 2400));
+        let _ = session.frame(640, 2400);
+        session
+    }
+
+    /// Real NomadNet pages, the guide's probes from NomadNet 1.4.2: the
+    /// structure page reads with its section headings, the links-and-fields
+    /// page with working links, and every node is boxed. Fields stay inert
+    /// source text here: the live form belongs to the host's form surface.
+    #[test]
+    fn nomadnet_pages_read_with_headings_and_links() {
+        let structure = nomadnet(
+            "guide-structure.mu",
+            include_str!(
+                "../../../../nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/guide-structure.mu"
+            ),
+        );
+        let projection = structure.accessibility_projection().expect("projects");
+        assert!(
+            projection
+                .nodes()
+                .iter()
+                .any(|node| matches!(node.role, DocumentA11yRole::Heading { .. })),
+            "the page's sections read as headings"
+        );
+        for node in projection.nodes() {
+            assert!(
+                node.bounds.is_some(),
+                "{:?} {:?} has a box",
+                node.role,
+                node.name
+            );
+        }
+
+        let mut links = nomadnet(
+            "guide-links-fields.mu",
+            include_str!(
+                "../../../../nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/guide-links-fields.mu"
+            ),
+        );
+        let projection = links.accessibility_projection().expect("projects");
+        let link = projection
+            .nodes()
+            .iter()
+            .find(|node| {
+                node.role == DocumentA11yRole::Link
+                    && links.accessibility_click_target(node.id).is_some()
+            })
+            .expect("a visible link with a click point");
+        let target = links.accessibility_click_target(link.id).unwrap();
+        assert!(
+            matches!(
+                links.click_at(target.point.x, target.point.y),
+                SessionClick::Navigate(_) | SessionClick::Handled
+            ),
+            "the click point lands on that link"
+        );
+        for node in projection.nodes() {
+            assert!(
+                node.bounds.is_some(),
+                "{:?} {:?} has a box",
+                node.role,
+                node.name
+            );
+        }
     }
 }
