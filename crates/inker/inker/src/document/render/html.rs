@@ -36,7 +36,7 @@
 
 use super::super::{
     Block, BlockAlignment, BlockPresentation, EngineDocument, InlinePresentation, InlineSpan,
-    TableAlignment,
+    MenuRow, TableAlignment,
 };
 
 impl EngineDocument {
@@ -208,7 +208,39 @@ fn write_html_block(block: &Block, out: &mut String) {
             header,
             rows,
         } => write_html_table(alignments, header, rows, out),
+        Block::Menu { rows } => write_html_menu(rows, out),
     }
+}
+
+/// A menu as a typed list: each row names its kind and raw marker, shows the
+/// type label, and links its label when it has a target.
+fn write_html_menu(rows: &[MenuRow], out: &mut String) {
+    out.push_str("<ul class=\"menu\">\n");
+    for row in rows {
+        out.push_str("<li class=\"menu-row\" data-kind=\"");
+        out.push_str(row.kind.name());
+        out.push('"');
+        if let Some(marker) = row.marker {
+            out.push_str(" data-marker=\"");
+            escape_attr(&marker.to_string(), out);
+            out.push('"');
+        }
+        out.push_str("><span class=\"menu-type\">");
+        escape_text(row.kind.label(), out);
+        out.push_str("</span> ");
+        match &row.target {
+            Some(url) => {
+                out.push_str("<a href=\"");
+                escape_attr(url, out);
+                out.push_str("\">");
+                write_inline_html(&row.label, out);
+                out.push_str("</a>");
+            },
+            None => write_inline_html(&row.label, out),
+        }
+        out.push_str("</li>\n");
+    }
+    out.push_str("</ul>\n");
 }
 
 fn block_alignment_name(alignment: BlockAlignment) -> &'static str {

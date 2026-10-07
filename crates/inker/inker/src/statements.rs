@@ -68,6 +68,15 @@ fn collect_block(block: &Block, out: &mut Vec<LinkStatement>) {
                 }
             }
         },
+        // A menu row's target is navigation, not a `rel` statement; its label
+        // may still carry inline links.
+        Block::Menu { rows } => {
+            for row in rows {
+                for span in &row.label {
+                    collect_span(span, out);
+                }
+            }
+        },
         // Feed blocks carry navigation URLs (article / source), not `rel`
         // statements; the remaining variants hold no inline links.
         Block::FeedHeader { .. }

@@ -9,7 +9,7 @@ use crate::LinkAdornment;
 use crate::types::InteractionKind;
 use inker::{
     Block, BlockAlignment, BlockPresentation, DocumentProvenance, DocumentTrustState,
-    EngineDocument, InlinePresentation, InlineSpan, TableAlignment,
+    EngineDocument, InlinePresentation, InlineSpan, MenuItemKind, MenuRow, TableAlignment,
 };
 
 fn doc(blocks: Vec<Block>) -> EngineDocument {
@@ -583,6 +583,156 @@ fn text_populates_font_sidecar() {
             }
         }
     }
+}
+
+fn menu_row(kind: MenuItemKind, label: &str, target: Option<&str>) -> MenuRow {
+    MenuRow {
+        kind,
+        marker: None,
+        label: vec![InlineSpan::Text(label.into())],
+        target: target.map(Into::into),
+    }
+}
+
+/// Each line's glyph x positions in reading order, from a text block's runs.
+fn line_glyph_xs(block: &RenderedBlock) -> Vec<Vec<f32>> {
+    let RenderedBlockKind::Text { glyph_runs } = &block.kind else {
+        panic!("a text block: {:?}", block.kind);
+    };
+    let mut lines: Vec<(f32, Vec<f32>)> = Vec::new();
+    for run in glyph_runs {
+        let xs = run.glyphs.iter().map(|glyph| run.origin.x + glyph.x);
+        match lines
+            .iter_mut()
+            .find(|(y, _)| (*y - run.origin.y).abs() < 0.5)
+        {
+            Some((_, line)) => line.extend(xs),
+            None => lines.push((run.origin.y, xs.collect())),
+        }
+    }
+    lines.sort_by(|a, b| a.0.total_cmp(&b.0));
+    lines
+        .into_iter()
+        .map(|(_, mut xs)| {
+            xs.sort_by(f32::total_cmp);
+            xs
+        })
+        .collect()
+}
+
+#[test]
+fn menu_label_column_starts_at_one_x_in_every_row() {
+    let labels = [
+        "  ___  welcome  ___",
+        "home",
+        "Phlog",
+        "About",
+        "Search the hole",
+        "Elsewhere",
+    ];
+    let link = |url: &str, label: &str| InlineSpan::Link {
+        url: url.into(),
+        title: None,
+        spans: vec![InlineSpan::Text(label.into())],
+        predicate: None,
+    };
+    let rows = vec![
+        menu_row(MenuItemKind::Info, labels[0], None),
+        // An info row has an empty type label; its text lines up with the
+        // others only if the type column is padded.
+        MenuRow {
+            kind: MenuItemKind::Info,
+            marker: Some('i'),
+            label: vec![link("gopher://h/1/", labels[1])],
+            target: None,
+        },
+        menu_row(MenuItemKind::Directory, labels[2], Some("gopher://h/1/phlog")),
+        menu_row(MenuItemKind::Document, labels[3], Some("gopher://h/0/about.txt")),
+        MenuRow {
+            kind: MenuItemKind::Search,
+            marker: Some('7'),
+            label: vec![InlineSpan::Submit {
+                target: "gopher://h/7/find".into(),
+                spans: vec![InlineSpan::Text(labels[4].into())],
+            }],
+            target: None,
+        },
+        menu_row(MenuItemKind::External, labels[5], Some("https://x.test/")),
+    ];
+    let mut style = DocumentStyleSheet::default();
+    style.link_adornment = LinkAdornment::None;
+    let packet = layout_document(&doc(vec![Block::Menu { rows }]), viewport(), &style).packet;
+    assert_eq!(packet.blocks.len(), 1, "a menu is one block");
+
+    let lines = line_glyph_xs(&packet.blocks[0]);
+    assert_eq!(lines.len(), labels.len(), "one line per row");
+    let label_xs: Vec<f32> = lines
+        .iter()
+        .zip(labels)
+        .map(|(xs, label)| xs[xs.len() - label.chars().count()])
+        .collect();
+    for x in &label_xs {
+        assert!(
+            (x - label_xs[0]).abs() < 0.01,
+            "label column drifts: {label_xs:?}"
+        );
+    }
+    assert!(label_xs[0] > lines[0][0], "the type column comes first");
+
+    assert_eq!(packet.interactions.len(), 5, "four links and one submission");
+    assert!(matches!(
+        &packet.interactions[3].kind,
+        InteractionKind::Submit { target } if target == "gopher://h/7/find"
+    ));
+}
+
+#[test]
+fn a_long_menu_row_overflows_instead_of_wrapping() {
+    let long = "a menu label long enough to wrap anywhere it was allowed to wrap at all";
+    let packet = layout_document(
+        &doc(vec![Block::Menu {
+            rows: vec![
+                menu_row(MenuItemKind::Directory, long, Some("gopher://h/1/a")),
+                menu_row(MenuItemKind::Directory, "short", Some("gopher://h/1/b")),
+            ],
+        }]),
+        Viewport::new(160.0, 800.0),
+        &DocumentStyleSheet::default(),
+    )
+    .packet;
+    let [first, second] = packet.interactions.as_slice() else {
+        panic!("two links: {:?}", packet.interactions);
+    };
+    assert_eq!(
+        first.bounds.size.height, second.bounds.size.height,
+        "the long row stays one line"
+    );
+    assert!(packet.blocks[0].bounds.size.width > 160.0, "and overflows");
+}
+
+#[test]
+fn soft_breaks_reflow_by_default_and_are_kept_when_preserved() {
+    // Gemtext's consecutive text lines, joined by soft breaks.
+    let poem = || {
+        doc(vec![Block::Paragraph {
+            spans: vec![
+                InlineSpan::Text("so much depends".into()),
+                InlineSpan::SoftBreak,
+                InlineSpan::Strong(vec![
+                    InlineSpan::Text("upon".into()),
+                    InlineSpan::SoftBreak,
+                    InlineSpan::Text("a red wheel".into()),
+                ]),
+            ],
+        }])
+    };
+    let reflowed = layout_document(&poem(), viewport(), &DocumentStyleSheet::default()).packet;
+    let mut sheet = DocumentStyleSheet::default();
+    sheet.soft_break = crate::SoftBreak::Preserve;
+    let preserved = layout_document(&poem(), viewport(), &sheet).packet;
+    let lines = |packet: &DocumentRenderPacket| line_glyph_xs(&packet.blocks[0]).len();
+    assert_eq!(lines(&reflowed), 1, "reflow joins the lines with spaces");
+    assert_eq!(lines(&preserved), 3, "preserve keeps every source line");
 }
 
 #[test]

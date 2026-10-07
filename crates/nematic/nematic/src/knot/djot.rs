@@ -440,6 +440,13 @@ fn emit_block(block: &Block, out: &mut String) {
         Block::Table { header, rows, .. } => {
             emit_djot_table(header, rows, out);
         },
+        // Djot has no menu construct: write the rows as the paragraphs and
+        // preformatted runs every menu-less format reads.
+        Block::Menu { rows } => {
+            for block in inker::menu_fallback_blocks(rows) {
+                emit_block(&block, out);
+            }
+        },
         Block::MetadataRow { label, value } => {
             out.push_str(": ");
             out.push_str(label);
@@ -537,6 +544,12 @@ fn emit_block(block: &Block, out: &mut String) {
             out.push_str(")\n");
         },
         Block::Rule => out.push_str("----\n"),
+        // A kind this serializer does not know yet stays visible, named.
+        other => {
+            out.push_str("::: unsupported\n");
+            out.push_str(other.kind_name());
+            out.push_str("\n:::\n");
+        },
     }
 }
 

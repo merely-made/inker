@@ -12,7 +12,10 @@
 //! and surfaces inline links as separate `=> url label` lines after the
 //! paragraph, matching gemtext's link-line model.
 
-use super::{Block, DocumentTrustState, EngineDocument, InlineSpan, TableAlignment, inline_text};
+use super::{
+    Block, DocumentTrustState, EngineDocument, InlineSpan, TableAlignment, inline_text,
+    menu_fallback_blocks,
+};
 
 impl EngineDocument {
     /// Render the document as CommonMark.
@@ -329,12 +332,22 @@ impl Block {
             } => {
                 write_markdown_table(alignments, header, rows, out, &pad);
             },
+            Self::Menu { rows } => {
+                for block in menu_fallback_blocks(rows) {
+                    block.write_markdown(out, indent);
+                }
+            },
         }
     }
 
     fn write_gemini(&self, out: &mut String) {
         match self {
             Self::Presented { block, .. } => block.write_gemini(out),
+            Self::Menu { rows } => {
+                for block in menu_fallback_blocks(rows) {
+                    block.write_gemini(out);
+                }
+            },
             Self::Table { header, rows, .. } => {
                 out.push_str("```\n");
                 for line in table_lines(header, rows) {

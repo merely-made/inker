@@ -969,11 +969,13 @@ fn looks_like_feed(body: &str) -> bool {
 /// The content types whose whole document is a fixed-width menu, so its body
 /// font has to be the monospace one.
 ///
-/// A gopher menu's informational lines lower to `Preformatted` and carry ASCII
-/// art and column alignment, but its selector lines lower to a `Paragraph` with
-/// a link span, because `Preformatted` holds text and cannot hold a link. Those
-/// lines would otherwise take the body serif and break the very column grid the
-/// lines above and below them establish. Nex listings have the same shape.
+/// A nex listing's text lines lower to `Preformatted` and carry ASCII art and
+/// column alignment, but its link lines lower to a `Paragraph` with a link
+/// span, because `Preformatted` holds text and cannot hold a link. Those lines
+/// would otherwise take the body serif and break the very column grid the
+/// lines above and below them establish. A gopher menu now lowers to one
+/// `Block::Menu`, which document-canvas sets in the monospace face itself; it
+/// stays listed so anything else in the document keeps the same face.
 const FIXED_WIDTH_MENU_TYPES: &[&str] = &["application/gopher-menu", "application/x-nex-listing"];
 
 fn style_for_theme(
@@ -1353,10 +1355,36 @@ mod tests {
         );
     }
 
-    /// A gopher menu is one fixed-width document. Its info lines lower to
-    /// `Preformatted` and its selector lines to a paragraph with a link span,
-    /// so a serif body font renders the links in a different typeface from the
-    /// ASCII art directly above them and the columns stop lining up.
+    /// A gopher menu reaches the host as one typed menu (smolweb fidelity plan
+    /// WS4, R2): its rows keep their kinds, a directory row is a viewport link
+    /// target, and the search row submits rather than navigates.
+    #[test]
+    fn a_gopher_menu_reaches_the_host_as_one_typed_menu() {
+        let body = concat!(
+            "iWelcome\tfake\t(NULL)\t0\r\n",
+            "1Phlog\t/phlog\tx.test\t70\r\n",
+            "7Search\t/find\tx.test\t70\r\n",
+        );
+        let mut doc = SmolwebDocument::parse("gopher://x.test/", body, SmolwebTheme::Plain);
+        let [Block::Menu { rows }] = doc.document().blocks.as_slice() else {
+            panic!("one menu: {:?}", doc.document().blocks);
+        };
+        let kinds: Vec<_> = rows.iter().map(|row| row.kind).collect();
+        assert_eq!(
+            kinds,
+            [
+                inker::MenuItemKind::Info,
+                inker::MenuItemKind::Directory,
+                inker::MenuItemKind::Search,
+            ]
+        );
+        let _ = doc.frame(640, 480);
+        let links: Vec<_> = doc.links().into_iter().map(|(url, _)| url).collect();
+        assert_eq!(links, ["gopher://x.test/1/phlog"], "the search row is not a link");
+    }
+
+    /// A fixed-width menu format keeps one typeface across its column grid
+    /// (see `FIXED_WIDTH_MENU_TYPES`).
     #[test]
     fn a_fixed_width_menu_sets_its_body_font_to_the_monospace_one() {
         for content_type in ["application/gopher-menu", "application/x-nex-listing"] {
