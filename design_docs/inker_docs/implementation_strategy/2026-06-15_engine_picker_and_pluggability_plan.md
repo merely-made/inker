@@ -313,3 +313,25 @@ reads.
   order. Knot main has independently landed S77's preview fallback and
   FeedEntry rest handling; unpublished identity seed work is not inferred.
   Windows native pixels and foreign accessibility remain distinct gates.
+
+- **2026-10-07, foreign accessibility producer seam, library qualified.**
+  Inker's native `SurfaceProducer` now has additive object-safe activation,
+  ordered AccessKit update polling, resynchronization and typed action delivery.
+  Public aliases retain the existing workspace AccessKit 0.24 types without
+  translating tree/node identities or action data. `GraftSurface` exposes the
+  same defaults; the erased producer spawned by `GraftEngine` forwards them
+  unchanged. Legacy producers return no updates and explicit Unsupported
+  control/action errors. Engine/factory accessibility remains Opaque unless
+  its owner separately qualifies and declares a concrete capability.
+  Three focused regressions cover legacy default refusals, nested updates with
+  duplicate local node IDs, FIFO, exact typed action data/refusal propagation,
+  replacement-root resync and deactivation independently of GPU acquisition.
+  On Windows, `cargo test --offline --locked -p inker -p graft-engine --lib
+  -j 1` passed 123 Inker tests and 6 Graft tests on the stable Mere target,
+  at BelowNormal priority. Only Inker's runtime AccessKit edge and Graft's
+  test-only edge are added; Cargo.lock records those two dependency edges
+  without changing package versions or root pins. Turnstone owns graft admission,
+  generation/current-node validation, pane bounds, action policy and idle OS
+  publication. Existing `uxtree::graft` and E1/session work are consumed rather
+  than duplicated. Supplier export/action support, Servo GPU synchronization
+  and native Windows/macOS/Linux assistive-technology walks remain separate.

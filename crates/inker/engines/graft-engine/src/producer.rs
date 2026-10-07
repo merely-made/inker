@@ -11,9 +11,10 @@
 use inker::{
     Cookie, CursorShape, DocumentCapabilities, DragEvent, DragOperationSet, FocusReason,
     KeyboardEvent, MouseEvent, NativeTextureHandle, NavigationEvent, PhysicalPosition,
-    PointerEvent, SurfaceError, SurfaceFrame, SurfaceProducer, SurfaceSettings, SurfaceSyncHandle,
-    SurfaceTextureFormat, WebFeatureStatus, WebFrameTransportMode, WebMessage, WebRequestId,
-    WebSurface, WebSurfaceCapabilities, WebSurfaceEvent,
+    PointerEvent, SurfaceAccessibilityActionRequest, SurfaceAccessibilityTreeId,
+    SurfaceAccessibilityUpdate, SurfaceError, SurfaceFrame, SurfaceProducer, SurfaceSettings,
+    SurfaceSyncHandle, SurfaceTextureFormat, WebFeatureStatus, WebFrameTransportMode, WebMessage,
+    WebRequestId, WebSurface, WebSurfaceCapabilities, WebSurfaceEvent,
 };
 
 /// A frame produced by a [`GraftSurface`]: the shared GPU texture handle the host
@@ -94,6 +95,58 @@ pub trait GraftSurface {
         self.poll_navigation_event()
             .map(WebSurfaceEvent::Navigation)
             .or_else(|| self.poll_web_message().map(WebSurfaceEvent::WebMessage))
+    }
+
+    /// Activate or deactivate this producer's native semantic export.
+    ///
+    /// Activation returns the guest root tree identity; deactivation returns
+    /// `None` and retires the producer's pending semantic updates. An active
+    /// exporter must return `Some`, or an explicit error if unavailable.
+    /// The host must publish its graft node before forwarding guest updates
+    /// to the OS adapter. Retaining/validating updates may precede publication.
+    /// This protocol does not itself upgrade an accessibility capability.
+    fn set_accessibility_active(
+        &mut self,
+        _active: bool,
+    ) -> Result<Option<SurfaceAccessibilityTreeId>, SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility activation is not wired for this surface".into(),
+        ))
+    }
+
+    /// Drain one semantic update in the producer's original callback order.
+    ///
+    /// Preserve all tree identities and nested graft references. Updates are
+    /// independent of GPU frame acquisition; the host owns wake/publication,
+    /// identity validation, pane bounds, and lifecycle generation checks.
+    fn poll_accessibility_update(&mut self) -> Option<SurfaceAccessibilityUpdate> {
+        None
+    }
+
+    /// Request a fresh initialization stream and return its root tree identity.
+    ///
+    /// A producer may reactivate its exporter and replace the root identity.
+    /// The host must retire the old graft before requesting resynchronization,
+    /// then publish the returned root's graft before forwarding the new updates
+    /// to the OS adapter. Retaining/validating updates may precede publication.
+    /// Old pending updates must not be replayed into the new activation.
+    fn request_accessibility_resync(&mut self) -> Result<SurfaceAccessibilityTreeId, SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility resynchronization is not wired for this surface".into(),
+        ))
+    }
+
+    /// Deliver a supported typed action without rewriting its target or data.
+    ///
+    /// The host validates current tree/node ownership, generation and advertised
+    /// actions. The producer still explicitly refuses unsupported operations.
+    fn send_accessibility_action(
+        &mut self,
+        _request: SurfaceAccessibilityActionRequest,
+    ) -> Result<(), SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility action delivery is not wired for this surface".into(),
+        ))
     }
 
     fn web_capabilities(&self) -> WebSurfaceCapabilities {
@@ -242,6 +295,28 @@ impl SurfaceProducer for GraftProducer {
 
     fn apply_settings(&mut self, settings: &SurfaceSettings) -> Result<(), SurfaceError> {
         self.inner.apply_settings(settings)
+    }
+
+    fn set_accessibility_active(
+        &mut self,
+        active: bool,
+    ) -> Result<Option<SurfaceAccessibilityTreeId>, SurfaceError> {
+        self.inner.set_accessibility_active(active)
+    }
+
+    fn poll_accessibility_update(&mut self) -> Option<SurfaceAccessibilityUpdate> {
+        self.inner.poll_accessibility_update()
+    }
+
+    fn request_accessibility_resync(&mut self) -> Result<SurfaceAccessibilityTreeId, SurfaceError> {
+        self.inner.request_accessibility_resync()
+    }
+
+    fn send_accessibility_action(
+        &mut self,
+        request: SurfaceAccessibilityActionRequest,
+    ) -> Result<(), SurfaceError> {
+        self.inner.send_accessibility_action(request)
     }
 
     fn as_web_surface(&mut self) -> Option<&mut dyn WebSurface> {

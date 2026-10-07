@@ -20,6 +20,9 @@ path = "src/lib.rs"
 inker.workspace = true
 tracing.workspace = true
 
+[dev-dependencies]
+accesskit.workspace = true
+
 # NOTE: deliberately NO `grafting` / `servo-wgpu-interop-adapter` / `servo`
 # dependency. Unlike scrying (which exposes one `WebSurfaceProducer` library
 # trait this crate could adapt), graft's "producer" is a *composite* — a `Servo`

@@ -54,9 +54,9 @@ impl SurfaceEngine for GraftEngine {
         GRAFT_SERVO_ENGINE_ID
     }
 
-    // a11y_capability defaults to Opaque: the graft frame is an imported GPU
-    // texture with no semantics the host can read. A future Servo->AccessKit
-    // bridge surfaced through GraftSurface could upgrade this to Partial.
+    // Accessibility remains Opaque by default. The optional GraftSurface
+    // semantic/control methods forward host exports without certifying them
+    // or promoting a factory's native assistive-technology capability.
 
     #[tracing::instrument(level = "debug", skip(self, request), fields(url = %request.url))]
     fn spawn(
@@ -177,6 +177,275 @@ mod tests {
         fn build(&self, _: &SurfaceSpawnRequest) -> Result<Box<dyn GraftSurface>, SurfaceError> {
             Ok(Box::new(StubSurface::default()))
         }
+    }
+
+    #[derive(Default)]
+    struct SemanticWitness {
+        updates: std::collections::VecDeque<inker::SurfaceAccessibilityUpdate>,
+        controls: Vec<&'static str>,
+        actions: Vec<inker::SurfaceAccessibilityActionRequest>,
+    }
+
+    struct SemanticFactory {
+        witness: Arc<std::sync::Mutex<SemanticWitness>>,
+        root: accesskit::TreeId,
+        replacement: accesskit::TreeId,
+    }
+
+    impl GraftProducerFactory for SemanticFactory {
+        fn build(&self, _: &SurfaceSpawnRequest) -> Result<Box<dyn GraftSurface>, SurfaceError> {
+            Ok(Box::new(SemanticSurface {
+                witness: self.witness.clone(),
+                root: self.root,
+                replacement: self.replacement,
+            }))
+        }
+    }
+
+    struct SemanticSurface {
+        witness: Arc<std::sync::Mutex<SemanticWitness>>,
+        root: accesskit::TreeId,
+        replacement: accesskit::TreeId,
+    }
+
+    impl GraftSurface for SemanticSurface {
+        fn resize(&mut self, _: u32, _: u32) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn acquire_frame(&mut self) -> Result<Option<GraftFrame>, SurfaceError> {
+            panic!("semantic control/delivery must not acquire a GPU frame")
+        }
+        fn load_url(&mut self, _: &str) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn load_html(&mut self, _: &str) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn reload(&mut self) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn stop(&mut self) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn go_back(&mut self) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn go_forward(&mut self) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn can_go_back(&self) -> bool {
+            false
+        }
+        fn can_go_forward(&self) -> bool {
+            false
+        }
+        fn notify_mouse(&mut self, _: MouseEvent) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn notify_pointer(&mut self, _: PointerEvent) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn notify_drag(&mut self, _: DragEvent) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn finish_drag_source(
+            &mut self,
+            _: PhysicalPosition,
+            _: DragOperationSet,
+        ) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn notify_keyboard(&mut self, _: KeyboardEvent) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn focus(&mut self, _: FocusReason) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+        fn poll_navigation_event(&mut self) -> Option<NavigationEvent> {
+            None
+        }
+        fn poll_cursor_shape(&mut self) -> Option<CursorShape> {
+            None
+        }
+        fn poll_web_message(&mut self) -> Option<WebMessage> {
+            None
+        }
+        fn apply_settings(&mut self, _: &SurfaceSettings) -> Result<(), SurfaceError> {
+            Ok(())
+        }
+
+        fn set_accessibility_active(
+            &mut self,
+            active: bool,
+        ) -> Result<Option<inker::SurfaceAccessibilityTreeId>, SurfaceError> {
+            let mut witness = self.witness.lock().unwrap();
+            witness
+                .controls
+                .push(if active { "activate" } else { "deactivate" });
+            if active {
+                Ok(Some(self.root))
+            } else {
+                witness.updates.clear();
+                Ok(None)
+            }
+        }
+        fn poll_accessibility_update(&mut self) -> Option<inker::SurfaceAccessibilityUpdate> {
+            self.witness.lock().unwrap().updates.pop_front()
+        }
+        fn request_accessibility_resync(
+            &mut self,
+        ) -> Result<inker::SurfaceAccessibilityTreeId, SurfaceError> {
+            let mut witness = self.witness.lock().unwrap();
+            witness.controls.push("resync");
+            witness.updates.clear();
+            witness
+                .updates
+                .push_back(semantic_update(self.replacement, None));
+            self.root = self.replacement;
+            Ok(self.root)
+        }
+        fn send_accessibility_action(
+            &mut self,
+            request: inker::SurfaceAccessibilityActionRequest,
+        ) -> Result<(), SurfaceError> {
+            let refused = request.action == accesskit::Action::Focus;
+            self.witness.lock().unwrap().actions.push(request);
+            if refused {
+                Err(SurfaceError::Unsupported("witness focus refusal".into()))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn semantic_update(
+        tree_id: accesskit::TreeId,
+        nested: Option<accesskit::TreeId>,
+    ) -> inker::SurfaceAccessibilityUpdate {
+        use accesskit::{Action, Node, NodeId, Rect, Role, Tree, TreeUpdate};
+        let mut node = Node::new(if nested.is_some() {
+            Role::Document
+        } else {
+            Role::TextInput
+        });
+        node.set_label("semantic witness");
+        node.set_bounds(Rect::new(1.0, 2.0, 30.0, 40.0));
+        if let Some(nested) = nested {
+            node.set_tree_id(nested);
+        } else {
+            node.add_action(Action::SetValue);
+        }
+        TreeUpdate {
+            nodes: vec![(NodeId(1), node)],
+            tree: Some(Tree::new(NodeId(1))),
+            tree_id,
+            focus: NodeId(1),
+        }
+    }
+
+    #[test]
+    fn legacy_graft_accessibility_defaults_remain_opaque_and_refuse_controls() {
+        let engine = GraftEngine::new(Arc::new(StubFactory));
+        assert_eq!(engine.a11y_capability(), inker::A11yCapability::Opaque);
+        let mut producer = engine.spawn(&stub_request()).unwrap();
+        assert!(producer.poll_accessibility_update().is_none());
+        assert!(matches!(
+            producer.set_accessibility_active(true),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.request_accessibility_resync(),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.send_accessibility_action(accesskit::ActionRequest {
+                action: accesskit::Action::Click,
+                target_tree: accesskit::TreeId::ROOT,
+                target_node: accesskit::NodeId(1),
+                data: None,
+            }),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer
+                .as_web_surface()
+                .unwrap()
+                .capabilities()
+                .accessibility,
+            inker::WebFeatureStatus::Unsupported { .. }
+        ));
+    }
+
+    #[test]
+    fn spawned_graft_preserves_semantic_fifo_nested_ids_and_typed_action_data() {
+        use accesskit::{Action, ActionData, ActionRequest, NodeId, TreeId, Uuid};
+        let root = TreeId(Uuid::from_u128(11));
+        let document = TreeId(Uuid::from_u128(12));
+        let replacement = TreeId(Uuid::from_u128(13));
+        let updates = [
+            semantic_update(root, Some(document)),
+            semantic_update(document, None),
+        ];
+        let witness = Arc::new(std::sync::Mutex::new(SemanticWitness {
+            updates: updates.clone().into(),
+            ..SemanticWitness::default()
+        }));
+        let engine = GraftEngine::new(Arc::new(SemanticFactory {
+            witness: witness.clone(),
+            root,
+            replacement,
+        }));
+        // Exercise the public erased spawn path, not concrete producer calls.
+        let mut producer = engine.spawn(&stub_request()).unwrap();
+        assert_eq!(producer.set_accessibility_active(true).unwrap(), Some(root));
+        for expected in updates {
+            assert_eq!(producer.poll_accessibility_update(), Some(expected));
+        }
+        assert!(producer.poll_accessibility_update().is_none());
+        let action = ActionRequest {
+            action: Action::SetValue,
+            target_tree: document,
+            target_node: NodeId(1),
+            data: Some(ActionData::Value("retained typed data".into())),
+        };
+        producer.send_accessibility_action(action.clone()).unwrap();
+        let refused = ActionRequest {
+            action: Action::Focus,
+            data: None,
+            ..action.clone()
+        };
+        assert_eq!(
+            producer.send_accessibility_action(refused.clone()),
+            Err(SurfaceError::Unsupported("witness focus refusal".into()))
+        );
+        assert_eq!(witness.lock().unwrap().actions, vec![action, refused]);
+        // A stale queued delta is discarded by the producer's resync policy;
+        // the shared adapter must return the new root and fresh queue unchanged.
+        witness
+            .lock()
+            .unwrap()
+            .updates
+            .push_back(semantic_update(document, None));
+        assert_eq!(
+            producer.request_accessibility_resync().unwrap(),
+            replacement
+        );
+        assert_eq!(
+            producer.poll_accessibility_update(),
+            Some(semantic_update(replacement, None))
+        );
+        assert!(producer.poll_accessibility_update().is_none());
+        witness
+            .lock()
+            .unwrap()
+            .updates
+            .push_back(semantic_update(replacement, None));
+        assert_eq!(producer.set_accessibility_active(false).unwrap(), None);
+        assert!(producer.poll_accessibility_update().is_none());
+        assert_eq!(
+            witness.lock().unwrap().controls,
+            vec!["activate", "resync", "deactivate"]
+        );
     }
 
     struct FailFactory;

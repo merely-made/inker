@@ -18,6 +18,13 @@ use std::{any::Any, collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
+/// Typed guest-tree action, including its original target tree, node and data.
+pub use accesskit::ActionRequest as SurfaceAccessibilityActionRequest;
+/// Native guest-tree identity, retained exactly across the producer boundary.
+pub use accesskit::TreeId as SurfaceAccessibilityTreeId;
+/// One ordered native semantic update, including any nested tree references.
+pub use accesskit::TreeUpdate as SurfaceAccessibilityUpdate;
+
 pub use crate::WebFeatureStatus;
 use crate::routing::EngineRouteDecision;
 use crate::session_engine::{
@@ -1030,6 +1037,60 @@ pub trait SurfaceProducer {
         ))
     }
 
+    // ── Optional native accessibility ────────────────────────────────────────
+
+    /// Activate or deactivate this producer's native semantic export.
+    ///
+    /// Activation returns the guest root tree identity; deactivation returns
+    /// `None` and retires the producer's pending semantic updates. An active
+    /// exporter must return `Some`, or an explicit error if unavailable.
+    /// The host must publish its graft node before forwarding guest updates
+    /// to the OS adapter. Retaining/validating updates may precede publication.
+    /// This protocol does not itself upgrade an accessibility capability.
+    fn set_accessibility_active(
+        &mut self,
+        _active: bool,
+    ) -> Result<Option<SurfaceAccessibilityTreeId>, SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility activation is not wired for this surface".into(),
+        ))
+    }
+
+    /// Drain one semantic update in the producer's original callback order.
+    ///
+    /// Preserve all tree identities and nested graft references. Updates are
+    /// independent of GPU frame acquisition; the host owns wake/publication,
+    /// identity validation, pane bounds, and lifecycle generation checks.
+    fn poll_accessibility_update(&mut self) -> Option<SurfaceAccessibilityUpdate> {
+        None
+    }
+
+    /// Request a fresh initialization stream and return its root tree identity.
+    ///
+    /// A producer may reactivate its exporter and replace the root identity.
+    /// The host must retire the old graft before requesting resynchronization,
+    /// then publish the returned root's graft before forwarding the new updates
+    /// to the OS adapter. Retaining/validating updates may precede publication.
+    /// Old pending updates must not be replayed into the new activation.
+    fn request_accessibility_resync(&mut self) -> Result<SurfaceAccessibilityTreeId, SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility resynchronization is not wired for this surface".into(),
+        ))
+    }
+
+    /// Deliver a supported typed action without rewriting its target or data.
+    ///
+    /// The host validates current tree/node ownership, generation and advertised
+    /// actions. The producer still explicitly refuses unsupported operations.
+    fn send_accessibility_action(
+        &mut self,
+        _request: SurfaceAccessibilityActionRequest,
+    ) -> Result<(), SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "native accessibility action delivery is not wired for this surface".into(),
+        ))
+    }
+
     // ── Optional web control plane ───────────────────────────────────────────
     fn as_web_surface(&mut self) -> Option<&mut dyn WebSurface> {
         None
@@ -1292,6 +1353,34 @@ mod tests {
         fn spawn(&self, _: &SurfaceSpawnRequest) -> Result<Box<dyn SurfaceProducer>, SurfaceError> {
             Ok(Box::new(StubProducer))
         }
+    }
+
+    #[test]
+    fn legacy_surface_accessibility_is_explicitly_unsupported() {
+        let mut producer: Box<dyn SurfaceProducer> = Box::new(StubProducer);
+        assert!(producer.poll_accessibility_update().is_none());
+        assert!(matches!(
+            producer.set_accessibility_active(true),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.set_accessibility_active(false),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        assert!(matches!(
+            producer.request_accessibility_resync(),
+            Err(SurfaceError::Unsupported(_))
+        ));
+        let action = SurfaceAccessibilityActionRequest {
+            action: accesskit::Action::Click,
+            target_tree: SurfaceAccessibilityTreeId::ROOT,
+            target_node: accesskit::NodeId(1),
+            data: None,
+        };
+        assert!(matches!(
+            producer.send_accessibility_action(action),
+            Err(SurfaceError::Unsupported(_))
+        ));
     }
 
     struct EventQueueSurface {
