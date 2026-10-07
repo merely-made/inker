@@ -72,10 +72,10 @@ pub use document::{
     Block, BlockAlignment, BlockEvaluator, BlockEvaluators, BlockPresentation, BlockProvenance,
     BlockProvenanceMap, DocumentAnchor, DocumentDiagnostic, DocumentFold, DocumentNavigation,
     DocumentProvenance, DocumentTrustState, EngineDocument, EvalOutcome, EvalOutput,
-    EvaluationPolicy, Fetched, FoldKey, FoldMarkers, FoldState, GophermapContext, InPageTarget,
-    InlinePresentation, InlineSpan, ResolvedProvenance, TableAlignment, TranscludeOutcome,
-    TransclusionPolicy, evaluate_blocks, inline_text, parse_eval, parse_include,
-    resolve_transclusions,
+    EvaluationPolicy, FeedEnclosure, Fetched, FoldKey, FoldMarkers, FoldState, GophermapContext,
+    InPageTarget, InlinePresentation, InlineSpan, MenuItemKind, MenuRow, ResolvedProvenance,
+    TableAlignment, TranscludeOutcome, TransclusionPolicy, evaluate_blocks, inline_text,
+    menu_fallback_blocks, parse_eval, parse_include, resolve_transclusions,
 };
 pub use engine::{Engine, EngineError, EngineInput, EngineRegistry};
 pub use page_capture::{

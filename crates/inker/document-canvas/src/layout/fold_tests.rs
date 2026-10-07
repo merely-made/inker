@@ -291,6 +291,11 @@ fn link_identity_after_a_closed_fold_matches_the_open_layout() {
             summary: None,
             article_url: Some("gemini://x.test/article".into()),
             source_url: Some("gemini://x.test/entry-source".into()),
+            published: None,
+            updated: None,
+            guid: None,
+            enclosures: Vec::new(),
+            content_address: None,
         },
         paragraph("gemini://x.test/after"),
     ];

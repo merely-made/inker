@@ -205,7 +205,27 @@ fn write_gophermap_block(block: &Block, ctx: &GophermapContext, out: &mut String
                 push_info(out, &format!("{prefix}{line}"));
             }
         },
+        Block::Menu { rows } => {
+            for row in rows {
+                let label = inline_text(&row.label);
+                match row.target.clone().or_else(|| submit_target(&row.label)) {
+                    Some(url) => push_link(out, ctx, &url, &label),
+                    None => push_info(out, &format!("{prefix}{label}")),
+                }
+            }
+        },
     }
+}
+
+/// The first submission endpoint in a span list (a search row's query target).
+fn submit_target(spans: &[InlineSpan]) -> Option<String> {
+    spans.iter().find_map(|span| match span {
+        InlineSpan::Submit { target, .. } => Some(target.clone()),
+        InlineSpan::Presented { spans, .. }
+        | InlineSpan::Emphasis(spans)
+        | InlineSpan::Strong(spans) => submit_target(spans),
+        _ => None,
+    })
 }
 
 fn write_text_block(block: &Block, out: &mut String, prefix: &str) {
@@ -227,6 +247,11 @@ fn write_text_block(block: &Block, out: &mut String, prefix: &str) {
                 out.push('\n');
             }
             out.push('\n');
+        },
+        Block::Menu { rows } => {
+            for block in super::super::menu_fallback_blocks(rows) {
+                write_text_block(&block, out, prefix);
+            }
         },
         Block::Heading { spans, .. } => {
             out.push_str(prefix);

@@ -15,8 +15,9 @@ default = []
 # Remote http(s) loading for RemoteFetcher via the netfetcher engine.
 netfetch = ["dep:netfetcher", "dep:tokio", "dep:bytes"]
 # The smolweb engine-native lane: errand transport and Nematic EngineDocument
-# lowering; the reader lane is unconditional.
-smolweb = ["dep:errand", "dep:nematic", "dep:tokio"]
+# lowering; the reader lane is unconditional. Nematic's html-fragment engine
+# renders a feed entry's body as its own document (ruling S75).
+smolweb = ["dep:errand", "dep:nematic", "nematic/html-fragment", "dep:tokio"]
 # Preserve Fleece-derived reading evidence through Eidetic without making the
 # document lane's ordinary reader/session consumers take a storage dependency.
 eidetic-bridge = ["fleece/wire", "dep:eidetic", "dep:serde", "dep:serde_json"]

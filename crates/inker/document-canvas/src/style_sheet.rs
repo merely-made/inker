@@ -83,6 +83,18 @@ pub enum ColorToken {
 /// arrow chosen by whether the link leaves the document's own protocol. The
 /// prefix renders as part of the link (link-colored, inside the hit region).
 /// The default is the one both link tokens start from.
+/// How a soft line break is laid out: a source line boundary inside one
+/// paragraph, such as gemtext's consecutive text lines.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SoftBreak {
+    /// The break becomes a space and the paragraph wraps to the column.
+    #[default]
+    Reflow,
+    /// The break stays a line break, as the source wrote it (poems,
+    /// addresses, deliberate layout).
+    Preserve,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LinkAdornment {
     /// No prefix; the link text renders as-is.
@@ -295,6 +307,9 @@ pub struct DocumentStyleSheet {
     /// How keyboard focus is shown.
     #[serde(default)]
     pub focus_indicator: FocusIndicator,
+    /// Whether soft line breaks reflow or are kept.
+    #[serde(default)]
+    pub soft_break: SoftBreak,
     /// Per-role style descriptors.
     pub roles: RoleStyles,
 }
@@ -408,6 +423,7 @@ impl Default for DocumentStyleSheet {
             source_presentation: SourcePresentation::Respect,
             fold_markers: FoldMarkers::default(),
             focus_indicator: FocusIndicator::default(),
+            soft_break: SoftBreak::Reflow,
             roles: RoleStyles {
                 body: BlockStyle {
                     family: FontChoice::InheritBody,

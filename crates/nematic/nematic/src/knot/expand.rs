@@ -120,6 +120,11 @@ fn parse_feed_entry(text: &str) -> Block {
         summary,
         article_url,
         source_url,
+        published: None,
+        updated: None,
+        guid: None,
+        enclosures: Vec::new(),
+        content_address: None,
     };
 
     // If extras exist, emit them as sibling MetadataRows after the entry.

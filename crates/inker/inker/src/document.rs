@@ -202,7 +202,12 @@ pub enum DocumentDiagnostic {
 ///
 /// Each variant maps to an AccessKit role; the projection layer lifts these
 /// into an a11y / automation tree without any host-specific information.
+///
+/// Non-exhaustive: crates outside inker match it with a wildcard arm that
+/// surfaces a kind they cannot draw (name it with [`Block::kind_name`])
+/// rather than dropping it silently.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Block {
     /// A source-format presentation hint around one structural block. The
     /// wrapped block remains the semantic content; readers may choose a
@@ -246,10 +251,28 @@ pub enum Block {
     /// One entry in a syndication feed (RSS `<item>` / Atom `<entry>`).
     FeedEntry {
         title: String,
+        /// One date to show: the first the entry carries.
         date: Option<String>,
         summary: Option<String>,
         article_url: Option<String>,
         source_url: Option<String>,
+        /// First published (RSS `pubDate`, Atom `published`).
+        #[serde(default)]
+        published: Option<String>,
+        /// Last changed (Atom `updated`).
+        #[serde(default)]
+        updated: Option<String>,
+        /// Stable entry identity (RSS `guid`, Atom `id`).
+        #[serde(default)]
+        guid: Option<String>,
+        /// Attached media (podcast audio, video).
+        #[serde(default)]
+        enclosures: Vec<FeedEnclosure>,
+        /// The entry's own document when the feed carries its body: the feed
+        /// address with the guid as its fragment. Opening it renders the body
+        /// offline, as its own document.
+        #[serde(default)]
+        content_address: Option<String>,
     },
     /// Label / value pair (`Login: alice`, `Language: en-US`,
     /// `Last-Modified: …`). Projection renders as a definition-list row.
@@ -270,6 +293,167 @@ pub enum Block {
         /// Body rows; each row is a list of cells, each cell a list of inline spans.
         rows: Vec<Vec<Vec<InlineSpan>>>,
     },
+    /// A typed menu (a gopher menu, a nex directory): rows that each name
+    /// their kind, keep the source's raw item-type marker, and carry a label
+    /// and an optional target. Laid out as a fixed-width grid, type column
+    /// then label column. AccessKit `Role::List` of items naming their kind.
+    Menu { rows: Vec<MenuRow> },
+}
+
+impl Block {
+    /// A short stable name for the block's kind, for diagnostics and for the
+    /// placeholder a renderer shows when it cannot draw a kind.
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            Block::Presented { block, .. } => block.kind_name(),
+            Block::Heading { .. } => "heading",
+            Block::Paragraph { .. } => "paragraph",
+            Block::CodeBlock { .. } => "code block",
+            Block::Quote { .. } => "quote",
+            Block::List { .. } => "list",
+            Block::Image { .. } => "image",
+            Block::Preformatted { .. } => "preformatted",
+            Block::Rule => "rule",
+            Block::FeedHeader { .. } => "feed header",
+            Block::FeedEntry { .. } => "feed entry",
+            Block::MetadataRow { .. } => "metadata row",
+            Block::Badge { .. } => "badge",
+            Block::Table { .. } => "table",
+            Block::Menu { .. } => "menu",
+        }
+    }
+}
+
+/// A menu rewritten as the blocks formats without a menu read: runs of info
+/// and error rows as one preformatted block, a targeted row as a link
+/// paragraph, and any other row (a search) as its label.
+pub fn menu_fallback_blocks(rows: &[MenuRow]) -> Vec<Block> {
+    let mut blocks = Vec::new();
+    let mut run: Vec<String> = Vec::new();
+    let flush = |run: &mut Vec<String>, blocks: &mut Vec<Block>| {
+        if !run.is_empty() {
+            blocks.push(Block::Preformatted {
+                text: run.drain(..).collect::<Vec<_>>().join("\n"),
+            });
+        }
+    };
+    for row in rows {
+        match (row.kind, &row.target) {
+            (MenuItemKind::Info, None) => run.push(inline_text(&row.label)),
+            (MenuItemKind::Error, None) => run.push(format!("[error] {}", inline_text(&row.label))),
+            (_, Some(url)) => {
+                flush(&mut run, &mut blocks);
+                blocks.push(Block::Paragraph {
+                    spans: vec![InlineSpan::Link {
+                        url: url.clone(),
+                        title: None,
+                        spans: row.label.clone(),
+                        predicate: None,
+                    }],
+                });
+            },
+            (_, None) => {
+                flush(&mut run, &mut blocks);
+                blocks.push(Block::Paragraph {
+                    spans: row.label.clone(),
+                });
+            },
+        }
+    }
+    flush(&mut run, &mut blocks);
+    blocks
+}
+
+/// Media attached to a [`Block::FeedEntry`] (RSS `<enclosure>`, Atom
+/// `rel="enclosure"`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeedEnclosure {
+    pub url: String,
+    #[serde(default)]
+    pub media_type: Option<String>,
+    #[serde(default)]
+    pub byte_length: Option<u64>,
+}
+
+/// One row of a [`Block::Menu`].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MenuRow {
+    pub kind: MenuItemKind,
+    /// The source format's raw item-type character (gopher's `0`, `1`, `i`),
+    /// or `None` for a format that has none.
+    #[serde(default)]
+    pub marker: Option<char>,
+    /// The row's text. A search row carries an [`InlineSpan::Submit`] here.
+    pub label: Vec<InlineSpan>,
+    /// Where activating the row navigates. `None` for info and error rows,
+    /// and for a search row, which submits through its label.
+    #[serde(default)]
+    pub target: Option<String>,
+}
+
+/// What a [`MenuRow`] points at: portable across menu formats, while
+/// [`MenuRow::marker`] keeps the source's exact type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum MenuItemKind {
+    /// Display-only text (gopher `i`).
+    Info,
+    /// A server error line (gopher `3`).
+    Error,
+    /// A text document (gopher `0`).
+    Document,
+    /// A submenu or directory (gopher `1`).
+    Directory,
+    /// A search endpoint that takes a query (gopher `7`).
+    Search,
+    /// A binary file (gopher `9`, `5`).
+    Binary,
+    /// An image (gopher `g`, `I`).
+    Image,
+    /// A sound (gopher `s`).
+    Sound,
+    /// A terminal session (gopher `8` telnet, `T` tn3270).
+    Telnet,
+    /// A link out of the format (gopher `h` `URL:` items).
+    External,
+    /// Any other type; the marker says which.
+    Other,
+}
+
+impl MenuItemKind {
+    /// A stable lowercase name, for markup attributes and diagnostics.
+    pub fn name(self) -> &'static str {
+        match self {
+            MenuItemKind::Info => "info",
+            MenuItemKind::Error => "error",
+            MenuItemKind::Document => "document",
+            MenuItemKind::Directory => "directory",
+            MenuItemKind::Search => "search",
+            MenuItemKind::Binary => "binary",
+            MenuItemKind::Image => "image",
+            MenuItemKind::Sound => "sound",
+            MenuItemKind::Telnet => "telnet",
+            MenuItemKind::External => "external",
+            MenuItemKind::Other => "other",
+        }
+    }
+
+    /// A short label for the type column.
+    pub fn label(self) -> &'static str {
+        match self {
+            MenuItemKind::Info => "",
+            MenuItemKind::Error => "ERR",
+            MenuItemKind::Document => "TXT",
+            MenuItemKind::Directory => "DIR",
+            MenuItemKind::Search => "ASK",
+            MenuItemKind::Binary => "BIN",
+            MenuItemKind::Image => "IMG",
+            MenuItemKind::Sound => "SND",
+            MenuItemKind::Telnet => "TEL",
+            MenuItemKind::External => "URL",
+            MenuItemKind::Other => "???",
+        }
+    }
 }
 
 /// A table column's text alignment (djot / markdown `:---`, `:---:`, `---:`).
@@ -417,6 +601,13 @@ fn collect_block_spans<'a>(block: &'a Block, out: &mut Vec<&'a InlineSpan>) {
                 }
             }
         },
+        Block::Menu { rows } => {
+            for row in rows {
+                for span in &row.label {
+                    out.push(span);
+                }
+            }
+        },
         Block::CodeBlock { .. }
         | Block::Image { .. }
         | Block::Preformatted { .. }
@@ -456,6 +647,7 @@ fn collect_block_link_urls<'a>(block: &'a Block, out: &mut Vec<&'a str>) {
         Block::FeedEntry {
             article_url,
             source_url,
+            content_address,
             ..
         } => {
             if let Some(url) = article_url {
@@ -464,10 +656,23 @@ fn collect_block_link_urls<'a>(block: &'a Block, out: &mut Vec<&'a str>) {
             if let Some(url) = source_url {
                 out.push(url.as_str());
             }
+            if let Some(url) = content_address {
+                out.push(url.as_str());
+            }
         },
         Block::Table { header, rows, .. } => {
             for cell in header.iter().chain(rows.iter().flatten()) {
                 for span in cell {
+                    collect_link_urls(span, out);
+                }
+            }
+        },
+        Block::Menu { rows } => {
+            for row in rows {
+                if let Some(url) = &row.target {
+                    out.push(url.as_str());
+                }
+                for span in &row.label {
                     collect_link_urls(span, out);
                 }
             }
@@ -563,6 +768,11 @@ mod tests {
                 summary: None,
                 article_url: Some("https://feed.test/post-1".into()),
                 source_url: Some("https://feed.test/".into()),
+                published: None,
+                updated: None,
+                guid: None,
+                enclosures: Vec::new(),
+                content_address: None,
             },
         ]);
         assert_eq!(
