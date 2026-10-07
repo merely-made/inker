@@ -26,10 +26,9 @@
 //! - `h` URL items: an external row targeting the extracted URL
 //! - every other type: a row targeting its synthesised `gopher://` URL
 //!
-//! The raw character comes from today's gopher-protocol kinds: a known kind
-//! maps to the character that produced it (an image to `I`, since `g` and `I`
-//! share a kind), and an unknown kind keeps its own. Telnet `8` and tn3270
-//! `T` both read as telnet here, whatever the grammar's coarse kind says.
+//! The raw character is the grammar's `raw_type`, exactly as the menu line
+//! carried it (gopher-protocol 0.2.0), so `g` and `I`, or `8` and `T`, stay
+//! distinct where the portable kind folds them together.
 //!
 //! References:
 //! - RFC 1436 (The Internet Gopher Protocol)
@@ -97,7 +96,8 @@ impl Engine for GopherEngine {
 /// One parsed item as a menu row. `None` for a resource item without a URL,
 /// which the grammar never yields but which would have nowhere to go.
 fn menu_row(item: GopherItem) -> Option<MenuRow> {
-    let (kind, marker) = kind_and_marker(&item.kind);
+    let kind = menu_kind(&item.kind);
+    let marker = item.raw_type;
     let text = vec![InlineSpan::Text(item.display)];
     let (label, target) = match kind {
         MenuItemKind::Info | MenuItemKind::Error => (text, None),
@@ -118,20 +118,22 @@ fn menu_row(item: GopherItem) -> Option<MenuRow> {
     })
 }
 
-/// The portable kind and raw type character for a grammar kind.
-fn kind_and_marker(kind: &GopherKind) -> (MenuItemKind, char) {
+/// The portable kind for a grammar kind.
+fn menu_kind(kind: &GopherKind) -> MenuItemKind {
     match kind {
-        GopherKind::Info => (MenuItemKind::Info, 'i'),
-        GopherKind::Error => (MenuItemKind::Error, '3'),
-        GopherKind::Text => (MenuItemKind::Document, '0'),
-        GopherKind::Submenu => (MenuItemKind::Directory, '1'),
-        GopherKind::Search => (MenuItemKind::Search, '7'),
-        GopherKind::Binary => (MenuItemKind::Binary, '9'),
-        GopherKind::Image => (MenuItemKind::Image, 'I'),
-        GopherKind::Sound => (MenuItemKind::Sound, 's'),
-        GopherKind::Telnet => (MenuItemKind::Telnet, 'T'),
-        GopherKind::Url => (MenuItemKind::External, 'h'),
-        GopherKind::Other(c) => (other_kind(*c), *c),
+        GopherKind::Info => MenuItemKind::Info,
+        GopherKind::Error => MenuItemKind::Error,
+        GopherKind::Text => MenuItemKind::Document,
+        GopherKind::Submenu => MenuItemKind::Directory,
+        GopherKind::Search => MenuItemKind::Search,
+        GopherKind::Binary => MenuItemKind::Binary,
+        GopherKind::Image => MenuItemKind::Image,
+        GopherKind::Sound => MenuItemKind::Sound,
+        GopherKind::Telnet => MenuItemKind::Telnet,
+        GopherKind::Url => MenuItemKind::External,
+        // A CSO phone book is its own query protocol, not a gopher search.
+        GopherKind::Cso => MenuItemKind::Other,
+        GopherKind::Other(c) => other_kind(*c),
     }
 }
 
@@ -311,6 +313,27 @@ mod tests {
             [
                 (MenuItemKind::Telnet, Some('8')),
                 (MenuItemKind::Telnet, Some('T')),
+            ]
+        );
+    }
+
+    #[test]
+    fn folded_kinds_keep_their_own_characters() {
+        let body = format!(
+            "{}{}",
+            line('g', "a gif", "/a.gif", "example.test", "70"),
+            line('I', "an image", "/a.png", "example.test", "70"),
+        );
+        let doc = render(&body);
+        let got: Vec<_> = rows(&doc)
+            .iter()
+            .map(|row| (row.kind, row.marker))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                (MenuItemKind::Image, Some('g')),
+                (MenuItemKind::Image, Some('I')),
             ]
         );
     }
