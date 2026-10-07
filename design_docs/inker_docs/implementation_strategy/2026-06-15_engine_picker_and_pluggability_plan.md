@@ -273,3 +273,18 @@ reads.
   This is a shared adapter qualification, not an upstream Servo construction
   or headed consumer receipt. Turnstone's process-owned Servo host and native
   page/input/resize/teardown gates remain separate implementation work.
+
+- **2026-10-06, qualified browser compatibility ancestry.** The immutable Mere
+  `db4ee31258b23c86572c429388c5d10bd4de9dc3` revision retains Turnstone's
+  qualified `3d1cdacc` dependency family and carries only the reviewed Weld
+  input and ordered Graft adapter fixes with their existing-plan progress.
+  A two-parent ancestry merge makes that maintenance revision reachable from
+  published main while preserving current main's source and dependency graph;
+  the three adapter source blobs already match. This deliberately preserves
+  unrelated newer main work rather than replaying the maintenance baseline.
+  Turnstone's exact-source Scry/Weld production executable passed the four
+  Windows input, Scry restart and CEF permission gates with native exit zero
+  and `RESULT ok`. Its frozen source/archive evidence is owned by
+  `turnstone/docs/receipts/browser_supplier_integration_20261006/`.
+  The ordered Graft host contract remains library-qualified; the upstream
+  Servo native consumer and supplementary Unicode/OS IME gates are separate.
