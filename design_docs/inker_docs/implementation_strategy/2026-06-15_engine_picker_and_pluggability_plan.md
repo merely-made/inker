@@ -243,3 +243,20 @@ WebView flips the node from genet to a live WebView2.
   This is a shared adapter qualification, not an upstream Servo construction
   or headed consumer receipt. Turnstone's process-owned Servo host and native
   page/input/resize/teardown gates remain separate implementation work.
+
+- **2026-10-06 browser font backend compatibility.** The qualified maintenance
+  source `db4ee312` retains its adapter code and all package versions while its
+  28 coherent Genet source entries move from `69a2383b` to
+  `679d8314aab4ec9f57a903c79dde244c3c565c1e`. That bounded Genet revision changes
+  only fontsan 0.7's feature edge to `libz-sys,wuff` with defaults disabled,
+  retains the sanitizer API, and adds a licensed valid-WOFF2 acceptance test
+  alongside malformed-WOFF2 rejection and SFNT identity. The provider edge
+  changes from `fontsan-woff2` to `wuff-capi`; lock provenance must record that
+  actual graph change as well as immutable source queries. Exact Git-sourced
+  consumer resolution and the combined browser's native gates remain the
+  acceptance boundary. Current Mere main's independent newer stack is outside
+  this compatibility source.
+  The supplier metadata invocation was interrupted while Cargo materialized
+  the large immutable Genet checkout. The lock change is deterministic with
+  existing registry versions retained; actual locked consumer qualification
+  is pending before main integration.
