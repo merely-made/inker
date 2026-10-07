@@ -1,0 +1,11 @@
+    Updating git repository `https://github.com/merely-made/wgpu-weld.git`
+warning: patch `boa_engine v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+warning: patch `boa_gc v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+     Locking 1 package to latest compatible version
+      Adding welding v0.15.0 (https://github.com/merely-made/wgpu-weld.git?rev=c4dd593b7a730acb4aa6ffab0fe2edf8a0584083#c4dd593b)

@@ -1,8 +1,14 @@
 # Web Surface Contract Assessment
 
-**Status (2026-09-06):** assessment complete; `mere-surface-api` extraction
-and the platform-boundary migration are landed separately from the triplet
-release gate.
+**Status (2026-10-05):** assessment complete; the neutral browser-control
+extraction remains open. `mere-surface-api` is the separately landed
+application discovery/settings contract, not the browser protocol proposed
+here. Ordered Scry/Weld completions and owned native-frame delivery have
+advanced; the local B0 capability corrections pass their focused tests.
+
+The original assessment sections below describe the September 3 source
+snapshot. Dated findings and migration progress record later repairs and
+remaining gates; historical mismatches are not claims about today's source.
 
 ## Verdict
 
@@ -245,9 +251,55 @@ on it. Do not create a second, subtly different raw-handle vocabulary in Mere.
   synchronizer given to WebView2. The mixed headed receipt passed at 1280x800
   and 960x640 with three owned imports, three fence waits, host composition,
   and the page-message readiness event (artifact digest `85d1b0ba8a86778f`).
-- Focused tests pass for Inker, Graft/Scry/Weld adapters, and Pelt core. Graft's
-  wgpu-free frame/sync factor, extraction, and a combined demo with real Graft
-  and Weld factories remain open.
+- Focused tests passed for Inker, Graft/Scry/Weld adapters, and Pelt core at
+  this checkpoint. Graft subsequently published its wgpu-free `grafting-frame`
+  0.1.0 custody package, recorded in
+  `wgpu-graft/design_docs/2026-09-03_wgpu_triplet_release_plan.md`. Producer
+  adoption and full importer conversion remain open, along with browser-control
+  extraction and a combined demo with real Graft and Weld factories.
+- 2026-10-05: **B0 source audit and bounded capability correction.**
+  `crates/system/surface-api/{lib.rs,surface.rs,settings.rs}` owns application
+  settings and provider/surface discovery. Browser frame/input/command/event
+  types still live in `crates/inker/inker/src/surface_engine.rs`; the September
+  status line incorrectly equated the two extractions and is corrected above.
+  `scrying-engine/src/producer.rs` forwards navigation, legacy settings,
+  pointer/keyboard/focus, cookie writes/reads, result-bearing scripts, and the
+  ordered backend event stream. It does not override document find, typed
+  `set_page_zoom`, permission answers, or authentication answers. Its previous
+  capability projection nevertheless described find/zoom/PDF/permissions as
+  partial and authentication/context menus as universally supported.
+  `scrying-engine/src/translation.rs` now explicitly refuses find, typed zoom,
+  PDF, permission/authentication decisions, IME geometry observability, and
+  accessibility-tree projection at the Inker boundary. Legacy zoom and
+  DevTools settings forwarding remain separate from the typed zoom outcome.
+  Downloads and popup requests retain implemented partial event paths, with
+  missing control/lifecycle or widget-surface projection stated explicitly and
+  backend refusals/degradation retained. Context-menu target events are partial
+  only for the verified WebView2/WKWebView sources; other backends report an
+  explicit refusal. Script/cookie and input forwarding are unchanged.
+  Focused regressions exercise default command refusals through the actual
+  `ScryingProducer`, projected request payloads, and preserved backend limits.
+  Root qualification passed all 21 library tests with
+  `cargo test -p scrying-engine --lib --locked --offline --target-dir C:/t/cargo-targets/mere -j 2`.
+  This source correction adds no new browser operation or hardware receipt.
+
+## Remaining consumer gates (2026-10-05)
+
+- Implement and prove actual commands before promoting an adapter capability:
+  retained find results, typed zoom outcomes, capture correlation, permission
+  and authentication decisions, download lifecycle, and inspection channels.
+- Keep Scry's CPU/PNG/overlay frame-mode handling as an explicit unresolved
+  transport seam: `map_frame` still drops those modes. B0's operation-capability
+  correction does not implement their host outcome.
+- Adopt the direct Weld adapter in a real host with matching package identity,
+  owned import, exact instance config, and host-specific limitations. Turnstone's
+  consumer work is tracked in
+  `turnstone/design_docs/2026-08-03_user_agent_taxonomy_plan.md`.
+- Prove a real Servo composite host and native event order; Graft's current
+  host seam still polls navigation and messages separately.
+- Require fresh two-engine external-consumer proof before browser-control
+  extraction or a unified public browser-contract claim. Preserve the completed
+  registry triplet release as its own, narrower qualification.
 
 ## Open decisions
 

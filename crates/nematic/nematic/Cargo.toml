@@ -45,6 +45,8 @@ pulldown-cmark = { version = "0.13", default-features = false }
 # compat engine, which the design doc deliberately keeps ("preserves 'paste
 # anything' for import while djot is the native author format").
 jotdown = "0.10"
+# Resolves a feed entry's relative links against its article URL.
+url = "2.5"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

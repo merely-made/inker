@@ -1,0 +1,15 @@
+{
+  "command": [
+    "cargo",
+    "+1.98.1",
+    "metadata",
+    "--format-version",
+    "1"
+  ],
+  "started_utc": "2026-10-07T07:17:22.071739+00:00",
+  "finished_utc": "2026-10-07T07:17:57.604986+00:00",
+  "exit_code": 0,
+  "priority": "BelowNormal",
+  "genet": "965b64e206a47d1c8808472de9aa461233638768",
+  "weld": "c4dd593b7a730acb4aa6ffab0fe2edf8a0584083"
+}

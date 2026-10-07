@@ -92,10 +92,7 @@ impl<Fetch: ResourceFetcher + Send + Sync> SessionEngine<Scene> for SmolwebSessi
             )
             .map_err(SessionError::SpawnFailed)?,
         };
-        Ok(Box::new(SmolwebDocumentSession {
-            doc,
-            viewport: request.viewport,
-        }))
+        Ok(Box::new(SmolwebDocumentSession::new(doc, request.viewport)))
     }
 }
 
@@ -108,12 +105,18 @@ pub struct SmolwebDocumentSession {
     /// Last framed size: the lane's click/content-height APIs take the
     /// viewport, which the trait carries implicitly through `frame`.
     viewport: (u32, u32),
+    /// Engine-local accessibility ids, allocated once per semantic object.
+    accessibility: std::cell::RefCell<crate::smolweb::AccessibilityNodeIds>,
 }
 
 #[cfg(feature = "smolweb")]
 impl SmolwebDocumentSession {
     pub fn new(doc: SmolwebDocument, viewport: (u32, u32)) -> Self {
-        Self { doc, viewport }
+        Self {
+            doc,
+            viewport,
+            accessibility: Default::default(),
+        }
     }
 
     /// The concrete document, for observation downcasts and host-side
@@ -228,6 +231,21 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
     }
     fn provide_subresource(&mut self, url: &str, bytes: &[u8]) -> bool {
         self.doc.provide_subresource(url, bytes)
+    }
+    fn accessibility_projection(&self) -> Option<inker::DocumentA11yProjection> {
+        self.doc
+            .accessibility_projection(&mut self.accessibility.borrow_mut())
+    }
+    fn accessibility_click_target(
+        &self,
+        target: inker::DocumentA11yNodeId,
+    ) -> Option<inker::DocumentA11yClickTarget> {
+        self.doc
+            .accessibility_click_target(&self.accessibility.borrow(), target)
+    }
+    fn dispatch_accessibility_action(&mut self, request: &inker::DocumentA11yActionRequest) -> bool {
+        self.doc
+            .dispatch_accessibility_action(&self.accessibility.borrow(), request)
     }
     fn inspect(&self) -> Option<inker::ContentReport> {
         Some(inker::ContentReport {

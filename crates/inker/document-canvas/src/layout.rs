@@ -13,7 +13,9 @@
 
 use std::collections::HashMap;
 
-use inker::{Block, BlockAlignment, EngineDocument, FoldState, InlineSpan, TableAlignment};
+use inker::{
+    Block, BlockAlignment, EngineDocument, FoldState, InlineSpan, MenuRow, TableAlignment,
+};
 
 use crate::font_table::{FontInterner, FontTable};
 use crate::style_sheet::{
@@ -102,6 +104,74 @@ pub fn layout_document_with_folds(
 
 /// Build the parley block base from a resolved role style: the role's
 /// typography, base text `color`, and `wrap` policy.
+/// Spans with every soft break made a line break (`SoftBreak::Preserve`).
+fn preserve_soft_breaks(spans: &[InlineSpan]) -> Vec<InlineSpan> {
+    spans
+        .iter()
+        .map(|span| match span {
+            InlineSpan::SoftBreak => InlineSpan::LineBreak,
+            InlineSpan::Presented {
+                presentation,
+                spans,
+            } => InlineSpan::Presented {
+                presentation: *presentation,
+                spans: preserve_soft_breaks(spans),
+            },
+            InlineSpan::Emphasis(spans) => InlineSpan::Emphasis(preserve_soft_breaks(spans)),
+            InlineSpan::Strong(spans) => InlineSpan::Strong(preserve_soft_breaks(spans)),
+            InlineSpan::Link {
+                url,
+                title,
+                spans,
+                predicate,
+            } => InlineSpan::Link {
+                url: url.clone(),
+                title: title.clone(),
+                spans: preserve_soft_breaks(spans),
+                predicate: predicate.clone(),
+            },
+            InlineSpan::Submit { target, spans } => InlineSpan::Submit {
+                target: target.clone(),
+                spans: preserve_soft_breaks(spans),
+            },
+            InlineSpan::InPage { target, spans } => InlineSpan::InPage {
+                target: target.clone(),
+                spans: preserve_soft_breaks(spans),
+            },
+            InlineSpan::Text(_) | InlineSpan::Code(_) | InlineSpan::LineBreak => span.clone(),
+        })
+        .collect()
+}
+
+/// A menu's rows as spans for one monospace block: each row is its type
+/// label padded to the widest label, a space, then its label, a link when the
+/// row has a target. Info rows pad an empty label, so their text lines up with
+/// the other rows' labels.
+fn menu_spans(rows: &[MenuRow]) -> Vec<InlineSpan> {
+    let width = rows
+        .iter()
+        .map(|row| row.kind.label().chars().count())
+        .max()
+        .unwrap_or(0);
+    let mut spans = Vec::new();
+    for (i, row) in rows.iter().enumerate() {
+        if i > 0 {
+            spans.push(InlineSpan::LineBreak);
+        }
+        spans.push(InlineSpan::Text(format!("{:<width$} ", row.kind.label())));
+        match &row.target {
+            Some(url) => spans.push(InlineSpan::Link {
+                url: url.clone(),
+                title: None,
+                spans: row.label.clone(),
+                predicate: None,
+            }),
+            None => spans.extend(row.label.iter().cloned()),
+        }
+    }
+    spans
+}
+
 fn text_base_from(
     resolved: &ResolvedBlockStyle,
     alignment: BlockAlignment,
@@ -171,6 +241,14 @@ impl<'a> DocumentLayouter<'a> {
     }
 
     fn flatten(&self, spans: &[InlineSpan]) -> Flattened {
+        let preserved;
+        let spans = match self.style.soft_break {
+            crate::style_sheet::SoftBreak::Reflow => spans,
+            crate::style_sheet::SoftBreak::Preserve => {
+                preserved = preserve_soft_breaks(spans);
+                preserved.as_slice()
+            },
+        };
         let mut flattened = flatten_inline(
             spans,
             &self.style.link_adornment,
@@ -211,13 +289,21 @@ impl<'a> DocumentLayouter<'a> {
             Block::FeedEntry {
                 article_url,
                 source_url,
+                content_address,
                 ..
-            } => usize::from(article_url.is_some()) + usize::from(source_url.is_some()),
+            } => {
+                usize::from(content_address.is_some())
+                    + usize::from(article_url.is_some())
+                    + usize::from(source_url.is_some())
+            },
+            Block::Menu { rows } => links(&menu_spans(rows)),
             Block::CodeBlock { .. }
             | Block::Preformatted { .. }
             | Block::Rule
             | Block::MetadataRow { .. }
             | Block::Badge { .. } => 0,
+            // An unknown kind renders as a placeholder badge, which has no link.
+            _ => 0,
         }
     }
 
@@ -328,12 +414,15 @@ impl<'a> DocumentLayouter<'a> {
                 summary,
                 article_url,
                 source_url,
+                content_address,
+                ..
             } => Some(self.render_feed_entry(
                 source_index,
                 indent_level,
                 title,
                 date.as_deref(),
                 summary.as_deref(),
+                content_address.as_deref(),
                 article_url.as_deref(),
                 source_url.as_deref(),
             )),
@@ -341,7 +430,36 @@ impl<'a> DocumentLayouter<'a> {
                 Some(self.render_metadata_row(source_index, indent_level, label, value))
             },
             Block::Badge { text } => Some(self.render_badge(source_index, indent_level, text)),
+            Block::Menu { rows } => Some(self.render_menu(source_index, indent_level, rows)),
+            // A kind this layout does not know yet stays visible, named.
+            other => Some(self.render_badge(
+                source_index,
+                indent_level,
+                &format!("unsupported block: {}", other.kind_name()),
+            )),
         }
+    }
+
+    /// A menu as one fixed-width text block (see [`menu_spans`]). It never
+    /// wraps, so every row keeps its columns; a wide row overflows for the
+    /// host to scroll, as preformatted text does.
+    fn render_menu(
+        &mut self,
+        source_index: usize,
+        indent_level: u32,
+        rows: &[MenuRow],
+    ) -> RenderedBlock {
+        let resolved = self.style.resolve(BlockRole::Code);
+        let mut base = text_base_from(&resolved, self.alignment, self.style.source_presentation);
+        base.wrap = crate::style_sheet::WrapPolicy::NoWrap;
+        self.render_text_block_with_spacing(
+            source_index,
+            indent_level,
+            &menu_spans(rows),
+            base,
+            resolved.spacing_above,
+            resolved.spacing_below,
+        )
     }
 
     // -------------------------------------------------------------------
@@ -891,6 +1009,7 @@ impl<'a> DocumentLayouter<'a> {
         title: &str,
         date: Option<&str>,
         summary: Option<&str>,
+        content_address: Option<&str>,
         article_url: Option<&str>,
         source_url: Option<&str>,
     ) -> RenderedBlock {
@@ -907,6 +1026,17 @@ impl<'a> DocumentLayouter<'a> {
         if let Some(s) = summary {
             composed.push(Block::Paragraph {
                 spans: vec![InlineSpan::Text(s.to_string())],
+            });
+        }
+        // The entry's own document, read from the feed's copy of its body.
+        if let Some(url) = content_address {
+            composed.push(Block::Paragraph {
+                spans: vec![InlineSpan::Link {
+                    url: url.to_string(),
+                    title: None,
+                    spans: vec![InlineSpan::Text("Read here".to_string())],
+                    predicate: None,
+                }],
             });
         }
         if let Some(url) = article_url {

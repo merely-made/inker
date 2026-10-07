@@ -1,0 +1,100 @@
+warning: patch `boa_engine v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+warning: patch `boa_gc v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+warning: unused imports: `astar`, `dijkstra`, `has_path_connecting`, and `kosaraju_scc`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:21:22
+   |
+21 | use petgraph::algo::{astar, dijkstra, has_path_connecting, kosaraju_scc};
+   |                      ^^^^^  ^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Archived`, `Place`, and `Resolver`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:25:21
+   |
+25 | use rkyv::{Archive, Archived, Deserialize, Place, Resolver, Serialize, rancor::Fallible};
+   |                     ^^^^^^^^               ^^^^^  ^^^^^^^^
+
+warning: unused import: `HashSet`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:26:43
+   |
+26 | use std::collections::{BTreeMap, HashMap, HashSet};
+   |                                           ^^^^^^^
+
+warning: unused imports: `GraphSnapshot`, `PersistedAddress`, `PersistedArrangementEdgeData`, `PersistedArrangementSubKind`, `PersistedContainmentEdgeData`, `PersistedContainmentSubKind`, `PersistedEdgeFamily`, `PersistedEdge`, `PersistedImportedEdgeData`, `PersistedImportedSubKind`, `PersistedNavigationTrigger`, `PersistedNodeSessionState`, `PersistedNode`, `PersistedProvenanceEdgeData`, `PersistedProvenanceSubKind`, `PersistedSemanticEdgeData`, `PersistedSemanticSubKind`, `PersistedTraversalEdgeData`, `PersistedTraversalMetrics`, and `PersistedTraversalRecord`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:35:5
+   |
+35 |     GraphSnapshot, PersistedAddress, PersistedArrangementEdgeData, PersistedArrangementSubKind,
+   |     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+36 |     PersistedContainmentEdgeData, PersistedContainmentSubKind, PersistedEdge, PersistedEdgeFamily,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+37 |     PersistedImportedEdgeData, PersistedImportedSubKind, PersistedNavigationTrigger, PersistedNode,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+38 |     PersistedNodeSessionState, PersistedProvenanceEdgeData, PersistedProvenanceSubKind,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+39 |     PersistedSemanticEdgeData, PersistedSemanticSubKind, PersistedTraversalEdgeData,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+40 |     PersistedTraversalMetrics, PersistedTraversalRecord,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `VecDeque`
+  --> crates\graph\graph-kernel\src\graph\query.rs:17:42
+   |
+17 | use std::collections::{HashMap, HashSet, VecDeque};
+   |                                          ^^^^^^^^
+
+warning: unused import: `rancor::Fallible`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:25:72
+   |
+25 | use rkyv::{Archive, Archived, Deserialize, Place, Resolver, Serialize, rancor::Fallible};
+   |                                                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `EdgeRef`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:24:23
+   |
+24 | use petgraph::visit::{EdgeRef, IntoEdgeReferences};
+   |                       ^^^^^^^
+
+warning: method `assert_semantic_predicate` is never used
+   --> crates\graph\graph-kernel\src\graph\edge_payload.rs:258:19
+    |
+ 45 | impl EdgePayload {
+    | ---------------- method in this implementation
+...
+258 |     pub(crate) fn assert_semantic_predicate(&mut self, predicate: String) -> bool {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `LogIdAsString` is never constructed
+   --> crates\graph\graph-kernel\src\graph\identity.rs:129:19
+    |
+129 | pub(crate) struct LogIdAsString;
+    |                   ^^^^^^^^^^^^^
+
+warning: method `dissolve_remove_node_collect_traversals` is never used
+   --> crates\graph\graph-kernel\src\graph\edge_ops.rs:236:19
+    |
+ 32 | impl Graph {
+    | ---------- method in this implementation
+...
+236 |     pub(crate) fn dissolve_remove_node_collect_traversals(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `mere-kernel` (lib) generated 10 warnings (run `cargo fix --lib -p mere-kernel` to apply 5 suggestions)
+warning: function `build_affinity_spring` is never used
+  --> crates\canvas\pictograph\src\canvas.rs:66:4
+   |
+66 | fn build_affinity_spring(scores: &crate::signals::AffinityScores) -> AffinitySpring {
+   |    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pictograph` (lib) generated 1 warning
+    Checking weld-engine v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\engines\weld-engine)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 17.59s

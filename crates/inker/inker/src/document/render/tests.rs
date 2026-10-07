@@ -74,6 +74,11 @@ fn to_markdown_renders_feed_entry_as_h2_block() {
         summary: Some("Summary text.".into()),
         article_url: Some("https://feed.test/x".into()),
         source_url: None,
+        published: None,
+        updated: None,
+        guid: None,
+        enclosures: Vec::new(),
+        content_address: None,
     }]);
     let md = document.to_markdown();
     assert!(md.contains("## Title"));
@@ -352,6 +357,11 @@ fn to_html_renders_semantic_blocks_with_intent_classes() {
             summary: Some("Summary text.".into()),
             article_url: Some("https://feed.test/x".into()),
             source_url: None,
+            published: None,
+            updated: None,
+            guid: None,
+            enclosures: Vec::new(),
+            content_address: None,
         },
         Block::MetadataRow {
             label: "Login".into(),

@@ -1,0 +1,23 @@
+{
+  "command": [
+    "cargo",
+    "+1.98.1",
+    "check",
+    "--locked",
+    "-p",
+    "mere",
+    "-p",
+    "graft-engine",
+    "-p",
+    "weld-engine",
+    "--all-targets",
+    "--target-dir",
+    "C:/t/cargo-targets/mere",
+    "-j1"
+  ],
+  "started_utc": "2026-10-07T07:21:08.443898+00:00",
+  "finished_utc": "2026-10-07T07:21:26.171384+00:00",
+  "exit_code": 0,
+  "priority": "BelowNormal",
+  "scope": "current Genet and Weld source family; neutral Mere/Graft/Weld APIs; CEF runtime feature separately qualified in Weld and downstream"
+}

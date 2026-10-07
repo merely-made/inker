@@ -1,0 +1,20 @@
+{
+  "command": [
+    "cargo",
+    "+1.98.1",
+    "test",
+    "--locked",
+    "-p",
+    "graft-engine",
+    "-p",
+    "weld-engine",
+    "--lib",
+    "--target-dir",
+    "C:/t/cargo-targets/mere",
+    "-j1"
+  ],
+  "started_utc": "2026-10-07T07:21:44.683420+00:00",
+  "finished_utc": "2026-10-07T07:22:00.206150+00:00",
+  "exit_code": 0,
+  "priority": "BelowNormal"
+}

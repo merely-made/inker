@@ -6,18 +6,19 @@
 > and `scry` modules, plus the `genet-donor` feature). The paths below are
 > as of writing; the design they record is unchanged.
 **Date**: 2026-06-23
-**Status**: Design resolved; the consolidated `verso-tile` crate is landed in
-Mere (2026-09-03), carrying the API, flip choreography, Scry receiver, and
-optional Genet donor. The v1 forward carry includes URL, scroll, and session;
-remaining host and flip-back work stays in the Progress ledger.
-Both charter prerequisites are **done** (verified in code 2026-06-23): P4 (the scry
-tile) and the inker picker (the engine-picker plan's Phases 0-3 — `engine_pins`
-routing through `EngineRoutePolicy`, `is_surface_engine`, the apparatus engine
-manager, and the per-node picker) both shipped 2026-06-15. **Verso is unblocked.**
-The picker already flips a node to `scrying.web` as a *stateless* engine-switch (a
-fresh WebView); verso is the state-carry layer that turns that switch into a flip.
-The former carrier/adapters next step is represented by `verso-tile`; its
-remaining host integration is tracked below rather than as a future crate split.
+**Status (2026-10-06):** design resolved. The verso crates landed on 2026-06-23,
+were consolidated into `verso-tile` on 2026-07-09, and verso-tile was folded into
+`inker::flip` behind inker's `genet-donor` feature on 2026-09-06 (`7a726657`;
+`crates/inker/inker/src/flip/` holds the traits, `flip_forward` and `flip_back`,
+the Scry receiver and the Genet donor). The host wiring (the URL, scroll and
+session carry fired from `meerkat::scrying_host`) landed in meerkat on
+2026-06-23, retired with it 2026-07-18 (`c5f01064`), together with the per-node
+picker and `engine_pins`; surviving library parts: `inker::flip`,
+`EngineRoutePolicy` (`crates/inker/inker/src/routing.rs`), `is_surface_engine`
+(genet's `document-session-api`, re-exported by `inker::routing` and called by
+Pelt) and the shared `fetch::session_jar`; open: a host that fires the flip (no
+host calls `inker::flip` today, so the flip is library-only), the FORM layer,
+the visual cross-fade, and flip-back (only mock `FlipBack` impls exist).
 **Extends**: [compatibility-view charter](../technical_architecture/2026-06-10_compatibility_view_charter.md)
 (§3 the charter, §7.3 "mint verso at the first flip").
 
@@ -191,6 +192,19 @@ primary→secondary (compat view) and secondary→primary (flip-back). One hop.
    pinning a node to `scrying.web` flips it *statelessly* today; this phase intercepts
    that `engine_pins` genet→`scrying.web` transition to capture the donor and inject
    into the receiver, turning the switch into a flip.
+
+   **Corrected 2026-10-06 (S14 pass):** the trigger this phase intercepts is gone.
+   `engine_pins` and the per-node picker left with meerkat in `c5f01064`
+   (2026-07-18); `EngineRoutePolicy` survives in `inker::routing`, and
+   `is_surface_engine` in genet's `document-session-api` (re-exported by
+   `inker::routing`, called by Pelt). Outside inker only
+   `crates/system/fetch/src/cookies_flip.rs` references `inker::flip`, so no host
+   fires the flip.
+
+   **Open, raised by the S14 pass (2026-10-06):** which host fires the flip now
+   that meerkat's `scrying_host` is gone? Options: re-home this phase's host wiring
+   to Turnstone or another current host; record `inker::flip` as library-only
+   until a host asks for it.
 6. **Flip-back** lands alongside forward (same carrier, the `Back` direction).
 
 ## 7. Inherited invariants (charter)
@@ -258,6 +272,10 @@ same page, same session, same place — never the same running program.
   green. Remaining: cookie-jar wiring (the high-value SESSION layer), the full
   `verso-genet` donor capture (DOM/forms, needs the off-thread genet document), the
   visual cross-fade, and flip-back (§5).
+  **Corrected 2026-10-06 (S14 pass):** the forward flip is no longer live.
+  `meerkat::scrying_host` and `node_ops::toggle_focus_compat` left with meerkat in
+  `c5f01064` (2026-07-18), and the verso crates now live in `inker::flip`
+  (`7a726657`, 2026-09-06), which no host calls.
 - **2026-06-23 (SESSION layer)**: the flip now carries the login, not just the place.
   Root cause of the "no host-side cookie jar" gap: meerkat built a throwaway
   `FetchContext` per fetch, so no session ever persisted. Fixed with a process-wide
@@ -268,3 +286,8 @@ same page, same session, same place — never the same running program.
   follow-ons in the
   native session store plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-23_native_session_store_plan.md`).
   **v1 now carries URL + scroll + SESSION**; FORM still degrades.
+- **2026-10-06 (S14 pass).** Status and claims corrected against the tree at mere
+  535bca11, from the D2 record in support/doc-audit/d2/batch_45_s14_phase_b7.md. The
+  status records verso-tile's fold into `inker::flip` (`7a726657`) and the meerkat
+  host wiring, picker and `engine_pins` retired in `c5f01064`; which host fires the
+  flip is left open.

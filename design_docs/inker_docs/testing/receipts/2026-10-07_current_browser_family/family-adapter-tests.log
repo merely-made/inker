@@ -1,0 +1,32 @@
+warning: patch `boa_engine v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+warning: patch `boa_gc v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+   Compiling document-session-api v0.1.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+   Compiling inker v0.1.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\inker)
+   Compiling weld-engine v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\engines\weld-engine)
+   Compiling graft-engine v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\engines\graft-engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.11s
+     Running unittests src\lib.rs (C:/t/cargo-targets/mere\debug\deps\graft_engine-16cf445248c7c639.exe)
+
+running 4 tests
+test engine::tests::factory_failure_surfaces_as_spawn_failed ... ok
+test engine::tests::producer_retains_host_callback_order_across_event_kinds ... ok
+test engine::tests::graft_capture_stays_unsupported_until_the_protocol_is_wired ... ok
+test engine::tests::registers_and_spawns_through_registry ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (C:/t/cargo-targets/mere\debug\deps\weld_engine-1a9c95d0c34c5883.exe)
+
+running 3 tests
+test engine::tests::factory_failure_surfaces_as_spawn_failed ... ok
+test engine::tests::weld_stub_does_not_claim_document_controls ... ok
+test engine::tests::registers_and_spawns_through_registry ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

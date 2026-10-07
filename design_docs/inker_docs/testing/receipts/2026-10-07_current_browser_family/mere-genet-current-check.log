@@ -1,0 +1,271 @@
+warning: patch `boa_engine v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+warning: patch `boa_gc v1.0.0-dev (https://github.com/mark-ik/boa.git?branch=genet#52cfb6ff)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	https://github.com/mark-ik/boa.git
+    Blocking waiting for file lock on package cache
+    Checking smallvec v1.16.1
+    Checking bytemuck v1.25.2
+    Checking hashbrown v0.17.1
+    Checking once_cell v1.21.4
+    Checking indexmap v2.14.2
+   Compiling zerocopy-derive v0.8.57
+   Compiling find-msvc-tools v0.1.14
+   Compiling cc v1.6.0
+    Checking bitflags v2.13.2
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking windows-result v0.4.1
+   Compiling windows-implement v0.60.2
+   Compiling windows-interface v0.59.3
+    Checking windows-core v0.62.2
+    Checking zerocopy v0.8.57
+    Checking uuid v1.26.1
+    Checking windows-future v0.3.2
+    Checking windows-numerics v0.3.1
+    Checking windows-collections v0.3.2
+    Checking tracing-core v0.1.36
+   Compiling profiling-procmacros v1.0.18
+    Checking profiling v1.0.18
+    Checking windows v0.62.2
+    Checking tracing v0.1.44
+   Compiling phf_macros v0.13.1
+    Checking petgraph v0.8.3
+    Checking phf v0.13.1
+    Checking naga-types v30.0.1
+    Checking icu_properties v2.2.0
+    Checking num-rational v0.4.2
+    Checking linebender_resource_handle v0.1.1
+    Checking icu_normalizer v2.2.0
+    Checking half v2.7.1
+    Checking spirv v0.4.0+sdk-1.4.341.0
+    Checking wgpu-types v30.0.1
+    Checking string_cache v0.9.0
+    Checking naga v30.0.1
+   Compiling equator-macro v0.4.2
+    Checking gpu-allocator v0.28.0
+    Checking equator v0.4.2
+    Checking web_atoms v0.2.6
+    Checking wgpu-naga-bridge v30.0.1
+   Compiling blake3 v1.8.7
+    Checking font-types v0.11.3
+    Checking wgpu-hal v30.0.1
+    Checking read-fonts v0.39.2
+    Checking markup5ever v0.39.0
+    Checking aligned-vec v0.6.4
+   Compiling thiserror v2.0.20
+    Checking safe_arch v1.2.0
+    Checking font-types v0.12.5
+    Checking document-session-api v0.1.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+   Compiling num-derive v0.4.2
+   Compiling naga v29.0.4
+    Checking accesskit v0.24.1
+    Checking inker v0.1.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\inker)
+    Checking kurbo v0.13.1
+    Checking read-fonts v0.41.0
+    Checking wide v1.7.1
+    Checking v_frame v0.3.9
+    Checking wgpu-core-deps-windows-linux-android v30.0.1
+    Checking num-complex v0.4.6
+    Checking color v0.3.3
+   Compiling libz-sys v1.1.29
+    Checking peniko v0.6.1
+    Checking munge v0.4.7
+    Checking simba v0.10.2
+    Checking png v0.18.1
+    Checking wgpu-core v30.0.1
+   Compiling psm v0.1.32
+    Checking skrifa v0.44.0
+    Checking strum v0.28.0
+   Compiling vello_shaders v0.10.0
+    Checking idna_adapter v1.2.2
+    Checking sceno v0.0.4 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\scenes\sceno)
+    Checking ppv-lite86 v0.2.21
+    Checking windows-sys v0.61.2
+   Compiling nalgebra-macros v0.3.0
+   Compiling arg_enum_proc_macro v0.3.4
+   Compiling wuff-capi v0.2.0
+    Checking genet-fontique v0.10.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking cfb v0.7.3
+    Checking brotli-decompressor v5.0.3
+    Checking av-scenechange v0.14.1
+    Checking muniment v0.1.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\eidetic\muniment)
+    Checking rkyv v0.8.18
+    Checking nalgebra v0.35.0
+    Checking av1-grain v0.2.5
+    Checking rand_chacha v0.9.0
+    Checking idna v1.1.0
+    Checking numen v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\conatus\numen)
+    Checking vello_encoding v0.10.0
+    Checking wgpu v30.0.1
+   Compiling serde v1.0.229
+    Checking mere-forme v0.1.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\forme\forme)
+    Checking layout-dom-api v0.1.1 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking skrifa v0.42.1
+    Checking harfrust v0.8.4
+    Checking parley_data v0.10.0
+   Compiling stacker v0.1.25
+    Checking bytes v1.12.1
+    Checking time v0.3.55
+    Checking rav1e v0.8.1
+   Compiling fontsan v0.7.0
+    Checking wuff v0.2.9
+    Checking futures-util v0.3.34
+    Checking cssparser v0.37.0
+    Checking genet-parley v0.10.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+   Compiling livery v0.0.5 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking url v2.5.8
+    Checking rand v0.9.5
+    Checking glamx v0.3.1
+    Checking chartulary v0.2.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\eidetic\chartulary)
+    Checking infer v0.19.0
+    Checking crypto-common v0.2.2
+    Checking futures-intrusive v0.5.0
+    Checking regex-syntax v0.8.11
+    Checking oxrdf v0.3.4
+    Checking netrender_device v0.1.2 (https://github.com/merely-made/netrender.git?rev=9607d16f1907f6c2085648ae96abcaa30d7c3d41#9607d16f)
+    Checking digest v0.11.3
+    Checking ravif v0.13.0
+    Checking regex-automata v0.4.18
+    Checking mere-kernel v0.0.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\graph\graph-kernel)
+warning: unused imports: `astar`, `dijkstra`, `has_path_connecting`, and `kosaraju_scc`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:21:22
+   |
+21 | use petgraph::algo::{astar, dijkstra, has_path_connecting, kosaraju_scc};
+   |                      ^^^^^  ^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Archived`, `Place`, and `Resolver`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:25:21
+   |
+25 | use rkyv::{Archive, Archived, Deserialize, Place, Resolver, Serialize, rancor::Fallible};
+   |                     ^^^^^^^^               ^^^^^  ^^^^^^^^
+
+warning: unused import: `HashSet`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:26:43
+   |
+26 | use std::collections::{BTreeMap, HashMap, HashSet};
+   |                                           ^^^^^^^
+
+warning: unused imports: `GraphSnapshot`, `PersistedAddress`, `PersistedArrangementEdgeData`, `PersistedArrangementSubKind`, `PersistedContainmentEdgeData`, `PersistedContainmentSubKind`, `PersistedEdgeFamily`, `PersistedEdge`, `PersistedImportedEdgeData`, `PersistedImportedSubKind`, `PersistedNavigationTrigger`, `PersistedNodeSessionState`, `PersistedNode`, `PersistedProvenanceEdgeData`, `PersistedProvenanceSubKind`, `PersistedSemanticEdgeData`, `PersistedSemanticSubKind`, `PersistedTraversalEdgeData`, `PersistedTraversalMetrics`, and `PersistedTraversalRecord`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:35:5
+   |
+35 |     GraphSnapshot, PersistedAddress, PersistedArrangementEdgeData, PersistedArrangementSubKind,
+   |     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+36 |     PersistedContainmentEdgeData, PersistedContainmentSubKind, PersistedEdge, PersistedEdgeFamily,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+37 |     PersistedImportedEdgeData, PersistedImportedSubKind, PersistedNavigationTrigger, PersistedNode,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+38 |     PersistedNodeSessionState, PersistedProvenanceEdgeData, PersistedProvenanceSubKind,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+39 |     PersistedSemanticEdgeData, PersistedSemanticSubKind, PersistedTraversalEdgeData,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+40 |     PersistedTraversalMetrics, PersistedTraversalRecord,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `VecDeque`
+  --> crates\graph\graph-kernel\src\graph\query.rs:17:42
+   |
+17 | use std::collections::{HashMap, HashSet, VecDeque};
+   |                                          ^^^^^^^^
+
+warning: unused import: `rancor::Fallible`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:25:72
+   |
+25 | use rkyv::{Archive, Archived, Deserialize, Place, Resolver, Serialize, rancor::Fallible};
+   |                                                                        ^^^^^^^^^^^^^^^^
+
+warning: unused import: `EdgeRef`
+  --> crates\graph\graph-kernel\src\graph\mod.rs:24:23
+   |
+24 | use petgraph::visit::{EdgeRef, IntoEdgeReferences};
+   |                       ^^^^^^^
+
+warning: method `assert_semantic_predicate` is never used
+   --> crates\graph\graph-kernel\src\graph\edge_payload.rs:258:19
+    |
+ 45 | impl EdgePayload {
+    | ---------------- method in this implementation
+...
+258 |     pub(crate) fn assert_semantic_predicate(&mut self, predicate: String) -> bool {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `LogIdAsString` is never constructed
+   --> crates\graph\graph-kernel\src\graph\identity.rs:129:19
+    |
+129 | pub(crate) struct LogIdAsString;
+    |                   ^^^^^^^^^^^^^
+
+warning: method `dissolve_remove_node_collect_traversals` is never used
+   --> crates\graph\graph-kernel\src\graph\edge_ops.rs:236:19
+    |
+ 32 | impl Graph {
+    | ---------- method in this implementation
+...
+236 |     pub(crate) fn dissolve_remove_node_collect_traversals(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `mere-kernel` (lib) generated 10 warnings (run `cargo fix --lib -p mere-kernel` to apply 5 suggestions)
+    Checking parry2d v0.28.0
+    Checking genet-paint-types v0.2.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking netrender-vello v0.10.1
+    Checking cadency v0.0.1 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking scenograph v0.0.4 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\scenes\scenograph)
+    Checking html5ever v0.39.0
+    Checking xml5ever v0.39.0
+    Checking genet-taffy v0.14.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking genet-host-api v0.2.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking lazy_static v1.5.0
+    Checking sharded-slab v0.1.7
+    Checking genet-document-resources v0.2.1 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking buckram v0.0.3 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking genet-static-dom v0.1.1 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking scenomise v0.0.4 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\scenes\scenomise)
+    Checking netrender v0.1.2 (https://github.com/merely-made/netrender.git?rev=9607d16f1907f6c2085648ae96abcaa30d7c3d41#9607d16f)
+    Checking engine-observables-api v0.2.0 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking image v0.25.10
+    Checking rapier2d v0.33.0
+    Checking matchers v0.2.0
+    Checking sha2 v0.11.0
+    Checking nu-ansi-term v0.50.3
+    Checking scenotime v0.0.4 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\scenes\scenotime)
+    Checking uxtree v0.0.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\forme\uxtree)
+    Checking armillary v0.1.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\armillary)
+    Checking tracing-log v0.2.0
+    Checking tinct v0.1.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\tinct)
+    Checking chirograph v0.0.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\chirograph)
+    Checking genet-livery v0.0.4 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking oxjsonld v0.2.6
+    Checking tracing-subscriber v0.3.23
+    Checking seiche v0.0.6 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\conatus\seiche)
+    Checking genet-scripted-dom v0.1.2 (https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e2)
+    Checking paint_list_render v0.1.2 (https://github.com/merely-made/netrender.git?rev=9607d16f1907f6c2085648ae96abcaa30d7c3d41#9607d16f)
+    Checking mere-cartography v0.0.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\canvas\cartography)
+    Checking oxttl v0.2.4
+    Checking document-canvas v0.1.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\document-canvas)
+    Checking esp v0.1.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\intel\esp)
+    Checking workbench v0.1.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\cambium\workbench)
+    Checking platen v0.0.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\platen\platen)
+    Checking pictograph v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\canvas\pictograph)
+warning: function `build_affinity_spring` is never used
+  --> crates\canvas\pictograph\src\canvas.rs:66:4
+   |
+66 | fn build_affinity_spring(scores: &crate::signals::AffinityScores) -> AffinitySpring {
+   |    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pictograph` (lib) generated 1 warning
+    Checking mere-linked-data v0.0.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\graph\linked-data)
+    Checking tabard v0.0.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\ports\tabard)
+    Checking mere-apparatus v0.0.1 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\domain\apparatus)
+    Checking mere v0.0.2 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\mere)
+    Checking graft-engine v0.2.0 (C:\Users\mark_\Code\worktrees\mere-browser-input-compat\crates\inker\engines\graft-engine)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5m 26s

@@ -1,0 +1,346 @@
+{
+  "baseline": "d041cc69b588b6f1dadd22308c2bc4059496cabd",
+  "removed": [
+    {
+      "name": "browsing-context-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "buckram",
+      "version": "0.0.3",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "cadency",
+      "version": "0.0.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "document-session-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "engine-observables-api",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "fontsan-woff2",
+      "version": "0.1.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "name": "genet-compositor",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-document-resources",
+      "version": "0.2.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-documents",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-fontique",
+      "version": "0.10.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-host-api",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-livery",
+      "version": "0.0.4",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-paint-types",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-parley",
+      "version": "0.10.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-render",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-render-host",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-scripted",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-scripted-dom",
+      "version": "0.1.2",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-static-dom",
+      "version": "0.1.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-taffy",
+      "version": "0.14.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-text",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "genet-winit-host",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "livery",
+      "version": "0.0.5",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "netfetcher",
+      "version": "0.1.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "script-engine-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "script-engine-boa",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "script-engine-nova",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "script-runtime-api",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "servo-webgl-essl",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "servo-webgl-wgpu",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "servo-xpath",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    },
+    {
+      "name": "taproot",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+    }
+  ],
+  "added": [
+    {
+      "name": "browsing-context-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "buckram",
+      "version": "0.0.3",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "cadency",
+      "version": "0.0.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "document-session-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "engine-observables-api",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "fleece",
+      "version": "0.5.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-compositor",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-document-resources",
+      "version": "0.2.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-documents",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-fontique",
+      "version": "0.10.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-host-api",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-livery",
+      "version": "0.0.4",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-paint-types",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-parley",
+      "version": "0.10.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-render",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-render-host",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-scripted",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-scripted-dom",
+      "version": "0.1.2",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-static-dom",
+      "version": "0.1.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-taffy",
+      "version": "0.14.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-text",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "genet-winit-host",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "layout-dom-api",
+      "version": "0.1.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "livery",
+      "version": "0.0.5",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "netfetcher",
+      "version": "0.1.1",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "script-engine-api",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "script-engine-boa",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "script-engine-nova",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "script-runtime-api",
+      "version": "0.0.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "servo-webgl-essl",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "servo-webgl-wgpu",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "servo-xpath",
+      "version": "0.2.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "taproot",
+      "version": "0.1.0",
+      "source": "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768"
+    },
+    {
+      "name": "wuff",
+      "version": "0.2.9",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "name": "wuff-capi",
+      "version": "0.2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    }
+  ],
+  "genet_sources": [
+    "git+https://github.com/merely-made/genet.git?rev=965b64e206a47d1c8808472de9aa461233638768#965b64e206a47d1c8808472de9aa461233638768",
+    "git+https://github.com/merely-made/genet.git?rev=d851a9db0cd1ff7837768250f21e9dff63455940#d851a9db0cd1ff7837768250f21e9dff63455940"
+  ]
+}

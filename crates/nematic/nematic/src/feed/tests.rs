@@ -83,13 +83,16 @@ fn json_feed_extracts_title_lang_and_entries() {
     assert_eq!(doc.title.as_deref(), Some("JSON Example"));
     assert_eq!(doc.lang.as_deref(), Some("en-US"));
 
+    // Each entry carries a body, so each also links its own document.
     let urls = doc.outgoing_links();
     assert_eq!(
         urls,
         vec![
             "https://example.test/",
             "https://example.test/first",
+            "feed:test#1",
             "https://example.test/second",
+            "feed:test#2",
         ]
     );
 
@@ -372,4 +375,139 @@ fn end_to_end_via_default_policy_with_content_type() {
         )
         .expect("dispatch");
     assert_eq!(doc.title.as_deref(), Some("Example Feed"));
+}
+
+const BODIED: &str = r#"<?xml version="1.0"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel><title>Log</title>
+<item>
+  <title>Post</title>
+  <link>https://x.test/post</link>
+  <guid>tag:x.test,2026:post 1</guid>
+  <pubDate>Mon, 01 Jan 2026 00:00:00 GMT</pubDate>
+  <description>Short teaser.</description>
+  <content:encoded><![CDATA[<h2>Body</h2><p>The <a href="/more">whole</a> post.</p><script>alert(1)</script>]]></content:encoded>
+  <enclosure url="https://x.test/ep.mp3" type="audio/mpeg" length="1234"/>
+</item>
+<item>
+  <title>Bare</title>
+  <guid>bare</guid>
+  <description>No body here.</description>
+</item>
+  </channel>
+</rss>"#;
+
+fn feed_render(address: &str, body: &str) -> EngineDocument {
+    FeedEngine::new()
+        .render(&EngineInput::new(address, body))
+        .expect("render")
+}
+
+#[test]
+fn entries_carry_dates_guid_enclosures_and_an_address_for_their_body() {
+    let doc = feed_render("gemini://x.test/feed.xml", BODIED);
+    let entries: Vec<_> = doc
+        .blocks
+        .iter()
+        .filter(|block| matches!(block, Block::FeedEntry { .. }))
+        .collect();
+    let Block::FeedEntry {
+        published,
+        updated,
+        guid,
+        enclosures,
+        content_address,
+        summary,
+        ..
+    } = entries[0]
+    else {
+        unreachable!()
+    };
+    assert_eq!(published.as_deref(), Some("Mon, 01 Jan 2026 00:00:00 GMT"));
+    assert_eq!(updated.as_deref(), None);
+    assert_eq!(guid.as_deref(), Some("tag:x.test,2026:post 1"));
+    assert_eq!(summary.as_deref(), Some("Short teaser."));
+    assert_eq!(
+        enclosures.as_slice(),
+        [FeedEnclosure {
+            url: "https://x.test/ep.mp3".into(),
+            media_type: Some("audio/mpeg".into()),
+            byte_length: Some(1234),
+        }]
+    );
+    let address = content_address
+        .as_deref()
+        .expect("a bodied entry has an address");
+    assert!(
+        address.starts_with("gemini://x.test/feed.xml#"),
+        "{address}"
+    );
+    let Block::FeedEntry {
+        content_address, ..
+    } = entries[1]
+    else {
+        unreachable!()
+    };
+    assert_eq!(*content_address, None, "an entry without a body has none");
+}
+
+#[test]
+fn an_entry_address_renders_the_entry_as_its_own_document() {
+    let feed = feed_render("gemini://x.test/feed.xml", BODIED);
+    let address = feed
+        .blocks
+        .iter()
+        .find_map(|block| match block {
+            Block::FeedEntry {
+                content_address: Some(address),
+                ..
+            } => Some(address.clone()),
+            _ => None,
+        })
+        .expect("an entry address");
+    let article = feed_render(&address, BODIED);
+    assert_eq!(article.address, address);
+    assert_eq!(article.title.as_deref(), Some("Post"));
+    assert_eq!(
+        article.provenance.canonical_uri.as_deref(),
+        Some("https://x.test/post"),
+        "the article URL is the canonical link"
+    );
+    assert!(matches!(
+        &article.blocks[0],
+        Block::Heading { level: 1, .. }
+    ));
+    assert!(
+        article
+            .blocks
+            .iter()
+            .any(|block| matches!(block, Block::Heading { level: 2, spans } if inker::inline_text(spans) == "Body")),
+        "the body's own structure survives: {:?}",
+        article.blocks
+    );
+    let text = article.to_text();
+    assert!(
+        !text.contains("alert"),
+        "scripts never reach the document: {text}"
+    );
+    assert!(
+        article.outgoing_links().contains(&"https://x.test/more"),
+        "relative links resolve against the article URL: {:?}",
+        article.outgoing_links()
+    );
+}
+
+#[test]
+fn an_entry_without_a_body_shows_its_summary_and_a_link_out() {
+    let article = feed_render("gemini://x.test/feed.xml#bare", BODIED);
+    assert_eq!(article.title.as_deref(), Some("Bare"));
+    assert!(article.to_text().contains("No body here."));
+    let unknown = feed_render("gemini://x.test/feed.xml#nobody", BODIED);
+    assert!(
+        unknown
+            .blocks
+            .iter()
+            .any(|block| matches!(block, Block::FeedHeader { .. })),
+        "an unknown fragment renders the feed itself"
+    );
 }

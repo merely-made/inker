@@ -40,7 +40,7 @@ Three concerns, three owners. Verso takes only the third:
   A per-node engine picker is an inker affordance and fits the
   configurability-over-defaults rule. Prerequisite knock-on: the
   register-viewer vs `inker::routing` dual-routing reconcile
-  (integration plan (`mere/design_docs/mere_docs/implementation_strategy/2026-06-02_modular_integration_plan.md`) §1.9)
+  (integration plan (`mere/design_docs/archive_docs/2026-10-06_superseded_plans/2026-06-02_modular_integration_plan.md`) §1.9)
   must land before a user-facing picker.
 - **Texture plumbing** is already owned and stays put: the wgpu sibling libs
   (scry / graft / weld) get foreign renderings into our device, netrender's

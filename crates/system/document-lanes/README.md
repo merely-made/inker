@@ -2,7 +2,7 @@
 
 Mere's document content lanes above Genet, split out of `genet-documents` on
 2026-09-02 under the platform boundary plan (mere
-`design_docs/mere_docs/implementation_strategy/2026-09-02_platform_boundary_and_repository_topology_plan.md`,
+`design_docs/archive_docs/2026-10-06_completed_plans/2026-09-02_platform_boundary_and_repository_topology_plan.md`,
 P1). Homed at `components/mere-document-lanes` in genet until that plan moves
 it to Mere.
 

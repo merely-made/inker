@@ -58,8 +58,8 @@ pub use paint_list::{InkerPaintList, paint_list_from_packet, paint_list_from_pac
 pub use style::{ColorVocabulary, InlineStyle};
 pub use style_sheet::{
     BlockRole, BlockStyle, ColorToken, DocumentStyleSheet, FocusIndicator, FontChoice,
-    HeadingStyle, LinkAdornment, ResolvedBlockStyle, RoleStyles, SizeSpec, SourcePresentation,
-    WrapPolicy,
+    HeadingStyle, LinkAdornment, ResolvedBlockStyle, RoleStyles, SizeSpec, SoftBreak,
+    SourcePresentation, WrapPolicy,
 };
 pub use types::{
     DecodedImage, DocumentRenderPacket, FontFaceId, GlyphRun, InteractionKind, InteractionRegion,

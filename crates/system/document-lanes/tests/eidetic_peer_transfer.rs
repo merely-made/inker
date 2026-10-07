@@ -142,10 +142,10 @@ async fn selected_page_survives_authenticated_peer_transfer_and_receiver_reopen(
     .expect("serialize transfer envelope");
 
     let alpn = Alpn::new("mere/document-capture-transfer/v1");
-    let alice = P2pandaTransport::bind_seed([0x31; 32], vec![alpn.clone()])
+    let alice = P2pandaTransport::bind_seed_ref(&[0x31; 32], vec![alpn.clone()])
         .await
         .expect("bind alice");
-    let bob = P2pandaTransport::bind_seed([0x32; 32], vec![alpn.clone()])
+    let bob = P2pandaTransport::bind_seed_ref(&[0x32; 32], vec![alpn.clone()])
         .await
         .expect("bind bob");
     let alice_id = alice.local_peer_id();

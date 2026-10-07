@@ -233,6 +233,7 @@ fn feed_entry_fence_expands_to_feed_entry_block() {
                 summary,
                 article_url,
                 source_url,
+                ..
             } => Some((
                 title.as_str(),
                 date.as_deref(),

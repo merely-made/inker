@@ -29,6 +29,11 @@ use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
 
+#[cfg(feature = "smolweb")]
+mod a11y;
+#[cfg(feature = "smolweb")]
+pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
+
 // The smolweb palette and theme are tabard's. Hosts on the compatibility
 // palette (current Pelt and Mere) keep these paths; new engine-native callers
 // may configure [`DocumentStyleSheet`] directly through
@@ -93,6 +98,9 @@ pub struct SmolwebDocument {
     in_page: Vec<InPageNavigation>,
     /// A reveal requested before any layout, applied by the first one.
     pending_reveal: Option<usize>,
+    /// Counts layouts built, so the accessibility projection's revision
+    /// changes with every new geometry.
+    layout_generation: u64,
 }
 
 /// One in-page activation, queued for the host to drain and reflect in its
@@ -134,7 +142,7 @@ impl SmolwebDocument {
         theme: SmolwebTheme,
     ) -> Result<Self, String> {
         let bytes = fetcher
-            .fetch(url)
+            .fetch(without_fragment(url))
             .ok_or_else(|| format!("could not load {url}"))?;
         Ok(Self::parse(url, &String::from_utf8_lossy(&bytes), theme))
     }
@@ -148,7 +156,7 @@ impl SmolwebDocument {
         policy: SmolwebInlineMediaPolicy,
     ) -> Result<Self, String> {
         let bytes = fetcher
-            .fetch(url)
+            .fetch(without_fragment(url))
             .ok_or_else(|| format!("could not load {url}"))?;
         Ok(Self::parse_with_inline_media(
             url,
@@ -249,6 +257,7 @@ impl SmolwebDocument {
             focus: None,
             in_page: Vec::new(),
             pending_reveal: None,
+            layout_generation: 0,
         }
     }
 
@@ -591,6 +600,7 @@ impl SmolwebDocument {
         // or content-height query publish that geometry under the preceding
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
+        self.layout_generation = self.layout_generation.wrapping_add(1);
         self.layout = Some(layout_document_with_folds(
             &self.document,
             Viewport::new(size.0 as f32, size.1 as f32),
@@ -898,6 +908,14 @@ fn image_link(block: &Block) -> Option<(String, String)> {
     Some((url.clone(), inline_text(spans)))
 }
 
+/// `url` without its fragment: a fragment names a place in the document and is
+/// never sent. The engine still sees the whole address, so a feed can render
+/// the entry a fragment names (smolweb fidelity plan WS4, R4).
+#[cfg(feature = "smolweb")]
+fn without_fragment(url: &str) -> &str {
+    url.split_once('#').map_or(url, |(base, _)| base)
+}
+
 #[cfg(feature = "smolweb")]
 fn looks_like_image_url(url: &str) -> bool {
     let path = url.split(['?', '#']).next().unwrap_or(url);
@@ -969,11 +987,13 @@ fn looks_like_feed(body: &str) -> bool {
 /// The content types whose whole document is a fixed-width menu, so its body
 /// font has to be the monospace one.
 ///
-/// A gopher menu's informational lines lower to `Preformatted` and carry ASCII
-/// art and column alignment, but its selector lines lower to a `Paragraph` with
-/// a link span, because `Preformatted` holds text and cannot hold a link. Those
-/// lines would otherwise take the body serif and break the very column grid the
-/// lines above and below them establish. Nex listings have the same shape.
+/// A nex listing's text lines lower to `Preformatted` and carry ASCII art and
+/// column alignment, but its link lines lower to a `Paragraph` with a link
+/// span, because `Preformatted` holds text and cannot hold a link. Those lines
+/// would otherwise take the body serif and break the very column grid the
+/// lines above and below them establish. A gopher menu now lowers to one
+/// `Block::Menu`, which document-canvas sets in the monospace face itself; it
+/// stays listed so anything else in the document keeps the same face.
 const FIXED_WIDTH_MENU_TYPES: &[&str] = &["application/gopher-menu", "application/x-nex-listing"];
 
 fn style_for_theme(
@@ -1353,10 +1373,103 @@ mod tests {
         );
     }
 
-    /// A gopher menu is one fixed-width document. Its info lines lower to
-    /// `Preformatted` and its selector lines to a paragraph with a link span,
-    /// so a serif body font renders the links in a different typeface from the
-    /// ASCII art directly above them and the columns stop lining up.
+    /// A gopher menu reaches the host as one typed menu (smolweb fidelity plan
+    /// WS4, R2): its rows keep their kinds, a directory row is a viewport link
+    /// target, and the search row submits rather than navigates.
+    #[test]
+    fn a_gopher_menu_reaches_the_host_as_one_typed_menu() {
+        let body = concat!(
+            "iWelcome\tfake\t(NULL)\t0\r\n",
+            "1Phlog\t/phlog\tx.test\t70\r\n",
+            "7Search\t/find\tx.test\t70\r\n",
+        );
+        let mut doc = SmolwebDocument::parse("gopher://x.test/", body, SmolwebTheme::Plain);
+        let [Block::Menu { rows }] = doc.document().blocks.as_slice() else {
+            panic!("one menu: {:?}", doc.document().blocks);
+        };
+        let kinds: Vec<_> = rows.iter().map(|row| row.kind).collect();
+        assert_eq!(
+            kinds,
+            [
+                inker::MenuItemKind::Info,
+                inker::MenuItemKind::Directory,
+                inker::MenuItemKind::Search,
+            ]
+        );
+        let _ = doc.frame(640, 480);
+        let links: Vec<_> = doc.links().into_iter().map(|(url, _)| url).collect();
+        assert_eq!(
+            links,
+            ["gopher://x.test/1/phlog"],
+            "the search row is not a link"
+        );
+    }
+
+    /// An entry's own address fetches the feed without its fragment and renders
+    /// the entry alone (smolweb fidelity plan WS4, R4).
+    #[test]
+    fn an_entry_address_loads_the_feed_and_renders_the_entry() {
+        const FEED: &str = r#"<?xml version="1.0"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel><title>Log</title>
+    <item>
+      <title>Post</title>
+      <link>https://x.test/post</link>
+      <guid>post-1</guid>
+      <description>Teaser.</description>
+      <content:encoded><![CDATA[<p>The whole post.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>"#;
+        struct Recording(std::sync::Mutex<Vec<String>>);
+        impl ResourceFetcher for Recording {
+            fn fetch(&self, url: &str) -> Option<Vec<u8>> {
+                self.0.lock().unwrap().push(url.to_string());
+                Some(FEED.as_bytes().to_vec())
+            }
+        }
+
+        let feed = SmolwebDocument::parse("gemini://x.test/feed.xml", FEED, SmolwebTheme::Plain);
+        let address = feed
+            .document()
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                Block::FeedEntry {
+                    content_address: Some(address),
+                    ..
+                } => Some(address.clone()),
+                _ => None,
+            })
+            .expect("the entry carries its own address");
+
+        let fetcher = Recording(Default::default());
+        let article = SmolwebDocument::load(&fetcher, &address, SmolwebTheme::Plain).unwrap();
+        assert_eq!(
+            *fetcher.0.lock().unwrap(),
+            ["gemini://x.test/feed.xml"],
+            "the fragment is not sent"
+        );
+        let document = article.document();
+        assert_eq!(document.title.as_deref(), Some("Post"));
+        assert_eq!(
+            document.provenance.canonical_uri.as_deref(),
+            Some("https://x.test/post")
+        );
+        assert!(inline_text_of(document).contains("The whole post."));
+    }
+
+    fn inline_text_of(document: &EngineDocument) -> String {
+        document
+            .walk_inline_spans()
+            .into_iter()
+            .map(|span| inline_text(std::slice::from_ref(span)))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// A fixed-width menu format keeps one typeface across its column grid
+    /// (see `FIXED_WIDTH_MENU_TYPES`).
     #[test]
     fn a_fixed_width_menu_sets_its_body_font_to_the_monospace_one() {
         for content_type in ["application/gopher-menu", "application/x-nex-listing"] {
