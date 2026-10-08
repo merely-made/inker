@@ -26,8 +26,9 @@
 //! owned `FontResource` bytes, is the IPC-self-contained form — not the
 //! packet.
 //!
-//! Faces deduplicate by `parley::Blob::id()` (a stable per-allocation id),
-//! so a face shared across many runs is stored once.
+//! Faces deduplicate by `parley::Blob::id()` (a stable per-allocation id)
+//! together with the collection index. A face shared across many runs is
+//! stored once; distinct faces in one font collection keep distinct ids.
 
 use std::collections::HashMap;
 
@@ -68,14 +69,14 @@ impl FontTable {
     }
 }
 
-/// Build-time accumulator that dedups parley faces by `Blob::id()` and
-/// hands back stable [`FontFaceId`]s. Lives in the layouter during a
+/// Build-time accumulator that dedups parley faces by `(Blob::id(), index)`
+/// and hands back stable [`FontFaceId`]s. Lives in the layouter during a
 /// `layout_document` pass; [`into_table`](Self::into_table) seals it into
 /// the [`FontTable`] sidecar.
 #[derive(Default)]
 pub struct FontInterner {
     faces: Vec<FontData>,
-    by_blob: HashMap<u64, FontFaceId>,
+    by_face: HashMap<(u64, u32), FontFaceId>,
 }
 
 impl FontInterner {
@@ -84,16 +85,17 @@ impl FontInterner {
     }
 
     /// Intern parley's chosen face for a run, returning the id to record
-    /// on the `GlyphRun`. Identical faces (same `Blob::id()`) collapse to
-    /// one id. The `FontData` clone is an `Arc` bump, not a byte copy.
+    /// on the `GlyphRun`. Identical faces (same `Blob::id()` and collection
+    /// index) collapse to one id. The `FontData` clone is an `Arc` bump,
+    /// not a byte copy.
     pub fn intern(&mut self, font: &FontData) -> FontFaceId {
-        let blob_id = font.data.id();
-        if let Some(&id) = self.by_blob.get(&blob_id) {
+        let face_key = (font.data.id(), font.index);
+        if let Some(&id) = self.by_face.get(&face_key) {
             return id;
         }
         let id = FontFaceId(self.faces.len() as u32);
         self.faces.push(font.clone());
-        self.by_blob.insert(blob_id, id);
+        self.by_face.insert(face_key, id);
         id
     }
 
@@ -107,12 +109,30 @@ impl FontInterner {
 mod tests {
     use super::*;
 
-    // Dedup behaviour is verified end-to-end against real parley faces in
-    // `layout.rs` (`document_dedups_shared_face` /
-    // `distinct_families_intern_distinct_faces`) and `paint_list.rs` —
-    // `parley::FontData` can't be constructed synthetically without
-    // pulling in `linebender_resource_handle` directly, and a real layout
-    // is the more honest exercise of the intern path.
+    #[test]
+    fn collection_faces_intern_separately_and_same_face_clones_dedup() {
+        // The interner handles identity, not font parsing. Synthetic bytes
+        // make this regression independent of installed fonts or which
+        // platforms package regular/bold faces in a shared TTC allocation.
+        let first_face = FontData::new(vec![0_u8; 8].into(), 0);
+        let second_face = FontData::new(first_face.data.clone(), 1);
+        assert_eq!(first_face.data.id(), second_face.data.id());
+        let mut interner = FontInterner::new();
+        let first = interner.intern(&first_face);
+        let second = interner.intern(&second_face);
+        assert_ne!(
+            first, second,
+            "a collection index identifies a distinct face"
+        );
+        assert_eq!(interner.intern(&first_face.clone()), first);
+        assert_eq!(interner.intern(&second_face.clone()), second);
+        let table = interner.into_table();
+        assert_eq!(table.len(), 2);
+        assert_eq!(table.get(first).unwrap().index, 0);
+        assert_eq!(table.get(second).unwrap().index, 1);
+        assert_eq!(table.get(first).unwrap().data.id(), first_face.data.id());
+        assert_eq!(table.get(second).unwrap().data.id(), first_face.data.id());
+    }
 
     #[test]
     fn empty_table_get_is_none() {
