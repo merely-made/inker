@@ -13,8 +13,8 @@ use document_canvas::InteractionKind;
 use genet_host_api::ResourceFetcher;
 use inker::session_engine::{
     DocumentSession, SessionButtonState, SessionClick, SessionCursor, SessionEffect, SessionEngine,
-    SessionError, SessionFocusDirection, SessionKey, SessionLink, SessionModifiers,
-    SessionScrollKey, SessionSpawnRequest,
+    SessionError, SessionFocusDirection, SessionFormMethod, SessionFormSubmission, SessionKey,
+    SessionLink, SessionModifiers, SessionScrollKey, SessionSpawnRequest,
 };
 use inker::{DocumentCapabilities, DocumentCapabilityStatus, EngineDocument};
 use netrender::Scene;
@@ -204,6 +204,17 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
     fn focus_move(&mut self, direction: SessionFocusDirection) -> bool {
         let (w, h) = self.viewport;
         self.doc.focus_move(direction, w, h)
+    }
+    /// A smolweb submission is a mutation endpoint (a Titan upload, a Spartan
+    /// prompt): the host collects and confirms its body before sending it. It
+    /// is a POST with no fields, never a GET form a host would follow as a
+    /// navigation.
+    fn form_submission(&mut self, action: &str) -> SessionFormSubmission {
+        SessionFormSubmission {
+            action: action.to_owned(),
+            method: SessionFormMethod::Post,
+            fields: Vec::new(),
+        }
     }
     fn focus_input(&mut self, focused: bool) {
         if !focused {
