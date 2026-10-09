@@ -11,8 +11,8 @@
 
 use document_canvas::{ColorToken, DocumentStyleSheet, InteractionKind, InteractionRegion, Rect};
 use inker::session_engine::{
-    DocumentSession, SessionButtonState, SessionEffect, SessionFocusDirection, SessionInput,
-    SessionKey, SessionPointerButton,
+    DocumentSession, SessionButtonState, SessionEffect, SessionFocusDirection, SessionFormMethod,
+    SessionInput, SessionKey, SessionPointerButton,
 };
 use inker::{Block, Engine, EngineDocument, EngineInput, inline_text};
 use netrender::SceneOp;
@@ -599,10 +599,15 @@ fn decision_12_focus_reaches_every_region_with_a_configurable_indicator() {
     );
     let _ = spartan.frame(W, H);
     assert_eq!(forward(&mut spartan), SessionEffect::Handled);
-    assert!(matches!(
-        key(&mut spartan, SessionKey::Enter),
-        SessionEffect::Submit(submission) if submission.action == "/guestbook/sign"
-    ));
+    assert!(
+        matches!(
+            key(&mut spartan, SessionKey::Enter),
+            SessionEffect::Submit(submission) if submission.action == "/guestbook/sign"
+                && submission.method == SessionFormMethod::Post
+                && submission.fields.is_empty()
+        ),
+        "a mutation endpoint is a POST the host completes, not a GET to follow"
+    );
 
     let (file, source) = fixture!("navigation/probe-nav-09-transport.mu");
     let rects = |style: &DocumentStyleSheet, focused: bool| {
