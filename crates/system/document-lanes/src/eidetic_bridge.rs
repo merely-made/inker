@@ -596,7 +596,7 @@ pub async fn save_fleece_annotation(
     now_ms: u64,
 ) -> Result<ManifestId> {
     record.validate_integrity()?;
-    eidetic::save_typed(
+    let id = eidetic::save_typed(
         store,
         record,
         Vec::new(),
@@ -617,7 +617,16 @@ pub async fn save_fleece_annotation(
         },
         Timestamp(now_ms),
     )
-    .await
+    .await?;
+    eidetic::ResourceCaptureStore::new(&*store)
+        .record(
+            &record.extraction.capture.canonical_source,
+            record.extraction.capture.capture_hash,
+            eidetic::CaptureContent::Acquired,
+            now_ms,
+        )
+        .await?;
+    Ok(id)
 }
 
 /// Load a typed annotation record and reject tampered text, selector, target,
@@ -1208,6 +1217,27 @@ mod tests {
                 .expect("load typed Fleece annotation")
                 .expect("record exists after reopen");
             assert_eq!(loaded, record);
+            let captures = eidetic::ResourceCaptureStore::new(&reopened)
+                .for_url(&record.extraction.capture.canonical_source)
+                .await
+                .expect("capture association survives reopen");
+            assert_eq!(captures.len(), 1);
+            assert_eq!(
+                captures[0].content_hash,
+                record.extraction.capture.capture_hash
+            );
+            assert_eq!(captures[0].content, eidetic::CaptureContent::Acquired);
+            assert_ne!(
+                captures[0].content_hash,
+                record.extraction.canonical_text_hash
+            );
+            assert!(
+                eidetic::ResourceCaptureStore::new(&reopened)
+                    .for_url("https://other.test/story")
+                    .await
+                    .unwrap()
+                    .is_empty()
+            );
 
             let json: serde_json::Value =
                 serde_json::from_slice(&loaded.annotation_json_ld().expect("serialize JSON-LD"))
