@@ -73,6 +73,31 @@ pub trait GraftSurface {
     fn can_go_forward(&self) -> bool;
 
     fn notify_mouse(&mut self, ev: MouseEvent) -> Result<(), SurfaceError>;
+    fn notify_wheel(&mut self, event: inker::SurfaceWheelEvent) -> Result<(), SurfaceError> {
+        if event.modifiers != inker::KeyboardModifiers::default() {
+            return Err(SurfaceError::Unsupported(
+                "modified wheel input is not wired by this host".into(),
+            ));
+        }
+        self.notify_mouse(MouseEvent {
+            position: event.position,
+            button: None,
+            kind: inker::MouseEventKind::ScrollPixels {
+                delta_x: event.delta.0,
+                delta_y: event.delta.1,
+            },
+        })
+    }
+    fn set_focus(&mut self, focused: bool) -> Result<(), SurfaceError> {
+        if focused {
+            self.focus(FocusReason::Programmatic)
+        } else {
+            Err(SurfaceError::Unsupported(
+                "focus loss is not wired by this host".into(),
+            ))
+        }
+    }
+
     fn notify_pointer(&mut self, ev: PointerEvent) -> Result<(), SurfaceError>;
     fn notify_drag(&mut self, ev: DragEvent) -> Result<(), SurfaceError>;
     fn finish_drag_source(
@@ -263,6 +288,13 @@ impl SurfaceProducer for GraftProducer {
 
     fn send_mouse_input(&mut self, ev: MouseEvent) -> Result<(), SurfaceError> {
         self.inner.notify_mouse(ev)
+    }
+
+    fn send_wheel_input(&mut self, event: inker::SurfaceWheelEvent) -> Result<(), SurfaceError> {
+        self.inner.notify_wheel(event)
+    }
+    fn set_focus(&mut self, focused: bool) -> Result<(), SurfaceError> {
+        self.inner.set_focus(focused)
     }
 
     fn send_pointer_input(&mut self, ev: PointerEvent) -> Result<(), SurfaceError> {

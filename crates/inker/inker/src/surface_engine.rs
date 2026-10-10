@@ -457,6 +457,14 @@ pub struct KeyboardModifiers {
     pub meta: bool,
 }
 
+/// A wheel gesture with its actual modifier state. Deltas and position are physical pixels.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SurfaceWheelEvent {
+    pub position: PhysicalPosition,
+    pub delta: (f32, f32),
+    pub modifiers: KeyboardModifiers,
+}
+
 /// The Pointer Events `pointerType` values. `Unknown` represents the empty
 /// string or a device kind the host cannot identify; it must not be guessed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -985,6 +993,31 @@ pub trait SurfaceProducer {
     // ── Input ────────────────────────────────────────────────────────────────
     fn send_mouse_input(&mut self, ev: MouseEvent) -> Result<(), SurfaceError>;
     fn send_pointer_input(&mut self, ev: PointerEvent) -> Result<(), SurfaceError>;
+    fn send_wheel_input(&mut self, event: SurfaceWheelEvent) -> Result<(), SurfaceError> {
+        if event.modifiers != KeyboardModifiers::default() {
+            return Err(SurfaceError::Unsupported(
+                "modified wheel input is not wired for this surface".into(),
+            ));
+        }
+        self.send_mouse_input(MouseEvent {
+            position: event.position,
+            button: None,
+            kind: MouseEventKind::ScrollPixels {
+                delta_x: event.delta.0,
+                delta_y: event.delta.1,
+            },
+        })
+    }
+    fn set_focus(&mut self, focused: bool) -> Result<(), SurfaceError> {
+        if focused {
+            self.move_focus(FocusReason::Programmatic)
+        } else {
+            Err(SurfaceError::Unsupported(
+                "focus loss is not wired for this surface".into(),
+            ))
+        }
+    }
+
     fn send_drag_input(&mut self, _ev: DragEvent) -> Result<(), SurfaceError> {
         Err(SurfaceError::Unsupported(
             "host-to-page drag input is not wired for this surface".into(),

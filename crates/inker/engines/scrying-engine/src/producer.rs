@@ -86,6 +86,34 @@ impl SurfaceProducer for ScryingProducer {
             .map_err(map_error)
     }
 
+    fn send_wheel_input(&mut self, event: inker::SurfaceWheelEvent) -> Result<(), SurfaceError> {
+        if event.modifiers.alt || event.modifiers.meta {
+            return Err(SurfaceError::Unsupported(
+                "scrying wheel input cannot represent Alt or Meta modifiers".into(),
+            ));
+        }
+        for (delta, kind) in [
+            (event.delta.0, scrying::MouseEventKind::HorizontalWheel),
+            (event.delta.1, scrying::MouseEventKind::Wheel),
+        ] {
+            if delta == 0.0 {
+                continue;
+            }
+            let input = scrying::MouseInput {
+                kind,
+                virtual_keys: scrying::MouseVirtualKeys {
+                    control: event.modifiers.ctrl,
+                    shift: event.modifiers.shift,
+                    ..Default::default()
+                },
+                mouse_data: delta as i32,
+                point: (event.position.x as i32, event.position.y as i32),
+            };
+            self.inner.send_mouse_input(input).map_err(map_error)?;
+        }
+        Ok(())
+    }
+
     fn send_pointer_input(&mut self, ev: PointerEvent) -> Result<(), SurfaceError> {
         self.inner
             .send_pointer_input(map_pointer(ev)?)

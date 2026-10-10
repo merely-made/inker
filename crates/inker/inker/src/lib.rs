@@ -110,8 +110,8 @@ pub use surface_engine::{
     ScriptCapabilities, SurfaceAccessibilityActionRequest, SurfaceAccessibilityTreeId,
     SurfaceAccessibilityUpdate, SurfaceEngine, SurfaceEngineRegistry, SurfaceError, SurfaceFrame,
     SurfaceProducer, SurfaceSettings, SurfaceSpawnRequest, SurfaceSyncHandle, SurfaceTextureFormat,
-    UserAgentRequestId, WebFrameTransportMode, WebMessage, WebRequestId, WebSurface,
-    WebSurfaceCapabilities, WebSurfaceEvent,
+    SurfaceWheelEvent, UserAgentRequestId, WebFrameTransportMode, WebMessage, WebRequestId,
+    WebSurface, WebSurfaceCapabilities, WebSurfaceEvent,
 };
 
 /// Crate version.

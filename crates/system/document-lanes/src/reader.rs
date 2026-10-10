@@ -312,6 +312,7 @@ pub struct ReaderDocumentSession {
     /// The public projection carries this revision so Pelt makes queued
     /// virtual Focus inert rather than retargeting it after a reflow.
     accessibility_revision: u64,
+    focused_semantic: Option<DocumentA11yNodeId>,
     /// Document-canvas keeps link identities opaque. Retain an engine-local
     /// projection ID for each one instead of deriving identity from output
     /// order, URL, or visible rectangles.
@@ -345,6 +346,7 @@ impl ReaderDocumentSession {
             viewport,
             lineage,
             accessibility_revision: 1,
+            focused_semantic: None,
             accessibility_nodes: RefCell::new(ReaderAccessibilityNodeMap::default()),
         }
     }
@@ -447,8 +449,9 @@ impl ReaderDocumentSession {
             let Some(bounds) = reader_link_bounds(&link.rects) else {
                 continue;
             };
+            let id = self.accessibility_node_id(link.identity);
             links.push(DocumentA11yNode {
-                id: self.accessibility_node_id(link.identity),
+                id,
                 parent: Some(root),
                 children: Vec::new(),
                 role: DocumentA11yRole::Link,
@@ -459,7 +462,10 @@ impl ReaderDocumentSession {
                 numeric_minimum: None,
                 numeric_maximum: None,
                 bounds: Some(bounds),
-                state: DocumentA11yState::default(),
+                state: DocumentA11yState {
+                    focused: self.focused_semantic == Some(id),
+                    ..Default::default()
+                },
                 actions: vec![DocumentA11yAction::Focus],
             });
         }
@@ -607,6 +613,32 @@ impl DocumentSession<Scene> for ReaderDocumentSession {
 
     fn accessibility_projection(&self) -> Option<DocumentA11yProjection> {
         self.document_accessibility_projection()
+    }
+
+    fn dispatch_accessibility_action(
+        &mut self,
+        request: &inker::DocumentA11yActionRequest,
+    ) -> bool {
+        if request.action != DocumentA11yAction::Focus || request.data.is_some() {
+            return false;
+        }
+        let Some(projection) = self.document_accessibility_projection() else {
+            return false;
+        };
+        if projection.revision() != request.revision
+            || !projection.node(request.target).is_some_and(|node| {
+                !node.state.hidden
+                    && !node.state.disabled
+                    && node.actions.contains(&DocumentA11yAction::Focus)
+            })
+        {
+            return false;
+        }
+        if self.focused_semantic != Some(request.target) {
+            self.focused_semantic = Some(request.target);
+            self.bump_accessibility_revision();
+        }
+        true
     }
 
     fn as_any_ref(&self) -> &dyn Any {
@@ -850,6 +882,95 @@ mod tests {
         assert_eq!(
             wide_link.identity, identity,
             "geometry does not define identity"
+        );
+    }
+
+    #[test]
+    fn reader_owned_virtual_focus_is_current_visible_and_appearance_local() {
+        let html = format!("<html><body><main><h1>Focus article</h1><p>A substantial paragraph offers <a href='/next'>visible continuation</a> and enough prose to retain article content.</p>{}</main></body></html>", "<p>Substantial remaining article content extends below this viewport so scrolling can hide the first link.</p>".repeat(80));
+        let mut first = reader_session(&html, 480, 300);
+        let mut second = reader(first.as_ref()).new_appearance((480, 300));
+        assert!(Arc::ptr_eq(
+            &reader(first.as_ref()).source_document(),
+            &second.source_document()
+        ));
+        first.frame(480, 300);
+        second.frame(480, 300);
+        let projection = first.accessibility_projection().unwrap();
+        let link = projection
+            .nodes()
+            .iter()
+            .find(|node| node.role == DocumentA11yRole::Link)
+            .unwrap()
+            .id;
+        let request = inker::DocumentA11yActionRequest {
+            revision: projection.revision(),
+            target: link,
+            action: DocumentA11yAction::Focus,
+            data: None,
+        };
+        assert!(
+            first.dispatch_accessibility_action(&request),
+            "the advertised virtual Focus must reach the owned Reader session"
+        );
+        let focused = first.accessibility_projection().unwrap();
+        assert!(focused.node(link).unwrap().state.focused);
+        assert_ne!(focused.revision(), request.revision);
+        assert!(
+            !first.dispatch_accessibility_action(&request),
+            "pre-Focus revision is stale"
+        );
+        assert!(
+            second
+                .accessibility_projection()
+                .unwrap()
+                .nodes()
+                .iter()
+                .all(|node| !node.state.focused),
+            "focus is appearance local"
+        );
+        for action in [
+            DocumentA11yAction::Click,
+            DocumentA11yAction::SetValue,
+            DocumentA11yAction::ScrollIntoView,
+        ] {
+            assert!(
+                !first.dispatch_accessibility_action(&inker::DocumentA11yActionRequest {
+                    revision: focused.revision(),
+                    action,
+                    ..request.clone()
+                })
+            );
+        }
+        assert!(
+            !first.dispatch_accessibility_action(&inker::DocumentA11yActionRequest {
+                revision: focused.revision(),
+                target: focused.root(),
+                ..request.clone()
+            })
+        );
+        first.scroll_to(2000.0);
+        first.frame(480, 300);
+        let hidden = first.accessibility_projection().unwrap();
+        assert!(hidden.node(link).is_none());
+        assert!(
+            !first.dispatch_accessibility_action(&inker::DocumentA11yActionRequest {
+                revision: hidden.revision(),
+                ..request.clone()
+            }),
+            "current revision cannot revive an offscreen target"
+        );
+        first.scroll_to(0.0);
+        first.frame(480, 300);
+        assert!(
+            first
+                .accessibility_projection()
+                .unwrap()
+                .node(link)
+                .unwrap()
+                .state
+                .focused,
+            "scroll and temporary invisibility retain virtual focus custody"
         );
     }
 

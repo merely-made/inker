@@ -201,6 +201,20 @@ impl WeldSurface for WeldingSurface {
             .map_err(map_error)
     }
 
+    fn notify_wheel(&mut self, event: inker::SurfaceWheelEvent) -> Result<(), SurfaceError> {
+        let modifiers = map_modifiers(event.modifiers);
+        let mut mapped = map_mouse(InkerMouseEvent {
+            position: event.position,
+            button: None,
+            kind: MouseEventKind::ScrollPixels {
+                delta_x: event.delta.0,
+                delta_y: event.delta.1,
+            },
+        })?;
+        mapped.modifiers = modifiers;
+        self.producer.send_mouse_input(mapped).map_err(map_error)
+    }
+
     fn notify_pointer(&mut self, event: PointerEvent) -> Result<(), SurfaceError> {
         if event.pointer_type == PointerType::Mouse {
             return self
