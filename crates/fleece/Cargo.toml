@@ -17,7 +17,7 @@ wire = ["fleece-extract/wire"]
 crawl = ["dep:armillary", "dep:fetch", "dep:genet-static-dom", "dep:tokio", "dep:tracing", "dep:url"]
 crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
-eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json"]
+eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]
 structured-data = ["dep:linked-data"]
 
 [dependencies]
