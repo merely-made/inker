@@ -1,0 +1,57 @@
+[package]
+name = "mere-fleece"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Content gathering for Mere: bounded traversal, clipping and capture over supplied documents and engine outputs."
+
+[lib]
+name = "fleece"
+path = "src/lib.rs"
+
+[features]
+default = []
+wire = ["fleece-extract/wire"]
+crawl = ["dep:armillary", "dep:fetch", "dep:genet-static-dom", "dep:tokio", "dep:tracing", "dep:url"]
+crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
+clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
+eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json"]
+structured-data = ["dep:linked-data"]
+
+[dependencies]
+fleece-extract.workspace = true
+eidetic = { workspace = true, optional = true }
+genet-host-api = { workspace = true, optional = true }
+genet-static-dom = { workspace = true, optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+incipit = { workspace = true, optional = true }
+inker = { workspace = true, optional = true }
+linked-data = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+url = { version = "2.5", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+armillary = { workspace = true, optional = true }
+fetch = { package = "mere-fetch", path = "../system/fetch", version = "0.0.1", optional = true, default-features = false }
+tokio = { version = "1", features = ["rt", "time"], optional = true }
+
+[dev-dependencies]
+eidetic.workspace = true
+nematic.workspace = true
+oxjsonld = "0.2"
+oxrdf = "0.3"
+genet-static-dom.workspace = true
+pollster = "0.4"
+tempfile = "3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+muniment = { workspace = true, features = ["fjall"] }
+transport = { workspace = true, features = ["test-identity"] }
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true

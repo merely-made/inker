@@ -4,26 +4,27 @@
 
 //! Opt-in bridge from Fleece's caller-owned extraction output to Eidetic.
 //!
-//! Fleece deliberately knows neither a page's resolved URL nor its acquired
-//! bytes. A host supplies both as [`CaptureIdentity`]; this module preserves
+//! The extractor does not establish a page's resolved URL or acquired bytes.
+//! A host supplies both as [`CaptureIdentity`]; this module preserves
 //! that evidence beside Fleece's canonical DOM text and a W3C Web Annotation
 //! target. It never fetches, resolves URLs, or decides that a capture is
 //! shareable. The typed save helper writes `LocalOnly`; promotion is a later
 //! product action with its own authority and privacy decision.
 
+use crate::{
+    CanonicalTextRecordV1, CanonicalTextSelectorProjection, ExtractedDocument, TextAnchor,
+};
 use eidetic::{
     BlobManifest, BlobSource, Hash, ManifestId, ModerationState, PrivacyClass, ProvenanceOrigin,
     ProvenanceRecord, Result, SchemaRef, Timestamp, TrustEnvelope, TrustLevel, TypedPayload,
 };
-use fleece::{
-    CanonicalTextRecordV1, CanonicalTextSelectorProjection, ExtractedDocument, TextAnchor,
-};
 use serde::{Deserialize, Serialize};
 
-const RFC_5147: &str = fleece::RFC5147_CONFORMS_TO;
+const RFC_5147: &str = crate::RFC5147_CONFORMS_TO;
 
 /// Stable schema identifier carried by a Moot `Shared` contribution that
 /// points at a [`FleeceAnnotationRecord`].
+/// The document-lanes spelling is retained so existing records keep their identity.
 pub const FLEECE_ANNOTATION_SCHEMA_ID: &str = "mere.document-lanes.FleeceAnnotation/v1";
 
 /// Canonical bytes of the schema codicil describing this bridge's typed payload.
@@ -519,7 +520,7 @@ impl FleeceAnnotationRecord {
         }
         let anchor = anchor_from_target(&self.target)?;
         let projection =
-            fleece::CanonicalTextSelectorProjection::from_anchor(&self.target.source.id, &anchor);
+            crate::CanonicalTextSelectorProjection::from_anchor(&self.target.source.id, &anchor);
         if !projection.resolves_against(&self.extraction.canonical_text_record.canonical_text) {
             return Err(eidetic::Error::new(
                 "annotation selectors do not resolve against stored canonical text",
@@ -666,7 +667,7 @@ fn anchor_from_target(target: &WebAnnotationTarget) -> Result<TextAnchor> {
             "annotation target has unsupported selector types",
         ));
     }
-    let fragment = fleece::FragmentSelector::parse(&fragment.value)
+    let fragment = crate::FragmentSelector::parse(&fragment.value)
         .ok_or_else(|| eidetic::Error::new("fragment selector must use an RFC 5147 char range"))?;
     if fragment.start != position.start || fragment.end != position.end {
         return Err(eidetic::Error::new(
@@ -674,11 +675,11 @@ fn anchor_from_target(target: &WebAnnotationTarget) -> Result<TextAnchor> {
         ));
     }
     Ok(TextAnchor {
-        position: fleece::TextPositionSelector {
+        position: crate::TextPositionSelector {
             start: position.start,
             end: position.end,
         },
-        quote: fleece::TextQuoteSelector {
+        quote: crate::TextQuoteSelector {
             exact: quote.exact,
             prefix: quote.prefix,
             suffix: quote.suffix,
@@ -698,8 +699,8 @@ fn target_position(target: &WebAnnotationTarget) -> (u64, u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use eidetic::fjall::FjallStore;
     use genet_static_dom::StaticDocument;
+    use muniment::FjallStore;
     use oxjsonld::{JsonLdParser, JsonLdRemoteDocument};
     use oxrdf::{BlankNode, Dataset, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term};
     use std::collections::{HashMap, HashSet};
@@ -837,15 +838,15 @@ mod tests {
 
     fn fixture() -> FleeceAnnotationRecord {
         let html = "<html><head><title>Bridge proof</title></head><body><main><h1>Bridge proof</h1><p>The durable passage is preserved with selectors.</p></main></body></html>";
-        let document = fleece::extract_document(&StaticDocument::parse(html));
+        let document = crate::extract_document(&StaticDocument::parse(html));
         let exact = "durable passage";
         let start = document.page.text.find(exact).expect("fixture text") as u64;
         // Fleece positions are Unicode code points, not UTF-8 byte offsets.
         let start = document.page.text[..start as usize].chars().count() as u64;
         let end = start + exact.chars().count() as u64;
-        let anchor = fleece::anchor_for_range(
+        let anchor = crate::anchor_for_range(
             &document.page.text,
-            fleece::TextPositionSelector { start, end },
+            crate::TextPositionSelector { start, end },
             document.contract.quote_context,
         )
         .expect("fixture anchor");
