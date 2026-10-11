@@ -111,7 +111,8 @@ document-canvas 63, mere-document-lanes with `smolweb` 24 (including the
 streaming integration test), platen 54, import 17, uxtree 9, script-rhai 9,
 mere-gloss 6, all passing, and a clean workspace check. The format check
 reports only two files that were already unformatted at the parent commit
-(`crates/import/src/history.rs`, `crates/script/rhai/src/lib.rs`), neither at
+(`crates/import/src/history.rs` *(historical citation)* <!-- doc-audit: historical-path -->,
+`crates/script/rhai/src/lib.rs`), neither at
 a line N1 touched. Logs are `n1-10` to `n1-20` under
 `Code/testing/mere/micron-navigation-20260916/logs/`.
 

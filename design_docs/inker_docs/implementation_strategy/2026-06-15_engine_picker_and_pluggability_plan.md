@@ -163,7 +163,8 @@ was deleted in `c5f01064` (2026-07-18): `EngineActivation`, `engine_pins` and
 `route_document_engine` have no hits in code at mere 535bca11. What
 survives is the library half: `EngineRoutePolicy` and `is_surface_engine` in
 `crates/inker/inker/src/routing.rs`, consumed by Pelt
-(`ports/pelt/core/src/workspace.rs`), `crates/import/src/web_clip.rs`, the
+(`ports/pelt/core/src/workspace.rs`), Fleece's `crates/fleece/src/clip.rs` (moved
+2026-10-11), the
 `mere::routing` facade (`crates/mere/src/routing.rs`) and Turnstone; and
 pandect's `disabled_engines` settings field, which nothing outside pandect
 reads.
