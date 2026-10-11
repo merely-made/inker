@@ -158,15 +158,15 @@ engine needs.
 External consumers pin mere by rev and were not changed. On their next bump
 (lines as of 2026-09-16):
 
-- Knot `apps/desktop/src/document_preview.rs:39`: the exhaustive `inline()`
+- Knot `repos/knot-editor/apps/desktop/src/document_preview.rs:39`: the exhaustive `inline()`
   (arms end at :86) needs an `InlineSpan::InPage` arm rendering label text.
-- Knot `apps/desktop/src/scroll_site.rs:1090`: the Micron preview's exhaustive
+- Knot `repos/knot-editor/apps/desktop/src/scroll_site.rs:1090`: the Micron preview's exhaustive
   `inline()` (arms end at :1119) needs the same arm.
 - Turnstone `src/nomadnet.rs:517`: the test `EngineDocument` literal needs
   `navigation: Default::default()`.
 - No edit needed: Turnstone `src/nomadnet.rs:192` (`refuse_spans` passes
   `InPage` through its wildcard, and the label holds no alias link) and Knot
-  `apps/desktop/src/scroll_site.rs:1749` (that badge comes from the unresolved
+  `repos/knot-editor/apps/desktop/src/scroll_site.rs:1749` (that badge comes from the unresolved
   alias diagnostic, which N1 keeps).
 
 ### P1. Shared presentation and session state

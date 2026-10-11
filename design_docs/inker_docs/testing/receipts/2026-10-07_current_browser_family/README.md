@@ -1,5 +1,8 @@
 # Current browser family prerequisite, 2026-10-07
 
+**Status:** Historical receipt at the recorded source revisions. Later stack
+repins require their own qualification.
+
 Current published Mere main d041cc69 is merged into the owned compatibility
 worktree. The old branch contributes no runtime Rust changes. All 38 active
 Genet manifest rows adopt 965b64e206a47d1c8808472de9aa461233638768;
