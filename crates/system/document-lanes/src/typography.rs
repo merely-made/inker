@@ -66,7 +66,7 @@ pub fn document_style_with_typography(
 mod tests {
     use super::*;
     use document_canvas::BlockRole;
-    use tabard::FontPreferences;
+    use tabard::ThemeFontStyle;
     #[test]
     fn code_can_explicitly_choose_a_generic_ui_face_without_being_forced_to_monospace() {
         let baseline = DocumentStyleSheet::default();
@@ -74,7 +74,7 @@ mod tests {
         fonts
             .set(
                 FontRole::Code,
-                FontPreferences {
+                ThemeFontStyle {
                     family: Some("system-ui".into()),
                     ..Default::default()
                 },
@@ -98,7 +98,7 @@ mod tests {
         fonts
             .set(
                 FontRole::Reading,
-                FontPreferences {
+                ThemeFontStyle {
                     family: Some("Georgia".into()),
                     size_px: Some(23.0),
                     line_height: Some(1.7),
@@ -128,7 +128,7 @@ mod tests {
         fonts
             .set(
                 FontRole::Heading,
-                FontPreferences {
+                ThemeFontStyle {
                     size_px: Some(42.0),
                     line_height: Some(1.2),
                     ..Default::default()
@@ -138,7 +138,7 @@ mod tests {
         fonts
             .set(
                 FontRole::Code,
-                FontPreferences {
+                ThemeFontStyle {
                     family: Some("Menlo".into()),
                     size_px: Some(18.0),
                     ..Default::default()
