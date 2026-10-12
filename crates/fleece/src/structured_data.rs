@@ -7,7 +7,7 @@
 //! Composition between Fleece's lossless HTML evidence and Mere's JSON-LD
 //! processor.
 
-use fleece::{EmbeddedJsonLdBlock, JsonLdParseStatus};
+use crate::{EmbeddedJsonLdBlock, JsonLdParseStatus};
 use linked_data::{ContextCache, GraphContribution, ImportEnvelope};
 
 /// One source block's identity and RDF projection outcome.
@@ -190,7 +190,7 @@ pub fn json_ld_contributions_with_base_iri(
 
 #[cfg(test)]
 mod tests {
-    use fleece::{JsonLdParseStatus, StructuredValue, extract_json_ld_blocks};
+    use crate::{JsonLdParseStatus, StructuredValue, extract_json_ld_blocks};
     use genet_static_dom::StaticDocument;
     use linked_data::ContextCache;
 

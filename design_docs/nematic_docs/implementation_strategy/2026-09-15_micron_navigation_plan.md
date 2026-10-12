@@ -111,7 +111,8 @@ document-canvas 63, mere-document-lanes with `smolweb` 24 (including the
 streaming integration test), platen 54, import 17, uxtree 9, script-rhai 9,
 mere-gloss 6, all passing, and a clean workspace check. The format check
 reports only two files that were already unformatted at the parent commit
-(`crates/import/src/history.rs`, `crates/script/rhai/src/lib.rs`), neither at
+(`crates/import/src/history.rs` *(historical citation)* <!-- doc-audit: historical-path -->,
+`crates/script/rhai/src/lib.rs`), neither at
 a line N1 touched. Logs are `n1-10` to `n1-20` under
 `Code/testing/mere/micron-navigation-20260916/logs/`.
 
@@ -157,15 +158,15 @@ engine needs.
 External consumers pin mere by rev and were not changed. On their next bump
 (lines as of 2026-09-16):
 
-- Knot `apps/desktop/src/document_preview.rs:39`: the exhaustive `inline()`
+- Knot `repos/knot-editor/apps/desktop/src/document_preview.rs:39`: the exhaustive `inline()`
   (arms end at :86) needs an `InlineSpan::InPage` arm rendering label text.
-- Knot `apps/desktop/src/scroll_site.rs:1090`: the Micron preview's exhaustive
+- Knot `repos/knot-editor/apps/desktop/src/scroll_site.rs:1090`: the Micron preview's exhaustive
   `inline()` (arms end at :1119) needs the same arm.
 - Turnstone `src/nomadnet.rs:517`: the test `EngineDocument` literal needs
   `navigation: Default::default()`.
 - No edit needed: Turnstone `src/nomadnet.rs:192` (`refuse_spans` passes
   `InPage` through its wildcard, and the label holds no alias link) and Knot
-  `apps/desktop/src/scroll_site.rs:1749` (that badge comes from the unresolved
+  `repos/knot-editor/apps/desktop/src/scroll_site.rs:1749` (that badge comes from the unresolved
   alias diagnostic, which N1 keeps).
 
 ### P1. Shared presentation and session state

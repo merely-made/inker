@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#![cfg(feature = "eidetic-bridge")]
+#![cfg(all(feature = "eidetic-bridge", not(target_arch = "wasm32")))]
 
 //! Receipt for selected page evidence crossing an authenticated peer lane and
 //! surviving receiver-only disk reopen. Commons separately proves LogSync
@@ -13,11 +13,11 @@ use eidetic::{
     BlobManifest, Hash, ManifestId, ModerationState, NoFetcher, PrivacyClass, ProvenanceOrigin,
     ProvenanceRecord, Store, Timestamp, TrustEnvelope, TrustLevel, TypedPayload,
 };
-use genet_static_dom::StaticDocument;
-use mere_document_lanes::eidetic_bridge::{
+use fleece::eidetic_bridge::{
     CaptureDomMode, CaptureIdentity, FLEECE_ANNOTATION_SCHEMA_REF, FleeceAnnotationRecord,
     bootstrap_fleece_annotation_schema, load_fleece_annotation,
 };
+use genet_static_dom::StaticDocument;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use transport::{Alpn, P2pandaTransport, Transport, TransportKind};
@@ -219,7 +219,7 @@ async fn selected_page_survives_authenticated_peer_transfer_and_receiver_reopen(
     let directory = tempfile::tempdir().expect("temporary receiver store");
     {
         let mut receiver =
-            eidetic::fjall::FjallStore::open(directory.path()).expect("open receiver store");
+            muniment::FjallStore::open(directory.path()).expect("open receiver store");
         bootstrap_fleece_annotation_schema(&mut receiver)
             .await
             .expect("seed known schema");
@@ -237,8 +237,7 @@ async fn selected_page_survives_authenticated_peer_transfer_and_receiver_reopen(
         }
     }
 
-    let mut reopened =
-        eidetic::fjall::FjallStore::open(directory.path()).expect("reopen receiver store");
+    let mut reopened = muniment::FjallStore::open(directory.path()).expect("reopen receiver store");
     let reopened_record = load_fleece_annotation(&mut reopened, received.annotation_manifest.id)
         .await
         .expect("load received annotation")
