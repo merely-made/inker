@@ -18,6 +18,7 @@ crawl = ["dep:armillary", "dep:fetch", "dep:genet-static-dom", "dep:tokio", "dep
 crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
 eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]
+portable-clip = ["dep:eidetic", "dep:serde", "dep:serde_json"]
 structured-data = ["dep:linked-data"]
 
 [dependencies]
