@@ -17,7 +17,7 @@ use std::sync::Arc;
 use document_canvas::DocumentRenderPacket;
 use document_canvas::{
     ColorVocabulary, DecodedImage, DocumentStyleSheet, InteractionKind, LaidOutDocument, Rect,
-    SemanticInteractionId, SourcePresentation, Viewport, layout_document_with_folds,
+    SemanticInteractionId, SourcePresentation, Viewport,
     netrender_backend::scene_from_packet_with_images,
 };
 #[cfg(feature = "smolweb")]
@@ -29,9 +29,7 @@ use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
 
-#[cfg(feature = "smolweb")]
 mod a11y;
-#[cfg(feature = "smolweb")]
 pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
 
 // The smolweb palette and theme are tabard's. Hosts on the compatibility
@@ -82,6 +80,7 @@ pub struct SmolwebDocument {
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
     layout: Option<LaidOutDocument>,
+    fonts: Vec<Vec<u8>>,
     size: (u32, u32),
     scroll_x: f32,
     scroll_y: f32,
@@ -249,6 +248,7 @@ impl SmolwebDocument {
             images: HashMap::new(),
             inline_media,
             layout: None,
+            fonts: Vec::new(),
             size: (0, 0),
             scroll_x: 0.0,
             scroll_y: 0.0,
@@ -608,6 +608,21 @@ impl SmolwebDocument {
         true
     }
 
+    /// Fonts supplied by the embedding host, never fetched by this view.
+    pub fn set_font_family(&mut self, family: &str) {
+        self.style.body_font_family = family.into();
+        self.style.mono_font_family = family.into();
+        self.layout = None;
+        self.presented = false;
+    }
+    pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
+        if self.fonts != fonts {
+            self.fonts = fonts;
+            self.layout = None;
+            self.presented = false;
+        }
+    }
+
     fn ensure_layout(&mut self, width: u32, height: u32) {
         let size = (width.max(1), height.max(1));
         if self.layout.is_some() && self.size == size {
@@ -618,12 +633,15 @@ impl SmolwebDocument {
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
         self.layout_generation = self.layout_generation.wrapping_add(1);
-        self.layout = Some(layout_document_with_folds(
-            &self.document,
-            Viewport::new(size.0 as f32, size.1 as f32),
-            &self.style,
-            &self.folds,
-        ));
+        self.layout = Some(
+            document_canvas::layout::layout_document_with_folds_and_fonts(
+                &self.document,
+                Viewport::new(size.0 as f32, size.1 as f32),
+                &self.style,
+                &self.folds,
+                &self.fonts,
+            ),
+        );
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());

@@ -18,7 +18,6 @@
 
 pub mod reader;
 mod remote;
-#[cfg(feature = "smolweb")]
 mod session;
 pub mod smolweb;
 pub use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};
@@ -27,11 +26,14 @@ pub use reader::{
     ReaderSessionEngine, lower_article,
 };
 pub use remote::RemoteFetcher;
+pub use session::SmolwebDocumentSession;
 #[cfg(feature = "smolweb")]
-pub use session::{SmolwebDocumentSession, SmolwebSessionEngine};
+pub use session::SmolwebSessionEngine;
 pub use smolweb::{
     InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette, SmolwebTheme,
 };
+#[cfg(feature = "retained-clips")]
+pub mod retained_clip;
 
 pub mod typography;
 pub use typography::document_style_with_typography;
