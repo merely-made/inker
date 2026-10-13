@@ -32,3 +32,6 @@ pub use session::{SmolwebDocumentSession, SmolwebSessionEngine};
 pub use smolweb::{
     InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette, SmolwebTheme,
 };
+
+pub mod typography;
+pub use typography::document_style_with_typography;

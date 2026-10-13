@@ -343,11 +343,15 @@ pub(crate) fn layout_text_block_with_link_identity_base(
             .ranged_builder(&mut env.font_cx, &flattened.text, display_scale, quantize);
 
     // Block-level defaults: font family, size, line height, weight, style.
-    let body_family = if base.monospace {
-        FontFamily::from(GenericFamily::Monospace)
-    } else {
-        FontFamily::Source(Cow::Borrowed(&base.font_family))
-    };
+    // A code role may request a concrete face/fallback stack. Preserve the
+    // old bare monospace switch for callers using the default body family,
+    // while allowing an explicit code family to reach Parley's matcher.
+    let body_family =
+        if base.monospace && matches!(base.font_family.as_str(), "" | "system-ui" | "monospace") {
+            FontFamily::from(GenericFamily::Monospace)
+        } else {
+            FontFamily::Source(Cow::Borrowed(&base.font_family))
+        };
     builder.push_default(body_family);
     builder.push_default(StyleProperty::FontSize(base.font_size));
     builder.push_default(LineHeight::FontSizeRelative(base.line_height_ratio));
@@ -566,12 +570,13 @@ fn rgb(color: [u8; 3]) -> [f32; 4] {
     ]
 }
 
-/// Resolve a friendly family-name label for a glyph run. parley's brush
-/// type carries our `InlineStyle`; we use that to pick body vs mono. The
-/// real font face used by parley is opaque to consumers — they look up
-/// concrete fonts via their own font cache when rendering.
+/// Retain a friendly requested-family label for a glyph run. Inline code
+/// uses generic monospace; a configured block code family retains its request.
+/// Rendering uses the actual shaped face from the separate font sidecar.
 fn family_label_from_brush(brush: InlineStyle, base: &TextBaseStyle) -> String {
-    if brush.monospace || base.monospace {
+    if (brush.monospace && !base.monospace)
+        || (base.monospace && matches!(base.font_family.as_str(), "" | "system-ui" | "monospace"))
+    {
         "monospace".to_string()
     } else {
         base.font_family.clone()
@@ -581,6 +586,49 @@ fn family_label_from_brush(brush: InlineStyle, base: &TextBaseStyle) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_code_family_is_the_actual_shaping_request() {
+        let mut env = LayoutEnvironment::new();
+        let flat = flatten_inline(
+            &[InlineSpan::Text("WiWi".into())],
+            &LinkAdornment::None,
+            &LinkAdornment::None,
+            None,
+        );
+        let shape = |env: &mut LayoutEnvironment, monospace: bool| {
+            let base = TextBaseStyle {
+                font_family: "serif".into(),
+                monospace,
+                ..Default::default()
+            };
+            let mut fonts = FontInterner::new();
+            let run = layout_text_block(
+                env,
+                &flat,
+                &base,
+                [0.0; 4],
+                [0.0; 4],
+                400.0,
+                Point::new(0.0, 0.0),
+                &mut fonts,
+            );
+            let table = fonts.into_table();
+            let face = table.get(run.glyph_runs[0].font_face).unwrap();
+            (
+                run.total_size,
+                face.data.id(),
+                face.index,
+                run.glyph_runs[0].font_family.clone(),
+            )
+        };
+        let normal = shape(&mut env, false);
+        let code = shape(&mut env, true);
+        assert_eq!(
+            normal, code,
+            "configured code family reaches the same actual shaped face and metrics"
+        );
+    }
 
     fn link(url: &str) -> InlineSpan {
         InlineSpan::Link {

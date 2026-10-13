@@ -262,6 +262,23 @@ impl SmolwebDocument {
     }
 
     /// The portable document retained by this session.
+    /// The retained appearance's style. Source, fold/focus state and viewport
+    /// are separate from this presentation policy.
+    pub fn style_sheet(&self) -> &DocumentStyleSheet {
+        &self.style
+    }
+
+    /// Replace only style and invalidate measured geometry. Document identity,
+    /// images, folds, focus and scroll remain owned by this retained session.
+    pub fn set_style_sheet(&mut self, style: DocumentStyleSheet) -> bool {
+        if self.style == style {
+            return false;
+        }
+        self.style = style;
+        self.invalidate_layout();
+        true
+    }
+
     pub fn document(&self) -> &EngineDocument {
         &self.document
     }
@@ -1501,5 +1518,71 @@ mod tests {
             style.colors.link_text,
             [51.0 / 255.0, 204.0 / 255.0, 1.0, 1.0]
         );
+    }
+}
+
+#[cfg(test)]
+mod typography_tests {
+    use super::*;
+    #[test]
+    fn restyling_reflows_without_replacing_source_or_session_state() {
+        let source = Arc::new(EngineDocument {
+            address: "gemini://x.test/".into(),
+            title: Some("Held content".into()),
+            content_type: "text/gemini".into(),
+            lang: None,
+            provenance: Default::default(),
+            trust: Default::default(),
+            diagnostics: Vec::new(),
+            navigation: Default::default(),
+            blocks: vec![Block::Paragraph {
+                spans: vec![
+                    inker::InlineSpan::Text("A retained paragraph. ".repeat(120)),
+                    inker::InlineSpan::Link {
+                        url: "gemini://x.test/next".into(),
+                        title: None,
+                        spans: vec![inker::InlineSpan::Text("Next".into())],
+                        predicate: None,
+                    },
+                ],
+            }],
+        });
+        let mut doc = SmolwebDocument::from_shared_document_with_theme(source, SmolwebTheme::Plain);
+        doc.frame(300, 200);
+        doc.focus_move(SessionFocusDirection::Forward, 300, 200);
+        doc.scroll_by(0.0, 40.0);
+        let focus = doc.focus.clone();
+        let source = doc.document.clone();
+        let scroll = doc.scroll_y;
+        let folds = doc.folds.clone();
+        let old_height = doc
+            .layout
+            .as_ref()
+            .unwrap()
+            .packet
+            .content_bounds
+            .size
+            .height;
+        let mut style = doc.style_sheet().clone();
+        style.roles.body.size = document_canvas::SizeSpec::Absolute(24.0);
+        style.roles.body.line_height_ratio = Some(1.8);
+        assert!(doc.set_style_sheet(style.clone()));
+        assert!(doc.layout.is_none());
+        assert!(Arc::ptr_eq(&source, &doc.document));
+        assert_eq!(doc.scroll_y, scroll);
+        assert_eq!(doc.folds, folds);
+        assert_eq!(doc.focus, focus);
+        doc.frame(300, 200);
+        assert!(
+            doc.layout
+                .as_ref()
+                .unwrap()
+                .packet
+                .content_bounds
+                .size
+                .height
+                > old_height
+        );
+        assert!(!doc.set_style_sheet(style));
     }
 }

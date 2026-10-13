@@ -200,6 +200,9 @@ pub enum BlockRole {
 /// Style descriptor for a single block role.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BlockStyle {
+    /// Optional role leading; absent values retain the sheet-wide default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_height_ratio: Option<f32>,
     pub family: FontChoice,
     /// CSS-style weight (400 = normal, 700 = bold). Layout treats `>= 700` as
     /// bold for parity with the current `bool` flag.
@@ -218,6 +221,9 @@ pub struct BlockStyle {
 /// per-level array, not a single [`SizeSpec`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HeadingStyle {
+    /// Optional role leading; absent values retain the sheet-wide default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_height_ratio: Option<f32>,
     pub family: FontChoice,
     pub weight: u16,
     /// Font size per level (index 0 = h1, …, index 5 = h6).
@@ -344,7 +350,7 @@ impl DocumentStyleSheet {
                     bold: h.weight >= 700,
                     italic: h.italic,
                     monospace: matches!(h.family, FontChoice::InheritMono),
-                    line_height_ratio: self.line_height_ratio,
+                    line_height_ratio: h.line_height_ratio.unwrap_or(self.line_height_ratio),
                     spacing_above: h.spacing_above,
                     spacing_below: h.spacing_below,
                     color: self.token_color(h.color),
@@ -365,7 +371,7 @@ impl DocumentStyleSheet {
             bold: s.weight >= 700,
             italic: s.italic,
             monospace: matches!(s.family, FontChoice::InheritMono),
-            line_height_ratio: self.line_height_ratio,
+            line_height_ratio: s.line_height_ratio.unwrap_or(self.line_height_ratio),
             spacing_above: s.spacing_above,
             spacing_below: s.spacing_below,
             color: self.token_color(s.color),
@@ -426,6 +432,7 @@ impl Default for DocumentStyleSheet {
             soft_break: SoftBreak::Reflow,
             roles: RoleStyles {
                 body: BlockStyle {
+                    line_height_ratio: None,
                     family: FontChoice::InheritBody,
                     weight: 400,
                     size: SizeSpec::ScaleOfBody(1.0),
@@ -436,6 +443,7 @@ impl Default for DocumentStyleSheet {
                     spacing_below: 12.0,
                 },
                 heading: HeadingStyle {
+                    line_height_ratio: None,
                     family: FontChoice::InheritBody,
                     weight: 700,
                     sizes: [28.0, 22.0, 18.0, 16.0, 14.0, 12.0],
@@ -446,6 +454,7 @@ impl Default for DocumentStyleSheet {
                     spacing_below: 8.0,
                 },
                 code: BlockStyle {
+                    line_height_ratio: None,
                     family: FontChoice::InheritMono,
                     weight: 400,
                     size: SizeSpec::ScaleOfBody(1.0),
@@ -456,6 +465,7 @@ impl Default for DocumentStyleSheet {
                     spacing_below: 12.0,
                 },
                 metadata: BlockStyle {
+                    line_height_ratio: None,
                     family: FontChoice::InheritBody,
                     weight: 400,
                     size: SizeSpec::ScaleOfBody(1.0),
@@ -466,6 +476,7 @@ impl Default for DocumentStyleSheet {
                     spacing_below: 6.0,
                 },
                 badge: BlockStyle {
+                    line_height_ratio: None,
                     family: FontChoice::InheritBody,
                     weight: 400,
                     size: SizeSpec::ScaleOfBody(0.85),
@@ -483,6 +494,33 @@ impl Default for DocumentStyleSheet {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn role_leading_is_optional_and_old_styles_round_trip_unchanged() {
+        let baseline = DocumentStyleSheet::default();
+        let json = serde_json::to_string(&baseline).unwrap();
+        let loaded: DocumentStyleSheet = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded, baseline);
+        assert!(
+            !serde_json::to_string(&baseline.roles.body)
+                .unwrap()
+                .contains("line_height_ratio")
+        );
+        let mut edited = baseline.clone();
+        edited.roles.body.line_height_ratio = Some(1.8);
+        edited.roles.heading.line_height_ratio = Some(1.1);
+        assert_eq!(edited.resolve(BlockRole::Body).line_height_ratio, 1.8);
+        assert_eq!(edited.resolve(BlockRole::Heading(3)).line_height_ratio, 1.1);
+        assert_eq!(
+            edited.resolve(BlockRole::Code),
+            baseline.resolve(BlockRole::Code)
+        );
+        assert_eq!(
+            serde_json::from_str::<DocumentStyleSheet>(&serde_json::to_string(&edited).unwrap())
+                .unwrap(),
+            edited
+        );
+    }
 
     // --- The default sheet reproduces the built-in document look ---
     //
