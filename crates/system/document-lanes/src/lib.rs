@@ -34,3 +34,6 @@ pub use smolweb::{
 };
 #[cfg(feature = "retained-clips")]
 pub mod retained_clip;
+
+pub mod typography;
+pub use typography::document_style_with_typography;

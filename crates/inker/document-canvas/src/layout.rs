@@ -69,7 +69,22 @@ pub fn layout_document_with_folds(
     style: &DocumentStyleSheet,
     folds: &FoldState,
 ) -> LaidOutDocument {
+    layout_document_with_folds_and_fonts(document, viewport, style, folds, &[])
+}
+
+/// Lay out with explicit host-held fonts, including browser hosts without
+/// system font access. The selected face bytes travel with the glyph packet.
+pub fn layout_document_with_folds_and_fonts(
+    document: &EngineDocument,
+    viewport: Viewport,
+    style: &DocumentStyleSheet,
+    folds: &FoldState,
+    fonts: &[Vec<u8>],
+) -> LaidOutDocument {
     let mut env = LayoutEnvironment::new();
+    for bytes in fonts {
+        env.font_cx.collection.register_fonts(parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())), None);
+    }
     // The document's own scheme classifies its links as in-protocol vs
     // external for the `⇒` / `→` adornment.
     let base_scheme = crate::style_sheet::url_scheme(&document.address).map(str::to_string);

@@ -10,16 +10,21 @@
 use std::any::Any;
 
 use document_canvas::InteractionKind;
+#[cfg(feature = "smolweb")]
 use genet_host_api::ResourceFetcher;
 use inker::session_engine::{
-    DocumentSession, SessionButtonState, SessionClick, SessionCursor, SessionEffect, SessionEngine,
-    SessionError, SessionFocusDirection, SessionFormMethod, SessionFormSubmission, SessionKey,
-    SessionLink, SessionModifiers, SessionScrollKey, SessionSpawnRequest,
+    DocumentSession, SessionButtonState, SessionClick, SessionCursor, SessionEffect,
+    SessionFocusDirection, SessionFormMethod, SessionFormSubmission, SessionKey,
+    SessionLink, SessionModifiers, SessionScrollKey,
 };
 use inker::{DocumentCapabilities, DocumentCapabilityStatus, EngineDocument};
 use netrender::Scene;
 
-use crate::{InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebTheme};
+use crate::{InPageNavigation, SmolwebDocument};
+#[cfg(feature = "smolweb")]
+use crate::{SmolwebInlineMediaPolicy, SmolwebTheme};
+#[cfg(feature = "smolweb")]
+use inker::{SessionEngine, SessionError, SessionSpawnRequest};
 
 fn retained_document_capabilities(find_reason: impl Into<String>) -> DocumentCapabilities {
     DocumentCapabilities {

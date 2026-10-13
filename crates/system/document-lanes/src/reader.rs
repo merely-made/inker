@@ -377,6 +377,9 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
+    pub fn set_font_family(&mut self, family: &str) { self.doc.set_font_family(family); }
+    pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) { self.doc.set_fonts(fonts); }
+
     pub fn document(&self) -> &EngineDocument {
         self.doc.document()
     }

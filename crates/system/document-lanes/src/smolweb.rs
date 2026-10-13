@@ -17,7 +17,7 @@ use std::sync::Arc;
 use document_canvas::DocumentRenderPacket;
 use document_canvas::{
     ColorVocabulary, DecodedImage, DocumentStyleSheet, InteractionKind, LaidOutDocument, Rect,
-    SemanticInteractionId, SourcePresentation, Viewport, layout_document_with_folds,
+    SemanticInteractionId, SourcePresentation, Viewport,
     netrender_backend::scene_from_packet_with_images,
 };
 #[cfg(feature = "smolweb")]
@@ -80,6 +80,7 @@ pub struct SmolwebDocument {
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
     layout: Option<LaidOutDocument>,
+    fonts: Vec<Vec<u8>>,
     size: (u32, u32),
     scroll_x: f32,
     scroll_y: f32,
@@ -247,6 +248,7 @@ impl SmolwebDocument {
             images: HashMap::new(),
             inline_media,
             layout: None,
+            fonts: Vec::new(),
             size: (0, 0),
             scroll_x: 0.0,
             scroll_y: 0.0,
@@ -260,6 +262,23 @@ impl SmolwebDocument {
     }
 
     /// The portable document retained by this session.
+    /// The retained appearance's style. Source, fold/focus state and viewport
+    /// are separate from this presentation policy.
+    pub fn style_sheet(&self) -> &DocumentStyleSheet {
+        &self.style
+    }
+
+    /// Replace only style and invalidate measured geometry. Document identity,
+    /// images, folds, focus and scroll remain owned by this retained session.
+    pub fn set_style_sheet(&mut self, style: DocumentStyleSheet) -> bool {
+        if self.style == style {
+            return false;
+        }
+        self.style = style;
+        self.invalidate_layout();
+        true
+    }
+
     pub fn document(&self) -> &EngineDocument {
         &self.document
     }
@@ -589,6 +608,16 @@ impl SmolwebDocument {
         true
     }
 
+    /// Fonts supplied by the embedding host, never fetched by this view.
+    pub fn set_font_family(&mut self, family: &str) {
+        self.style.body_font_family = family.into();
+        self.style.mono_font_family = family.into();
+        self.layout = None; self.presented = false;
+    }
+    pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
+        if self.fonts != fonts { self.fonts = fonts; self.layout = None; self.presented = false; }
+    }
+
     fn ensure_layout(&mut self, width: u32, height: u32) {
         let size = (width.max(1), height.max(1));
         if self.layout.is_some() && self.size == size {
@@ -599,11 +628,12 @@ impl SmolwebDocument {
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
         self.layout_generation = self.layout_generation.wrapping_add(1);
-        self.layout = Some(layout_document_with_folds(
+        self.layout = Some(document_canvas::layout::layout_document_with_folds_and_fonts(
             &self.document,
             Viewport::new(size.0 as f32, size.1 as f32),
             &self.style,
             &self.folds,
+            &self.fonts,
         ));
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
@@ -1499,5 +1529,71 @@ mod tests {
             style.colors.link_text,
             [51.0 / 255.0, 204.0 / 255.0, 1.0, 1.0]
         );
+    }
+}
+
+#[cfg(test)]
+mod typography_tests {
+    use super::*;
+    #[test]
+    fn restyling_reflows_without_replacing_source_or_session_state() {
+        let source = Arc::new(EngineDocument {
+            address: "gemini://x.test/".into(),
+            title: Some("Held content".into()),
+            content_type: "text/gemini".into(),
+            lang: None,
+            provenance: Default::default(),
+            trust: Default::default(),
+            diagnostics: Vec::new(),
+            navigation: Default::default(),
+            blocks: vec![Block::Paragraph {
+                spans: vec![
+                    inker::InlineSpan::Text("A retained paragraph. ".repeat(120)),
+                    inker::InlineSpan::Link {
+                        url: "gemini://x.test/next".into(),
+                        title: None,
+                        spans: vec![inker::InlineSpan::Text("Next".into())],
+                        predicate: None,
+                    },
+                ],
+            }],
+        });
+        let mut doc = SmolwebDocument::from_shared_document_with_theme(source, SmolwebTheme::Plain);
+        doc.frame(300, 200);
+        doc.focus_move(SessionFocusDirection::Forward, 300, 200);
+        doc.scroll_by(0.0, 40.0);
+        let focus = doc.focus.clone();
+        let source = doc.document.clone();
+        let scroll = doc.scroll_y;
+        let folds = doc.folds.clone();
+        let old_height = doc
+            .layout
+            .as_ref()
+            .unwrap()
+            .packet
+            .content_bounds
+            .size
+            .height;
+        let mut style = doc.style_sheet().clone();
+        style.roles.body.size = document_canvas::SizeSpec::Absolute(24.0);
+        style.roles.body.line_height_ratio = Some(1.8);
+        assert!(doc.set_style_sheet(style.clone()));
+        assert!(doc.layout.is_none());
+        assert!(Arc::ptr_eq(&source, &doc.document));
+        assert_eq!(doc.scroll_y, scroll);
+        assert_eq!(doc.folds, folds);
+        assert_eq!(doc.focus, focus);
+        doc.frame(300, 200);
+        assert!(
+            doc.layout
+                .as_ref()
+                .unwrap()
+                .packet
+                .content_bounds
+                .size
+                .height
+                > old_height
+        );
+        assert!(!doc.set_style_sheet(style));
     }
 }
