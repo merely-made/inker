@@ -29,9 +29,7 @@ use inker::{Block, EngineDocument, FoldKey, FoldState, SessionScrollKey};
 use inker::{Engine, EngineInput, InlineSpan, inline_text};
 use netrender::Scene;
 
-#[cfg(feature = "smolweb")]
 mod a11y;
-#[cfg(feature = "smolweb")]
 pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
 
 // The smolweb palette and theme are tabard's. Hosts on the compatibility

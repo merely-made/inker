@@ -12,6 +12,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
+retained-clips = ["dep:eidetic", "dep:serde_json", "dep:tempfile", "fleece/portable-clip"]
 # Remote http(s) loading for RemoteFetcher via the netfetcher engine.
 netfetch = ["dep:netfetcher", "dep:tokio", "dep:bytes"]
 # The smolweb engine-native lane: errand transport and Nematic EngineDocument
@@ -20,6 +21,8 @@ netfetch = ["dep:netfetcher", "dep:tokio", "dep:bytes"]
 smolweb = ["dep:errand", "dep:nematic", "nematic/html-fragment", "dep:tokio"]
 
 [dependencies]
+eidetic = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 document-session-api = { workspace = true }
 inker = { workspace = true }
 genet-host-api = { workspace = true }
@@ -39,6 +42,9 @@ netfetcher = { workspace = true, optional = true }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"], optional = true }
 bytes = { version = "1", optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tempfile = { version = "3", optional = true }
 
 [dev-dependencies]
 # Offline mock HTTP server for the netfetch integration tests; runs without a

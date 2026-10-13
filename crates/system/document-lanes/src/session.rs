@@ -21,7 +21,6 @@ use netrender::Scene;
 
 use crate::{InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebTheme};
 
-#[cfg(feature = "smolweb")]
 fn retained_document_capabilities(find_reason: impl Into<String>) -> DocumentCapabilities {
     DocumentCapabilities {
         find_in_page: DocumentCapabilityStatus::unsupported(find_reason),
@@ -99,7 +98,6 @@ impl<Fetch: ResourceFetcher + Send + Sync> SessionEngine<Scene> for SmolwebSessi
 /// The smolweb document as a session. Public so a host that themes per
 /// content (meerkat's palette-derived themes) parses the document itself and
 /// wraps it; the engine above is the fixed-theme path.
-#[cfg(feature = "smolweb")]
 pub struct SmolwebDocumentSession {
     doc: SmolwebDocument,
     /// Last framed size: the lane's click/content-height APIs take the
@@ -109,7 +107,6 @@ pub struct SmolwebDocumentSession {
     accessibility: std::cell::RefCell<crate::smolweb::AccessibilityNodeIds>,
 }
 
-#[cfg(feature = "smolweb")]
 impl SmolwebDocumentSession {
     pub fn new(doc: SmolwebDocument, viewport: (u32, u32)) -> Self {
         Self {
@@ -133,6 +130,7 @@ impl SmolwebDocumentSession {
 
     /// Replace an incrementally received body while retaining this session's
     /// viewport and host-owned presentation policy.
+    #[cfg(feature = "smolweb")]
     pub fn replace_body(&mut self, url: &str, body: &str) {
         self.doc.replace_body(url, body);
     }
@@ -150,7 +148,6 @@ impl SmolwebDocumentSession {
     }
 }
 
-#[cfg(feature = "smolweb")]
 impl DocumentSession<Scene> for SmolwebDocumentSession {
     fn document_capabilities(&self) -> DocumentCapabilities {
         retained_document_capabilities("Smolweb sessions do not expose document find")
@@ -254,7 +251,10 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
         self.doc
             .accessibility_click_target(&self.accessibility.borrow(), target)
     }
-    fn dispatch_accessibility_action(&mut self, request: &inker::DocumentA11yActionRequest) -> bool {
+    fn dispatch_accessibility_action(
+        &mut self,
+        request: &inker::DocumentA11yActionRequest,
+    ) -> bool {
         self.doc
             .dispatch_accessibility_action(&self.accessibility.borrow(), request)
     }
