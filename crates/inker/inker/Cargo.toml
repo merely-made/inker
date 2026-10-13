@@ -1,4 +1,5 @@
 [package]
+rust-version = "1.97.1"
 name = "inker"
 # Own version line (not workspace): published crate, 0.0.1 name-claim bumped to
 # 0.1.0 on first publish from this repo (inker-adoption plan, 2026-07-09).

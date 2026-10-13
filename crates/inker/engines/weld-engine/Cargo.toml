@@ -1,4 +1,5 @@
 [package]
+rust-version = "1.97.1"
 name = "weld-engine"
 # Genet's workspace version, inlined when this crate landed in mere on
 # 2026-09-03: mere's workspace version is 0.0.1 and the move is not a

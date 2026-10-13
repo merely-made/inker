@@ -1,4 +1,5 @@
 [package]
+rust-version = "1.97.1"
 name = "mere-page-load"
 version.workspace = true
 edition.workspace = true
