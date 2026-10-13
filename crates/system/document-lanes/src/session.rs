@@ -14,8 +14,8 @@ use document_canvas::InteractionKind;
 use genet_host_api::ResourceFetcher;
 use inker::session_engine::{
     DocumentSession, SessionButtonState, SessionClick, SessionCursor, SessionEffect,
-    SessionFocusDirection, SessionFormMethod, SessionFormSubmission, SessionKey,
-    SessionLink, SessionModifiers, SessionScrollKey,
+    SessionFocusDirection, SessionFormMethod, SessionFormSubmission, SessionKey, SessionLink,
+    SessionModifiers, SessionScrollKey,
 };
 use inker::{DocumentCapabilities, DocumentCapabilityStatus, EngineDocument};
 use netrender::Scene;

@@ -612,10 +612,15 @@ impl SmolwebDocument {
     pub fn set_font_family(&mut self, family: &str) {
         self.style.body_font_family = family.into();
         self.style.mono_font_family = family.into();
-        self.layout = None; self.presented = false;
+        self.layout = None;
+        self.presented = false;
     }
     pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
-        if self.fonts != fonts { self.fonts = fonts; self.layout = None; self.presented = false; }
+        if self.fonts != fonts {
+            self.fonts = fonts;
+            self.layout = None;
+            self.presented = false;
+        }
     }
 
     fn ensure_layout(&mut self, width: u32, height: u32) {
@@ -628,13 +633,15 @@ impl SmolwebDocument {
         // frame; `frame` marks it present only after painting completes.
         self.presented = false;
         self.layout_generation = self.layout_generation.wrapping_add(1);
-        self.layout = Some(document_canvas::layout::layout_document_with_folds_and_fonts(
-            &self.document,
-            Viewport::new(size.0 as f32, size.1 as f32),
-            &self.style,
-            &self.folds,
-            &self.fonts,
-        ));
+        self.layout = Some(
+            document_canvas::layout::layout_document_with_folds_and_fonts(
+                &self.document,
+                Viewport::new(size.0 as f32, size.1 as f32),
+                &self.style,
+                &self.folds,
+                &self.fonts,
+            ),
+        );
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());

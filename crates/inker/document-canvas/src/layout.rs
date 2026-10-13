@@ -83,7 +83,10 @@ pub fn layout_document_with_folds_and_fonts(
 ) -> LaidOutDocument {
     let mut env = LayoutEnvironment::new();
     for bytes in fonts {
-        env.font_cx.collection.register_fonts(parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())), None);
+        env.font_cx.collection.register_fonts(
+            parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())),
+            None,
+        );
     }
     // The document's own scheme classifies its links as in-protocol vs
     // external for the `⇒` / `→` adornment.
