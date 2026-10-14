@@ -38,6 +38,24 @@ in the canvas-swatches taxonomy.
   separately for AccessKit projection. Document-canvas is the *visual*
   side; uxtree is the *semantic* side. Both sides see the same input.
 
+## Host font resources
+
+`layout_document_with_folds_and_font_resources` combines ordinary host faces
+with explicit `(generic, bytes)` resources. `text::register_generic_fonts`
+validates the whole batch in an isolated context before changing the caller's
+mapping and returns `GenericFontError` for unsupported generics or invalid
+bytes. Supported bindings are `sans-serif`, `serif`, `monospace` and `system-ui`.
+No native or browser-global fallback is installed.
+
+Retained consumers such as `SmolwebDocument` keep that ledger across viewport
+reflow; consumers rebuilding a document for appearance changes must restore the
+same admitted resources. The `FontTable` contains the face Parley actually
+selected, and packet glyph IDs reference that sidecar. Downstream scene or
+PaintList lowering must carry those same bytes. Authored typography remains a
+request to this resource owner, rather than permission to substitute a different
+render-side face. Proper serif/monospace and script coverage remain explicit
+host face-selection and qualification decisions.
+
 ## Canvas swatches
 
 A canvas in Mere is a self-contained renderable unit that knows how to lay
