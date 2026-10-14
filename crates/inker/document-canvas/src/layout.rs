@@ -81,7 +81,22 @@ pub fn layout_document_with_folds_and_fonts(
     folds: &FoldState,
     fonts: &[Vec<u8>],
 ) -> LaidOutDocument {
+    layout_document_with_folds_and_font_resources(document, viewport, style, folds, fonts, &[])
+        .expect("empty generic font ledger")
+}
+
+/// Lay out with explicit host generic bindings. The selected bytes ride in
+/// the ordinary font sidecar; no authored family/style is rewritten.
+pub fn layout_document_with_folds_and_font_resources(
+    document: &EngineDocument,
+    viewport: Viewport,
+    style: &DocumentStyleSheet,
+    folds: &FoldState,
+    fonts: &[Vec<u8>],
+    generic_fonts: &[(String, Vec<u8>)],
+) -> Result<LaidOutDocument, crate::text::GenericFontError> {
     let mut env = LayoutEnvironment::new();
+    crate::text::register_generic_fonts(&mut env, generic_fonts)?;
     for bytes in fonts {
         env.font_cx.collection.register_fonts(
             parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())),
@@ -117,7 +132,7 @@ pub fn layout_document_with_folds_and_fonts(
         }
     }
 
-    layouter.finish()
+    Ok(layouter.finish())
 }
 
 /// Build the parley block base from a resolved role style: the role's
