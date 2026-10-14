@@ -81,6 +81,7 @@ pub struct SmolwebDocument {
     inline_media: SmolwebInlineMediaPolicy,
     layout: Option<LaidOutDocument>,
     fonts: Vec<Vec<u8>>,
+    generic_fonts: Vec<(String, Vec<u8>)>,
     size: (u32, u32),
     scroll_x: f32,
     scroll_y: f32,
@@ -249,6 +250,7 @@ impl SmolwebDocument {
             inline_media,
             layout: None,
             fonts: Vec::new(),
+            generic_fonts: Vec::new(),
             size: (0, 0),
             scroll_x: 0.0,
             scroll_y: 0.0,
@@ -623,6 +625,23 @@ impl SmolwebDocument {
         }
     }
 
+    /// Replace host-chosen CSS generic resources atomically; retained reflow
+    /// and viewport changes use this same ledger.
+    pub fn set_generic_fonts(
+        &mut self,
+        fonts: Vec<(String, Vec<u8>)>,
+    ) -> Result<bool, document_canvas::text::GenericFontError> {
+        if self.generic_fonts == fonts {
+            return Ok(false);
+        }
+        let mut validation = document_canvas::text::LayoutEnvironment::new();
+        document_canvas::text::register_generic_fonts(&mut validation, &fonts)?;
+        self.generic_fonts = fonts;
+        self.layout = None;
+        self.presented = false;
+        Ok(true)
+    }
+
     fn ensure_layout(&mut self, width: u32, height: u32) {
         let size = (width.max(1), height.max(1));
         if self.layout.is_some() && self.size == size {
@@ -634,13 +653,15 @@ impl SmolwebDocument {
         self.presented = false;
         self.layout_generation = self.layout_generation.wrapping_add(1);
         self.layout = Some(
-            document_canvas::layout::layout_document_with_folds_and_fonts(
+            document_canvas::layout::layout_document_with_folds_and_font_resources(
                 &self.document,
                 Viewport::new(size.0 as f32, size.1 as f32),
                 &self.style,
                 &self.folds,
                 &self.fonts,
-            ),
+                &self.generic_fonts,
+            )
+            .expect("admitted generic font ledger"),
         );
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());

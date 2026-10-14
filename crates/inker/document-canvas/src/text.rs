@@ -295,6 +295,65 @@ impl LayoutEnvironment {
     }
 }
 
+/// Invalid explicit generic binding. No system/global fallback is installed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GenericFontError {
+    InvalidGeneric,
+    InvalidFont,
+}
+
+/// Register the complete host generic ledger in a caller-owned layout context.
+/// The caller admits the ledger only after all entries validate successfully.
+pub fn register_generic_fonts(
+    env: &mut LayoutEnvironment,
+    fonts: &[(String, Vec<u8>)],
+) -> Result<usize, GenericFontError> {
+    if fonts.is_empty() {
+        return Ok(0);
+    }
+    // Validate the whole batch in an isolated context before touching any
+    // caller-owned generic mapping. An invalid late entry cannot admit an
+    // earlier entry from the same batch.
+    let mut validation = LayoutEnvironment::new();
+    register_generic_fonts_inner(&mut validation, fonts)?;
+    register_generic_fonts_inner(env, fonts)
+}
+
+fn register_generic_fonts_inner(
+    env: &mut LayoutEnvironment,
+    fonts: &[(String, Vec<u8>)],
+) -> Result<usize, GenericFontError> {
+    let mut count = 0;
+    for (name, bytes) in fonts {
+        let generic = match name.as_str() {
+            "sans-serif" => GenericFamily::SansSerif,
+            "serif" => GenericFamily::Serif,
+            "monospace" => GenericFamily::Monospace,
+            "system-ui" => GenericFamily::SystemUi,
+            _ => return Err(GenericFontError::InvalidGeneric),
+        };
+        let mut families = env.font_cx.collection.register_fonts(
+            parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())),
+            None,
+        );
+        if families.is_empty() {
+            return Err(GenericFontError::InvalidFont);
+        }
+        families.sort_by_key(|(id, _)| {
+            env.font_cx
+                .collection
+                .family_name(*id)
+                .unwrap_or("")
+                .to_owned()
+        });
+        count += families.len();
+        env.font_cx
+            .collection
+            .set_generic_families(generic, families.into_iter().map(|(id, _)| id));
+    }
+    Ok(count)
+}
+
 /// Lay out a single text block via parley. `origin` is the block's
 /// top-left in packet-local coordinates; emitted glyph runs and
 /// interaction regions are translated into that frame.
@@ -586,6 +645,47 @@ fn family_label_from_brush(brush: InlineStyle, base: &TextBaseStyle) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generic_font_batch_refuses_before_mutating_existing_context() {
+        let bytes =
+            include_bytes!("../../../cambium/examples/genet_web_smoke/assets/Roboto-Regular.ttf")
+                .to_vec();
+        let mut env = LayoutEnvironment::new();
+        env.font_cx.collection =
+            parley::fontique::Collection::new(parley::fontique::CollectionOptions {
+                shared: false,
+                system_fonts: false,
+            });
+        register_generic_fonts(&mut env, &[("sans-serif".into(), bytes.clone())]).unwrap();
+        let prior = env
+            .font_cx
+            .collection
+            .generic_families(GenericFamily::SansSerif)
+            .collect::<Vec<_>>();
+        assert!(!prior.is_empty());
+        assert_eq!(
+            register_generic_fonts(
+                &mut env,
+                &[("system-ui".into(), bytes), ("sans-serif".into(), vec![0])]
+            ),
+            Err(GenericFontError::InvalidFont)
+        );
+        assert!(
+            env.font_cx
+                .collection
+                .generic_families(GenericFamily::SystemUi)
+                .next()
+                .is_none()
+        );
+        assert_eq!(
+            env.font_cx
+                .collection
+                .generic_families(GenericFamily::SansSerif)
+                .collect::<Vec<_>>(),
+            prior
+        );
+    }
 
     #[test]
     fn explicit_code_family_is_the_actual_shaping_request() {
