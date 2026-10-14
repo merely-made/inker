@@ -75,6 +75,39 @@ pub enum ClipBody {
     Voice(Vec<u8>),
 }
 
+/// A selected-body copy, validated by Fleece from this caller's store. Custody
+/// manifests, seal material and private backing are never serialized into it.
+pub struct ClipExport {
+    pub bytes: Vec<u8>,
+    pub filename: String,
+}
+pub const PACKAGE_MEDIA_TYPE: &str = "application/vnd.mere.clip-package+json";
+
+pub async fn export_body(
+    store: &mut dyn eidetic::Store,
+    sealer: Option<&dyn eidetic::seal::PayloadSealer>,
+    id: ManifestId,
+    policy: ClipLimits,
+) -> Result<ClipExport, String> {
+    let wire_limit = policy
+        .max_bytes
+        .checked_mul(16)
+        .and_then(|n| n.checked_add(policy.max_record_bytes as u64))
+        .ok_or("Clip wire budget overflow")?;
+    let package =
+        fleece::portable_clip::export_selected_clip(store, sealer, id, &["body".into()], policy)
+            .await
+            .map_err(|e| e.to_string())?;
+    let bytes = serde_json::to_vec(&package).map_err(|e| e.to_string())?;
+    if bytes.len() as u64 > wire_limit {
+        return Err("Clip package exceeds its configured wire budget".into());
+    }
+    Ok(ClipExport {
+        bytes,
+        filename: format!("selected-clip-{}.mereclip", id.0.to_hex()),
+    })
+}
+
 pub async fn read_store(
     store: &mut dyn eidetic::Store,
     sealer: Option<&dyn eidetic::seal::PayloadSealer>,

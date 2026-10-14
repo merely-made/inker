@@ -83,6 +83,12 @@ fn shared_voice_clip_keeps_exact_decoder_bytes_and_typed_controls() {
         .unwrap();
         let view = read_store(&mut store, None, id, limits()).await.unwrap();
         assert!(matches!(&view.body, ClipBody::Voice(bytes) if bytes == voice));
+        let exported = export_body(&mut store, None, id, limits()).await.unwrap();
+        let package: fleece::portable_clip::ClipPackageV1 =
+            serde_json::from_slice(&exported.bytes).unwrap();
+        assert_eq!(package.clip, view.clip);
+        assert_eq!(package.payloads.len(), 1);
+        assert_eq!(package.payloads[0].bytes, voice);
         assert_eq!(
             request(&format!("{}/play", address(id))).unwrap(),
             Some(ClipRequest::Play(id))
@@ -96,5 +102,119 @@ fn shared_voice_clip_keeps_exact_decoder_bytes_and_typed_controls() {
             std::fs::write(&path, b"corrupted cache").unwrap();
             assert!(view.playback_path(root.path()).is_err());
         }
+    });
+}
+
+#[test]
+fn selected_export_roundtrips_exact_body_and_source_without_private_backing() {
+    pollster::block_on(async {
+        let mut sender = eidetic::MemoryBackend::new();
+        let selected = serde_json::from_str(include_str!(
+            "../../../../fleece/tests/fixtures/portable_clip/knot.json"
+        ))
+        .unwrap();
+        let id = fleece::portable_clip::retain_knot_export(
+            &mut sender,
+            None,
+            &selected,
+            Some("private prefix; café; private suffix".as_bytes().to_vec()),
+            &context(),
+            limits(),
+        )
+        .await
+        .unwrap();
+        let original = read_store(&mut sender, None, id, limits()).await.unwrap();
+        let output = export_body(&mut sender, None, id, limits()).await.unwrap();
+        assert_eq!(
+            output.filename,
+            format!("selected-clip-{}.mereclip", id.0.to_hex())
+        );
+        let package: fleece::portable_clip::ClipPackageV1 =
+            serde_json::from_slice(&output.bytes).unwrap();
+        assert_eq!(package.clip, original.clip);
+        assert_eq!(package.payloads.len(), 1);
+        assert_eq!(package.payloads[0].bytes, "café".as_bytes());
+        let wire = String::from_utf8(output.bytes).unwrap();
+        assert!(!wire.contains("private_backing"));
+        assert!(!wire.contains("provenance"));
+        let mut receiver = eidetic::MemoryBackend::new();
+        let received = fleece::portable_clip::import_clip_package(
+            &mut receiver,
+            None,
+            &package,
+            &context(),
+            limits(),
+        )
+        .await
+        .unwrap();
+        let reopened = read_store(&mut receiver, None, received, limits())
+            .await
+            .unwrap();
+        assert_eq!(reopened.clip, original.clip);
+        assert!(matches!(reopened.body, ClipBody::Text(body) if body == "café"));
+        let mut small = limits();
+        small.max_bytes = 3;
+        assert!(export_body(&mut sender, None, id, small).await.is_err());
+        let absent = ManifestId::from_hash(Hash::of(b"foreign"));
+        assert!(
+            export_body(&mut sender, None, absent, limits())
+                .await
+                .is_err()
+        );
+        let mut overflow = limits();
+        overflow.max_bytes = u64::MAX;
+        assert!(export_body(&mut sender, None, id, overflow).await.is_err());
+    });
+}
+
+#[test]
+fn export_without_a_custody_adapter_refuses_a_sealed_clip() {
+    // Marker wiring only. Cryptographic qualification belongs to the sealer.
+    struct SealedFixture;
+    impl eidetic::PayloadSealer for SealedFixture {
+        fn seal(
+            &self,
+            _: &Hash,
+            bytes: &[u8],
+        ) -> eidetic::Result<(Vec<u8>, eidetic::SealedBlobRef)> {
+            Ok((
+                bytes.iter().map(|b| b ^ 0xaa).collect(),
+                eidetic::SealedBlobRef {
+                    epoch: eidetic::SealEpochId([1; 16]),
+                    format: "export-refusal-fixture".into(),
+                },
+            ))
+        }
+        fn unseal(
+            &self,
+            _: &Hash,
+            _: &eidetic::SealedBlobRef,
+            _: &[u8],
+        ) -> eidetic::Result<Vec<u8>> {
+            Err(eidetic::Error::new("fixture key unavailable"))
+        }
+    }
+    pollster::block_on(async {
+        let mut store = eidetic::MemoryBackend::new();
+        let selected = serde_json::from_str(include_str!(
+            "../../../../fleece/tests/fixtures/portable_clip/knot.json"
+        ))
+        .unwrap();
+        let id = fleece::portable_clip::retain_knot_export(
+            &mut store,
+            Some(&SealedFixture),
+            &selected,
+            None,
+            &context(),
+            limits(),
+        )
+        .await
+        .unwrap();
+        assert!(export_body(&mut store, None, id, limits()).await.is_err());
+        assert!(
+            export_body(&mut store, Some(&SealedFixture), id, limits())
+                .await
+                .is_err()
+        );
     });
 }
