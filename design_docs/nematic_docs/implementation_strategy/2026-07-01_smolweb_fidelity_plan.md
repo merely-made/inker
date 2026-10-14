@@ -224,7 +224,7 @@ media remain the separate gates below.
    receipts are under
    `crates/nematic/nematic/tests/fixtures/micron/nomadnet-1.4.2/navigation/`.
 3. **Forms: bounded consumers, headed acceptance taken.** The 2026-09-13
-   [typed request receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
+   [typed request receipt](../../../../murm/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md#typed-form-request-receipt)
    closes the packet-sized transport prerequisite: stock NomadNet and Retinue
    match native string maps in both directions for defaults, edited Unicode and
    multiline text, checkbox/radio state, selected fields and fixed variables.
@@ -359,7 +359,7 @@ tested as black boxes. Native Windows compilation failed. On Linux, Retinue
 retrieved a small page exactly from both the stock server and raw PageCache API,
 but multipart responses timed out. The browser API also failed its own server
 self-control, so forward failures cannot qualify or disqualify Retinue.
-See the [Retinue receipt](../../../../retinue/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md)
+See the [Retinue receipt](../../../../murm/design_docs/2026-09-13_nomadnet_go_resource_compression_receipt.md)
 for pinned inputs and the eleven-case matrix. It is not a runtime dependency.
 The Go client likewise remains a test peer, not a shipped-stack requirement.
 
