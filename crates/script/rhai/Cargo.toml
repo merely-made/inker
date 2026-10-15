@@ -35,7 +35,7 @@ libm = { workspace = true }
 [dev-dependencies]
 # The rule runner tests resolve a real rule set (SE92); the library itself links
 # neither scenograph nor its types.
-scenograph = { workspace = true }
+scenograph = { workspace = true, features = ["scripts"] }
 
 [features]
 # Builds the wasm32 determinism example (tests/wasm_maths_bits.mjs); off by default
