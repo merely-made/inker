@@ -30,6 +30,10 @@
 use inker::{BlockEvaluator, EvalOutput};
 use rhai::{Dynamic, Engine, Map};
 
+mod value;
+
+pub use value::{RhaiValueEngine, register_libm_maths};
+
 // Re-export the rhai surface a privileged lane needs (the omnibar command shell
 // builds on [`base_engine`] and registers bindings that traffic in these types),
 // so consumers depend on this crate rather than pinning rhai directly.
@@ -46,6 +50,15 @@ pub use rhai::{self, Array, Dynamic as RhaiDynamic, Engine as RhaiEngine};
 /// their binding set.
 pub fn base_engine() -> Engine {
     let mut engine = Engine::new();
+    sandbox(&mut engine);
+    engine
+}
+
+/// The sandbox settings every rhai lane shares, on any engine: no module
+/// resolution, no `import` or `eval`, call and expression depth caps, and no
+/// stdout. [`base_engine`] applies them to the standard engine; the value
+/// engine applies them to a raw one.
+pub(crate) fn sandbox(engine: &mut Engine) {
     // `Engine::new` installs a file module resolver on native targets, so
     // `import "x"` would read `./x.rhai` off disk. A note is not a program
     // directory: resolve nothing, and refuse the keywords that would try.
@@ -57,7 +70,6 @@ pub fn base_engine() -> Engine {
     // No `print`/`debug` to stdout from a rendered note or a command line.
     engine.on_print(|_| {});
     engine.on_debug(|_, _, _| {});
-    engine
 }
 
 /// A Rhai-backed [`BlockEvaluator`] for `rhai eval` knot fences.

@@ -26,3 +26,29 @@ inker = { workspace = true }
 # boundary; it costs atomic refcounting inside script evaluation, which is an
 # on-demand fence with an operation budget rather than a hot path.
 rhai = { version = "1", features = ["sync"] }
+# The value-level script contract (Scenograph editor plan, SE39): rhai implements
+# `ValueEngine` beside the inker `BlockEvaluator`.
+script-engine-api = { workspace = true }
+# Host maths for rules (SE40, SE94); rhai's own float-maths package is not loaded.
+libm = { workspace = true }
+
+[dev-dependencies]
+# The rule runner tests resolve a real rule set (SE92); the library itself links
+# neither scenograph nor its types.
+scenograph = { workspace = true }
+
+[features]
+# Builds the wasm32 determinism example (tests/wasm_maths_bits.mjs); off by default
+# so a plain `cargo test` does not build a cdylib.
+wasm-check = []
+
+[[example]]
+name = "maths_bits"
+crate-type = ["cdylib"]
+required-features = ["wasm-check"]
+
+# wasm32 only (SE97): the example, and getrandom 0.3 (rhai -> ahash) needs its
+# browser backend, selected by `--cfg getrandom_backend="wasm_js"` in the runner.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen = "=0.2.129"
+getrandom = { version = "0.3", features = ["wasm_js"] }
