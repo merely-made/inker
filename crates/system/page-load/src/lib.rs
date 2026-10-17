@@ -342,7 +342,7 @@ impl PageLoad {
         stream.1.extend_from_slice(chunk);
         let bytes = stream.1.clone();
         let received_bytes = bytes.len();
-        let acquired_at_ms = self.acquired_at(&url).unwrap_or(now_ms);
+        let acquired_at_ms = self.stream_acquired_at(&url).unwrap_or(now_ms);
         self.document = Some((
             url,
             LoadedDocument {
@@ -392,12 +392,14 @@ impl PageLoad {
                 LoadAnswer::Download(fetched)
             },
             Ok(fetched) => {
-                let observed = self.fetched(&outcome.url);
+                let observed = self
+                    .stream_acquired_at(&outcome.url)
+                    .and_then(|_| self.fetched(&outcome.url));
                 let effective_url = observed.and_then(|previous| previous.effective_url.clone());
                 let content_type = fetched
                     .content_type
                     .or_else(|| observed.and_then(|previous| previous.content_type.clone()));
-                let acquired_at_ms = self.acquired_at(&outcome.url).unwrap_or(now_ms);
+                let acquired_at_ms = self.stream_acquired_at(&outcome.url).unwrap_or(now_ms);
                 let received_bytes = fetched.bytes.len();
                 self.note_fetched(
                     outcome.url,
@@ -470,7 +472,139 @@ impl PageLoad {
             .map(|document| document.acquired_at_ms)
             .filter(|observed_at| *observed_at != 0)
     }
+
+    /// Keep the timestamp learned from this request's first streamed prefix.
+    /// A retained document for the same URL belongs to an older request after
+    /// `begin`, so it must not timestamp a fresh stream or terminal response.
+    fn stream_acquired_at(&self, url: &str) -> Option<u64> {
+        if !matches!(self.phase.as_ref(), Some(LoadPhase::Streaming { .. }))
+            || !self
+                .stream
+                .as_ref()
+                .is_some_and(|(stream_url, _)| stream_url == url)
+        {
+            return None;
+        }
+        self.acquired_at(url)
+    }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod acquisition_timestamp_tests {
+    use super::*;
+
+    #[test]
+    fn same_url_reload_gets_new_first_chunk_time_and_keeps_it_across_chunks() {
+        let mut load = PageLoad::default();
+        load.begin(1);
+        assert_eq!(
+            load.accept_progress(
+                PageProgress {
+                    request: 1,
+                    url: "https://example.test/page".into(),
+                    response_url: "https://example.test/page".into(),
+                    content_type: Some("text/html".into()),
+                    bytes: b"same bytes".to_vec(),
+                },
+                10,
+            ),
+            Some(10)
+        );
+        assert_eq!(
+            load.fetched("https://example.test/page")
+                .unwrap()
+                .acquired_at_ms,
+            10
+        );
+
+        load.begin(2);
+        assert_eq!(
+            load.accept_progress(
+                PageProgress {
+                    request: 2,
+                    url: "https://example.test/page".into(),
+                    response_url: "https://example.test/page".into(),
+                    content_type: Some("text/html".into()),
+                    bytes: b"same ".to_vec(),
+                },
+                30,
+            ),
+            Some(5)
+        );
+        assert_eq!(
+            load.fetched("https://example.test/page")
+                .unwrap()
+                .acquired_at_ms,
+            30
+        );
+
+        assert_eq!(
+            load.accept_progress(
+                PageProgress {
+                    request: 2,
+                    url: "https://example.test/page".into(),
+                    response_url: "https://example.test/page".into(),
+                    content_type: Some("text/html".into()),
+                    bytes: b"bytes".to_vec(),
+                },
+                40,
+            ),
+            Some(10)
+        );
+        assert_eq!(
+            load.fetched("https://example.test/page").unwrap().bytes,
+            b"same bytes"
+        );
+        assert_eq!(
+            load.fetched("https://example.test/page")
+                .unwrap()
+                .acquired_at_ms,
+            30
+        );
+    }
+
+    #[test]
+    fn same_url_terminal_without_progress_does_not_borrow_old_source_metadata() {
+        let url = "https://example.test/page";
+        let mut load = PageLoad::default();
+        load.note_fetched(
+            url.into(),
+            LoadedDocument {
+                bytes: b"old bytes".to_vec(),
+                content_type: Some("text/markdown".into()),
+                body: "old bytes".into(),
+                effective_url: Some("https://old.example/page".into()),
+                acquired_at_ms: 10,
+            },
+            9,
+        );
+        load.begin(3);
+
+        assert_eq!(
+            load.accept_outcome(
+                FetchOutcome {
+                    request: 3,
+                    url: url.into(),
+                    result: Ok(Fetched {
+                        content_type: None,
+                        content_disposition: None,
+                        bytes: b"new bytes".to_vec(),
+                        body: "new bytes".into(),
+                    }),
+                },
+                30,
+            ),
+            LoadAnswer::Document
+        );
+        let document = load
+            .fetched(url)
+            .expect("new terminal response is retained");
+        assert_eq!(document.bytes, b"new bytes");
+        assert_eq!(document.content_type, None);
+        assert_eq!(document.effective_url, None);
+        assert_eq!(document.acquired_at_ms, 30);
+    }
+}
