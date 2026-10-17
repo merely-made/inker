@@ -1479,6 +1479,12 @@ mod tests {
 </rss>"#;
         struct Recording(std::sync::Mutex<Vec<String>>);
         impl ResourceFetcher for Recording {
+            fn fetch_request(
+                &self,
+                _request: &genet_host_api::ResourceRequest,
+            ) -> Option<genet_host_api::ResourceFetchResponse> {
+                None
+            }
             fn fetch(&self, url: &str) -> Option<Vec<u8>> {
                 self.0.lock().unwrap().push(url.to_string());
                 Some(FEED.as_bytes().to_vec())

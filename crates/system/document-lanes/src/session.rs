@@ -298,6 +298,12 @@ mod tests {
     #[derive(Clone)]
     struct NoFetch;
     impl ResourceFetcher for NoFetch {
+        fn fetch_request(
+            &self,
+            _request: &genet_host_api::ResourceRequest,
+        ) -> Option<genet_host_api::ResourceFetchResponse> {
+            None
+        }
         fn fetch(&self, _url: &str) -> Option<Vec<u8>> {
             None
         }

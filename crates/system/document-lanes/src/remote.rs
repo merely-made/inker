@@ -18,13 +18,17 @@
 use std::sync::OnceLock;
 #[cfg(feature = "netfetch")]
 use std::sync::{Arc, Condvar, Mutex};
+#[cfg(feature = "netfetch")]
+use std::time::Instant;
 
 #[cfg(feature = "netfetch")]
 use bytes::BytesMut;
 #[cfg(any(feature = "netfetch", feature = "smolweb"))]
 use tokio::runtime::Runtime;
 
-use genet_host_api::{ResourceFetchPolicy, ResourceFetcher, ResourceResponse};
+use genet_host_api::{
+    ResourceFetchPolicy, ResourceFetchResponse, ResourceFetcher, ResourceRequest, ResourceResponse,
+};
 
 #[cfg(any(feature = "netfetch", feature = "smolweb"))]
 /// The shared tokio runtime the blocking bridge drives. Built once on first use: a
@@ -62,45 +66,68 @@ impl HttpResourceHost {
         Self {
             context,
             policy,
-            available: Mutex::new(policy.max_concurrent_fetches.max(1)),
+            available: Mutex::new(policy.max_concurrent_fetches),
             changed: Condvar::new(),
         }
     }
 
-    fn acquire(&self) -> HttpFetchPermit<'_> {
+    fn acquire_until(&self, deadline: Instant) -> Option<HttpFetchPermit<'_>> {
         let mut available = self.available.lock().expect("HTTP fetch permit lock");
         while *available == 0 {
-            available = self
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            let (waiting, _) = self
                 .changed
-                .wait(available)
+                .wait_timeout(available, remaining)
                 .expect("HTTP fetch permit wait");
+            available = waiting;
         }
         *available -= 1;
-        HttpFetchPermit { host: self }
+        Some(HttpFetchPermit { host: self })
     }
 
-    pub(crate) fn fetch_response(&self, url: &str) -> Option<ResourceResponse> {
-        let _permit = self.acquire();
-        let parsed = url::Url::parse(url).ok()?;
+    pub(crate) fn fetch_request(&self, request: &ResourceRequest) -> Option<ResourceFetchResponse> {
+        if self.policy.max_concurrent_fetches == 0 {
+            return None;
+        }
+        let deadline = Instant::now().checked_add(self.policy.timeout)?;
+        let wire = netfetcher::Request::from_host(request)?;
+        let _permit = self.acquire_until(deadline)?;
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return None;
+        }
         let policy = self.policy;
         runtime().block_on(async move {
-            tokio::time::timeout(policy.timeout, async move {
-                let request = netfetcher::Request::get(parsed);
-                let response = netfetcher::fetch(request, &self.context).await;
-                if response.is_network_error() || response.status < 200 || response.status >= 300 {
+            tokio::time::timeout(remaining, async move {
+                let response = netfetcher::fetch(wire, &self.context).await;
+                if response.is_network_error() {
                     return None;
                 }
                 let final_url = response
                     .url_list
                     .last()
                     .map(ToString::to_string)
-                    .unwrap_or_else(|| url.to_owned());
+                    .unwrap_or_else(|| request.url.clone());
                 let content_type = response
                     .headers
                     .iter()
                     .rev()
                     .find(|(name, _)| name.eq_ignore_ascii_case("content-type"))
                     .map(|(_, value)| value.clone());
+                let status = response.status;
+                let headers = response.headers.clone();
+                let response_type = match response.response_type {
+                    netfetcher::ResponseType::Basic => "basic",
+                    netfetcher::ResponseType::Cors => "cors",
+                    netfetcher::ResponseType::Opaque => "opaque",
+                    netfetcher::ResponseType::OpaqueRedirect => "opaqueredirect",
+                    netfetcher::ResponseType::Error => "error",
+                }
+                .to_owned();
+                let redirected = response.url_list.len() > 1;
                 let mut body = response.body;
                 let mut bytes = BytesMut::new();
                 while let Some(chunk) = body.next_chunk().await {
@@ -110,10 +137,16 @@ impl HttpResourceHost {
                     }
                     bytes.extend_from_slice(&chunk);
                 }
-                Some(ResourceResponse {
+                Some(ResourceFetchResponse {
                     final_url,
                     content_type,
                     bytes: bytes.to_vec(),
+                    status,
+                    // netfetcher does not expose the transport reason phrase.
+                    status_text: String::new(),
+                    headers,
+                    response_type,
+                    redirected,
                 })
             })
             .await
@@ -177,10 +210,6 @@ impl ResourceFetcher for RemoteFetcher {
     }
 
     fn fetch_response(&self, url: &str) -> Option<ResourceResponse> {
-        #[cfg(feature = "netfetch")]
-        if url.starts_with("http://") || url.starts_with("https://") {
-            return self.http.fetch_response(url);
-        }
         #[cfg(feature = "smolweb")]
         if url
             .split_once("://")
@@ -189,7 +218,18 @@ impl ResourceFetcher for RemoteFetcher {
         {
             return smolweb_get_bytes(url).map(|bytes| ResourceResponse::new(url, bytes));
         }
-        let _ = url;
+        let response = self.fetch_request(&ResourceRequest::plain_get(url))?;
+        (200..300)
+            .contains(&response.status)
+            .then(|| response.into_legacy_response())
+    }
+
+    fn fetch_request(&self, request: &ResourceRequest) -> Option<ResourceFetchResponse> {
+        #[cfg(feature = "netfetch")]
+        if request.url.starts_with("http://") || request.url.starts_with("https://") {
+            return self.http.fetch_request(request);
+        }
+        let _ = request;
         None
     }
 }
@@ -229,8 +269,11 @@ fn install_tofu() {
 
 #[cfg(all(test, feature = "netfetch"))]
 mod tests {
-    use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};
+    use std::time::{Duration, Instant};
 
+    use genet_host_api::{ResourceFetchPolicy, ResourceFetcher, ResourceRequest};
+
+    use super::HttpResourceHost;
     use crate::RemoteFetcher;
 
     /// http(s) loading flows through the netfetcher engine end to end: an offline
@@ -275,6 +318,98 @@ mod tests {
             "a 404 is a failed load, not a document"
         );
         mock.assert();
+    }
+
+    #[test]
+    fn rich_request_preserves_post_body_and_error_response_metadata() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("POST", "/submit")
+            .match_header("content-type", "application/octet-stream")
+            .match_body(vec![0, 128, 255])
+            .with_status(422)
+            .with_header("content-type", "text/plain")
+            .with_header("x-reason", "invalid")
+            .with_body("rejected")
+            .create();
+        let mut request = ResourceRequest::plain_get(format!("{}/submit", server.url()));
+        request.method = "POST".into();
+        request
+            .headers
+            .push(("content-type".into(), "application/octet-stream".into()));
+        request.body = Some(vec![0, 128, 255]);
+        let response = RemoteFetcher::new(ResourceFetchPolicy::default())
+            .fetch_request(&request)
+            .expect("HTTP error is still a transport response");
+        assert_eq!(response.status, 422);
+        assert_eq!(response.bytes, b"rejected");
+        assert_eq!(response.final_url, request.url);
+        assert_eq!(response.content_type.as_deref(), Some("text/plain"));
+        assert!(
+            response
+                .headers
+                .iter()
+                .any(|(name, value)| name == "x-reason" && value == "invalid")
+        );
+        mock.assert();
+    }
+
+    #[test]
+    fn unsupported_rich_policy_is_refused_before_transport() {
+        let mut request = ResourceRequest::plain_get("http://127.0.0.1:9/unused");
+        request.redirect = "silently-follow".into();
+        assert!(
+            RemoteFetcher::new(ResourceFetchPolicy::default())
+                .fetch_request(&request)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn admission_wait_obeys_the_same_elapsed_deadline() {
+        let policy = ResourceFetchPolicy {
+            max_concurrent_fetches: 1,
+            timeout: Duration::from_millis(20),
+            ..ResourceFetchPolicy::default()
+        };
+        let host = HttpResourceHost::new(policy);
+        *host.available.lock().unwrap() = 0;
+        let request = ResourceRequest::plain_get("http://127.0.0.1:9/unreached");
+        let started = Instant::now();
+        assert!(host.fetch_request(&request).is_none());
+        assert!(started.elapsed() < Duration::from_secs(1));
+
+        let zero = HttpResourceHost::new(ResourceFetchPolicy {
+            max_concurrent_fetches: 0,
+            ..policy
+        });
+        let started = Instant::now();
+        assert!(zero.fetch_request(&request).is_none());
+        assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn rich_response_keeps_redirect_final_identity() {
+        let mut server = mockito::Server::new();
+        let moved = server
+            .mock("GET", "/moved")
+            .with_status(302)
+            .with_header("location", "/final")
+            .create();
+        let final_page = server
+            .mock("GET", "/final")
+            .with_status(200)
+            .with_body("final")
+            .create();
+        let request = ResourceRequest::plain_get(format!("{}/moved", server.url()));
+        let response = RemoteFetcher::new(ResourceFetchPolicy::default())
+            .fetch_request(&request)
+            .expect("redirected response");
+        assert_eq!(response.final_url, format!("{}/final", server.url()));
+        assert!(response.redirected);
+        assert_eq!(response.bytes, b"final");
+        moved.assert();
+        final_page.assert();
     }
 
     #[test]
