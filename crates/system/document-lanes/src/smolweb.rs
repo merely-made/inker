@@ -1004,7 +1004,7 @@ fn decode_image(bytes: &[u8], policy: SmolwebInlineMediaPolicy) -> Option<Decode
     Some(DecodedImage {
         width,
         height,
-        rgba8: decoded.to_rgba8().into_raw(),
+        rgba8: decoded.to_rgba8().into_raw().into(),
     })
 }
 

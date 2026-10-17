@@ -457,7 +457,7 @@ mod tests {
         let decoded = DecodedImage {
             width: 2,
             height: 1,
-            rgba8: vec![255, 0, 0, 255, 0, 0, 255, 255],
+            rgba8: vec![255, 0, 0, 255, 0, 0, 255, 255].into(),
         };
         let images = HashMap::from([("https://x.test/pic.png".to_string(), decoded.clone())]);
         let list = paint_list_from_packet_with_images(
@@ -482,6 +482,7 @@ mod tests {
             .expect("draw key resolves through the image sidecar");
         assert_eq!((resource.width, resource.height), (2, 1));
         assert_eq!(resource.data, decoded.rgba8);
+        assert!(std::sync::Arc::ptr_eq(&resource.data, &decoded.rgba8));
         assert!(
             !list
                 .commands()
