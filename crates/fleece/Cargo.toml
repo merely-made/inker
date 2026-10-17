@@ -15,7 +15,9 @@ path = "src/lib.rs"
 [features]
 default = []
 wire = ["fleece-extract/wire"]
-crawl = ["dep:armillary", "dep:fetch", "dep:genet-static-dom", "dep:tokio", "dep:tracing", "dep:url"]
+# A page's links from its HTML (`page_links`); wasm-safe.
+page-links = ["dep:genet-static-dom", "dep:url"]
+crawl = ["page-links", "dep:armillary", "dep:fetch", "dep:tokio", "dep:tracing"]
 crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
 eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]

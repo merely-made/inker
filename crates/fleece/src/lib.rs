@@ -16,6 +16,8 @@ pub mod clip;
 pub mod crawl;
 #[cfg(feature = "eidetic-bridge")]
 pub mod eidetic_bridge;
+#[cfg(feature = "page-links")]
+pub mod page_links;
 #[cfg(feature = "portable-clip")]
 pub mod portable_clip;
 #[cfg(feature = "structured-data")]
