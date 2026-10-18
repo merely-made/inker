@@ -230,3 +230,50 @@ fn the_same_occurrence_resolves_the_same_way_twice() {
     let second = rules.resolve_with_scripts(&item, &mut trusted()).unwrap();
     assert_eq!(first, second);
 }
+
+#[test]
+fn composed_script_failures_leave_the_whole_rule_unmatched() {
+    for source in ["missing_function()", "loop { }", "42"] {
+        let script = Condition::Script {
+            source: source.into(),
+        };
+        let negated = Condition::Not {
+            condition: Box::new(script.clone()),
+        };
+        for condition in [
+            script.clone(),
+            negated.clone(),
+            Condition::Not {
+                condition: Box::new(Condition::All {
+                    conditions: vec![Condition::Always, script.clone()],
+                }),
+            },
+            Condition::All {
+                conditions: vec![Condition::Always, negated],
+            },
+            Condition::Any {
+                conditions: vec![Condition::Always, script],
+            },
+        ] {
+            let mut broken = rule("broken", 9, source, true);
+            broken.condition = condition.clone();
+            let rules = set(vec![broken, rule("plain", 0, "true", false)]);
+            let resolved = rules
+                .resolve_with_scripts(&node("a"), &mut trusted())
+                .unwrap();
+            assert!(!resolved.matched_rules.contains("broken"), "{condition:?}");
+            assert_eq!(resolved.winners[&Property::Details].rule_id, "plain");
+            assert!(resolved.traces[0].reason.contains("script:"));
+            assert!(!resolved.traces[0].reason.ends_with("script: false"));
+        }
+    }
+    // A genuine false value remains composable; it is not an evaluation error.
+    let mut negated = rule("not-false", 9, "false", true);
+    negated.condition = Condition::Not {
+        condition: Box::new(negated.condition),
+    };
+    assert_eq!(
+        winner(&set(vec![negated]), &node("a"), &mut trusted()).as_deref(),
+        Some("not-false")
+    );
+}
