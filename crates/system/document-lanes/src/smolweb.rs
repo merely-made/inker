@@ -9,7 +9,7 @@
 //! PaintList lowering. This module retains that packet plus viewport scroll
 //! and exposes the existing session API to Pelt and Mere.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
 
@@ -328,11 +328,9 @@ impl SmolwebDocument {
             self.folds = FoldState::default();
             self.focus = None;
         }
-        self.images.retain(|url, _| {
-            document.blocks.iter().any(
-                |block| matches!(block, Block::Image { url: image_url, .. } if image_url == url),
-            )
-        });
+        let retained_images: HashSet<_> = image_urls(&document.blocks).into_iter().collect();
+        self.images
+            .retain(|url, _| retained_images.contains(url.as_str()));
         self.document = Arc::new(document);
         self.pending_reveal = None;
         self.invalidate_layout();
@@ -587,13 +585,9 @@ impl SmolwebDocument {
 
     /// Unresolved inline-image URLs for the host fetch actor.
     pub fn subresources(&self) -> Vec<String> {
-        self.document
-            .blocks
-            .iter()
-            .filter_map(|block| match block {
-                Block::Image { url, .. } if !self.images.contains_key(url) => Some(url.clone()),
-                _ => None,
-            })
+        image_urls(&self.document.blocks)
+            .into_iter()
+            .filter(|url| !self.images.contains_key(url))
             .collect()
     }
 
@@ -932,6 +926,36 @@ impl SmolwebDocument {
     }
 }
 
+/// Collect image resources from every structural block shape in document
+/// order. Keeping this traversal shared ensures discovery, admission, and
+/// replacement retention agree about which images belong to the document.
+fn image_urls(blocks: &[Block]) -> Vec<String> {
+    fn visit(blocks: &[Block], seen: &mut HashSet<String>, urls: &mut Vec<String>) {
+        for block in blocks {
+            match block {
+                Block::Image { url, .. } => {
+                    if seen.insert(url.clone()) {
+                        urls.push(url.clone());
+                    }
+                },
+                Block::Presented { block, .. } => visit(std::slice::from_ref(block), seen, urls),
+                Block::Quote { blocks } => visit(blocks, seen, urls),
+                Block::List { items, .. } => {
+                    for item in items {
+                        visit(item, seen, urls);
+                    }
+                },
+                _ => {},
+            }
+        }
+    }
+
+    let mut seen = HashSet::new();
+    let mut urls = Vec::new();
+    visit(blocks, &mut seen, &mut urls);
+    urls
+}
+
 /// The scroll offset that brings `start..end` into a viewport of `extent`,
 /// moving as little as possible.
 fn into_view(scroll: f32, start: f32, end: f32, extent: f32) -> f32 {
@@ -1229,6 +1253,63 @@ mod tests {
             Some(InteractionKind::Link { url })
                 if url == "gemini://x.test/posts/media/picture.png"
         ));
+    }
+
+    #[test]
+    fn nested_image_resources_are_deduplicated_admitted_and_retained_by_replacement() {
+        let mut doc = SmolwebDocument::parse_with_inline_media(
+            "gemini://x.test/nested",
+            "",
+            SmolwebTheme::Plain,
+            SmolwebInlineMediaPolicy::images(),
+        );
+        let image = |url: &str| Block::Image {
+            url: url.into(),
+            alt: String::new(),
+        };
+        let shared = "gemini://x.test/shared.png";
+        let removed = "gemini://x.test/removed.png";
+        let added = "gemini://x.test/added.png";
+        let mut initial = (*doc.document).clone();
+        initial.blocks = vec![
+            Block::Quote {
+                blocks: vec![image(shared)],
+            },
+            Block::List {
+                ordered: false,
+                items: vec![vec![image(shared), image(removed)]],
+            },
+            Block::Presented {
+                presentation: Default::default(),
+                block: Box::new(image(added)),
+            },
+        ];
+        doc.replace_document(initial);
+
+        assert_eq!(doc.subresources(), [shared, removed, added]);
+        assert!(doc.provide_subresource(shared, &test_png()));
+        assert!(doc.provide_subresource(removed, &test_png()));
+        assert!(!doc.provide_subresource("gemini://x.test/unknown.png", &test_png()));
+
+        let mut replacement = (*doc.document).clone();
+        replacement.blocks = vec![Block::List {
+            ordered: true,
+            items: vec![vec![
+                Block::Presented {
+                    presentation: Default::default(),
+                    block: Box::new(image(shared)),
+                },
+                image(shared),
+                image(added),
+            ]],
+        }];
+        doc.replace_document(replacement);
+
+        assert!(doc.images.contains_key(shared));
+        assert!(!doc.images.contains_key(removed));
+        assert_eq!(doc.subresources(), [added]);
+        assert!(doc.provide_subresource(added, &test_png()));
+        assert!(doc.subresources().is_empty());
     }
 
     #[test]
