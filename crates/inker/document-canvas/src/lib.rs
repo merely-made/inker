@@ -55,6 +55,11 @@ pub use font::{FontResolver, NoFontResolver};
 pub use font_table::FontTable;
 pub use layout::{LaidOutDocument, layout_document, layout_document_with_folds};
 pub use paint_list::{InkerPaintList, paint_list_from_packet, paint_list_from_packet_with_images};
+/// The segmenter dictionaries a host loads at runtime for Thai, Lao, Khmer,
+/// Burmese, Chinese and Japanese breaking.
+pub use parley::segmenter_dictionaries::{
+    DictionaryBlob, DictionaryBlobError, SegmenterDictionaries,
+};
 pub use style::{ColorVocabulary, InlineStyle};
 pub use style_sheet::{
     BlockRole, BlockStyle, ColorToken, DocumentStyleSheet, FocusIndicator, FontChoice,

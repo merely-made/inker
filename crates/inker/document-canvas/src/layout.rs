@@ -11,6 +11,7 @@
 //! no scrolling. Width fills the available content width; height grows
 //! to fit content (may exceed `viewport.height`).
 
+use parley::segmenter_dictionaries::{DictionaryBlob, SegmenterDictionaries};
 use std::collections::HashMap;
 
 use inker::{
@@ -40,6 +41,9 @@ use crate::types::{
 pub struct LaidOutDocument {
     pub packet: DocumentRenderPacket,
     pub fonts: FontTable,
+    /// Segmenter dictionaries the text met and the layout did not have; a
+    /// host that loads them and lays out again breaks those scripts properly.
+    pub wanted_dictionaries: SegmenterDictionaries,
 }
 
 /// Layout entry point. Consumes an `EngineDocument` and a viewport,
@@ -81,12 +85,14 @@ pub fn layout_document_with_folds_and_fonts(
     folds: &FoldState,
     fonts: &[Vec<u8>],
 ) -> LaidOutDocument {
-    layout_document_with_folds_and_font_resources(document, viewport, style, folds, fonts, &[])
+    layout_document_with_folds_and_font_resources(document, viewport, style, folds, fonts, &[], &[])
         .expect("empty generic font ledger")
 }
 
 /// Lay out with explicit host generic bindings. The selected bytes ride in
 /// the ordinary font sidecar; no authored family/style is rewritten.
+/// `dictionaries` are the segmenter dictionaries the host has loaded (see
+/// [`LaidOutDocument::wanted_dictionaries`]).
 pub fn layout_document_with_folds_and_font_resources(
     document: &EngineDocument,
     viewport: Viewport,
@@ -94,9 +100,13 @@ pub fn layout_document_with_folds_and_font_resources(
     folds: &FoldState,
     fonts: &[Vec<u8>],
     generic_fonts: &[(String, Vec<u8>)],
+    dictionaries: &[DictionaryBlob],
 ) -> Result<LaidOutDocument, crate::text::GenericFontError> {
     let mut env = LayoutEnvironment::new();
     crate::text::register_generic_fonts(&mut env, generic_fonts)?;
+    for blob in dictionaries {
+        env.layout_cx.load_segmenter_dictionaries(blob);
+    }
     for bytes in fonts {
         env.font_cx.collection.register_fonts(
             parley::fontique::Blob::new(std::sync::Arc::new(bytes.clone())),
@@ -1156,6 +1166,7 @@ impl<'a> DocumentLayouter<'a> {
                 interactions: self.interactions,
             },
             fonts: self.fonts.into_table(),
+            wanted_dictionaries: self.env.layout_cx.wanted_segmenter_dictionaries(),
         }
     }
 }

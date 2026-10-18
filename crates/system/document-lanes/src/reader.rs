@@ -385,6 +385,15 @@ impl ReaderDocumentSession {
     pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
         self.doc.set_fonts(fonts);
     }
+    pub fn set_segmenter_dictionaries(
+        &mut self,
+        dictionaries: Vec<document_canvas::DictionaryBlob>,
+    ) {
+        self.doc.set_segmenter_dictionaries(dictionaries);
+    }
+    pub fn wanted_segmenter_dictionaries(&self) -> document_canvas::SegmenterDictionaries {
+        self.doc.wanted_segmenter_dictionaries()
+    }
 
     pub fn document(&self) -> &EngineDocument {
         self.doc.document()

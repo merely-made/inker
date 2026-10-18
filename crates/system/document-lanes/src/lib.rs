@@ -20,6 +20,9 @@ pub mod reader;
 mod remote;
 mod session;
 pub mod smolweb;
+/// Segmenter dictionaries a host loads for Thai, Lao, Khmer, Burmese, Chinese
+/// and Japanese breaking.
+pub use document_canvas::{DictionaryBlob, DictionaryBlobError, SegmenterDictionaries};
 pub use genet_host_api::{ResourceFetchPolicy, ResourceFetcher};
 pub use reader::{
     ReaderAccessibilityLink, ReaderAccessibilitySnapshot, ReaderDocumentSession,

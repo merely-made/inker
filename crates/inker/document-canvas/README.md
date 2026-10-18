@@ -56,6 +56,17 @@ request to this resource owner, rather than permission to substitute a different
 render-side face. Proper serif/monospace and script coverage remain explicit
 host face-selection and qualification decisions.
 
+## Segmenter dictionaries
+
+Thai, Lao, Khmer and Burmese line and word breaks, and Chinese and Japanese
+word boundaries, need ICU dictionaries that are not compiled in. A host checks
+a blob once (`DictionaryBlob::new`; clones share it) and passes its loaded
+blobs as the last argument of `layout_document_with_folds_and_font_resources`.
+`LaidOutDocument::wanted_dictionaries` names the groups the text met without,
+which is what the host should fetch next; until then those scripts break by
+the plain rules. `SmolwebDocument::set_segmenter_dictionaries` keeps the
+ledger and redoes a layout only when its text wanted what arrived.
+
 ## Canvas swatches
 
 A canvas in Mere is a self-contained renderable unit that knows how to lay

@@ -9,6 +9,7 @@
 //! PaintList lowering. This module retains that packet plus viewport scroll
 //! and exposes the existing session API to Pelt and Mere.
 
+use document_canvas::{DictionaryBlob, SegmenterDictionaries};
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
@@ -82,6 +83,8 @@ pub struct SmolwebDocument {
     layout: Option<LaidOutDocument>,
     fonts: Vec<Vec<u8>>,
     generic_fonts: Vec<(String, Vec<u8>)>,
+    /// Segmenter dictionaries the host has loaded; shared, never fetched here.
+    dictionaries: Vec<DictionaryBlob>,
     size: (u32, u32),
     scroll_x: f32,
     scroll_y: f32,
@@ -253,6 +256,7 @@ impl SmolwebDocument {
             layout: None,
             fonts: Vec::new(),
             generic_fonts: Vec::new(),
+            dictionaries: Vec::new(),
             size: (0, 0),
             scroll_x: 0.0,
             scroll_y: 0.0,
@@ -639,6 +643,37 @@ impl SmolwebDocument {
         Ok(true)
     }
 
+    /// Replace the host's segmenter dictionaries. The current layout is redone
+    /// only when its text wanted one of them.
+    pub fn set_segmenter_dictionaries(&mut self, dictionaries: Vec<DictionaryBlob>) {
+        let brought = dictionaries
+            .iter()
+            .fold(SegmenterDictionaries::default(), |held, blob| {
+                let carried = blob.dictionaries();
+                SegmenterDictionaries {
+                    southeast_asian: held.southeast_asian || carried.southeast_asian,
+                    chinese_japanese: held.chinese_japanese || carried.chinese_japanese,
+                }
+            });
+        let wanted = self.wanted_segmenter_dictionaries();
+        self.dictionaries = dictionaries;
+        if (wanted.southeast_asian && brought.southeast_asian)
+            || (wanted.chinese_japanese && brought.chinese_japanese)
+        {
+            self.layout = None;
+            self.presented = false;
+        }
+    }
+
+    /// Dictionaries the current layout's text met without: what the host
+    /// should fetch and hand to [`Self::set_segmenter_dictionaries`].
+    pub fn wanted_segmenter_dictionaries(&self) -> SegmenterDictionaries {
+        self.layout
+            .as_ref()
+            .map(|layout| layout.wanted_dictionaries)
+            .unwrap_or_default()
+    }
+
     fn ensure_layout(&mut self, width: u32, height: u32) {
         let size = (width.max(1), height.max(1));
         if self.layout.is_some() && self.size == size {
@@ -657,6 +692,7 @@ impl SmolwebDocument {
                 &self.folds,
                 &self.fonts,
                 &self.generic_fonts,
+                &self.dictionaries,
             )
             .expect("admitted generic font ledger"),
         );
