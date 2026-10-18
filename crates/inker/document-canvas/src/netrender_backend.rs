@@ -15,6 +15,7 @@
 //! translator (behind the `netrender` feature).
 
 use netrender::Scene;
+use paint_list_render::TranslationError;
 
 use crate::font_table::FontTable;
 use std::collections::HashMap;
@@ -33,7 +34,7 @@ pub fn scene_from_packet(
     packet: &DocumentRenderPacket,
     fonts: &FontTable,
     colors: &ColorVocabulary,
-) -> Scene {
+) -> Result<Scene, TranslationError> {
     let list = paint_list_from_packet(packet, fonts, colors);
     paint_list_render::translate_paint_list(&list)
 }
@@ -44,7 +45,7 @@ pub fn scene_from_packet_with_images(
     fonts: &FontTable,
     colors: &ColorVocabulary,
     images: &HashMap<String, DecodedImage>,
-) -> Scene {
+) -> Result<Scene, TranslationError> {
     let list = paint_list_from_packet_with_images(packet, fonts, colors, images);
     paint_list_render::translate_paint_list(&list)
 }
@@ -77,7 +78,7 @@ mod tests {
             Viewport::new(640.0, 480.0),
             &DocumentStyleSheet::default(),
         );
-        scene_from_packet(&laid.packet, &laid.fonts, &ColorVocabulary::default())
+        scene_from_packet(&laid.packet, &laid.fonts, &ColorVocabulary::default()).unwrap()
     }
 
     #[test]
@@ -108,7 +109,8 @@ mod tests {
             Viewport::new(640.4, 480.6),
             &DocumentStyleSheet::default(),
         );
-        let scene = scene_from_packet(&laid.packet, &laid.fonts, &ColorVocabulary::default());
+        let scene =
+            scene_from_packet(&laid.packet, &laid.fonts, &ColorVocabulary::default()).unwrap();
         assert_eq!(scene.viewport_width, 640);
         assert_eq!(scene.viewport_height, 481);
     }

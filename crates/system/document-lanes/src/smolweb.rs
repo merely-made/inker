@@ -101,6 +101,8 @@ pub struct SmolwebDocument {
     /// Counts layouts built, so the accessibility projection's revision
     /// changes with every new geometry.
     layout_generation: u64,
+    /// Last paint admission refusal for the infallible document-session API.
+    last_render_error: Option<String>,
 }
 
 /// One in-page activation, queued for the host to drain and reflect in its
@@ -260,6 +262,7 @@ impl SmolwebDocument {
             in_page: Vec::new(),
             pending_reveal: None,
             layout_generation: 0,
+            last_render_error: None,
         }
     }
 
@@ -685,8 +688,13 @@ impl SmolwebDocument {
         (layout.packet.content_bounds.size.height - self.size.1 as f32).max(0.0)
     }
 
+    /// Last paint refusal in this retained session, if any.
+    pub fn last_render_error(&self) -> Option<&str> {
+        self.last_render_error.as_deref()
+    }
+
     /// Paint the visible document band at the retained scroll offset.
-    pub fn frame(&mut self, width: u32, height: u32) -> Scene {
+    pub fn try_frame(&mut self, width: u32, height: u32) -> Result<Scene, String> {
         self.ensure_layout(width, height);
         let layout = self.layout.as_ref().expect("layout built above");
         let packet = layout.packet.window_rect(
@@ -695,8 +703,19 @@ impl SmolwebDocument {
             self.size.0 as f32,
             self.size.1 as f32,
         );
-        let mut scene =
-            scene_from_packet_with_images(&packet, &layout.fonts, &self.style.colors, &self.images);
+        let mut scene = match scene_from_packet_with_images(
+            &packet,
+            &layout.fonts,
+            &self.style.colors,
+            &self.images,
+        ) {
+            Ok(scene) => scene,
+            Err(error) => {
+                self.last_render_error = Some(error.to_string());
+                self.presented = false;
+                return Err(error.to_string());
+            },
+        };
         self.paint_focus(&mut scene);
         scene.push_rect(
             0.0,
@@ -708,7 +727,16 @@ impl SmolwebDocument {
         let background = scene.ops.pop().expect("push_rect appended an op");
         scene.ops.insert(0, background);
         self.presented = true;
-        scene
+        self.last_render_error = None;
+        Ok(scene)
+    }
+
+    /// Compatibility frame for `DocumentSession<Scene>` callers. A refused
+    /// paint is exposed through `last_render_error` and never presented as
+    /// partially translated content.
+    pub fn frame(&mut self, width: u32, height: u32) -> Scene {
+        self.try_frame(width, height)
+            .unwrap_or_else(|_| Scene::new(width, height))
     }
 
     /// Move the single host-owned document viewport.

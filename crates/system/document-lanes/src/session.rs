@@ -127,6 +127,11 @@ impl SmolwebDocumentSession {
         &mut self.doc
     }
 
+    /// Paint admission refusal from the most recent document frame.
+    pub fn last_render_error(&self) -> Option<&str> {
+        self.doc.last_render_error()
+    }
+
     /// Change this appearance's source-style policy and invalidate its
     /// retained geometry. Hosts may expose this through their own settings.
     pub fn set_source_presentation(&mut self, presentation: document_canvas::SourcePresentation) {
@@ -161,6 +166,11 @@ impl DocumentSession<Scene> for SmolwebDocumentSession {
     fn frame(&mut self, width: u32, height: u32) -> Scene {
         self.viewport = (width, height);
         self.doc.frame(width, height)
+    }
+
+    fn try_frame(&mut self, width: u32, height: u32) -> Result<Scene, String> {
+        self.viewport = (width, height);
+        self.doc.try_frame(width, height)
     }
     fn scroll_by(&mut self, dx: f32, dy: f32) -> bool {
         self.doc.scroll_by(dx, dy)
