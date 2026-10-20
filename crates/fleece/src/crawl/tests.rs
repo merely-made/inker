@@ -565,7 +565,7 @@ fn creating_a_gathering_actor_does_not_start_network_acquisition() {
         fetch,
         Arc::new(|_, _, _, _| Vec::<()>::new()),
     );
-    handle.join();
+    handle.join().unwrap();
     assert_eq!(calls.load(Ordering::Relaxed), 0);
 }
 
