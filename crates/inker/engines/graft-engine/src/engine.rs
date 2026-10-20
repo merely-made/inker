@@ -322,7 +322,7 @@ mod tests {
         tree_id: accesskit::TreeId,
         nested: Option<accesskit::TreeId>,
     ) -> inker::SurfaceAccessibilityUpdate {
-        use accesskit::{Action, Node, NodeId, Rect, Role, Tree, TreeUpdate};
+        use accesskit::{Action, Node, NodeId, Rect, Role, TreeInfo, TreeUpdate};
         let mut node = Node::new(if nested.is_some() {
             Role::Document
         } else {
@@ -337,7 +337,7 @@ mod tests {
         }
         TreeUpdate {
             nodes: vec![(NodeId(1), node)],
-            tree: Some(Tree::new(NodeId(1))),
+            tree: Some(TreeInfo::new(NodeId(1))),
             tree_id,
             focus: NodeId(1),
         }
