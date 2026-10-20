@@ -18,6 +18,7 @@
 //! lexers), so native and the browser build the same way. See
 //! `design_docs/mere_docs/implementation_strategy/2026-06-24_djot_editor_knot_nodes_plan.md`.
 
+pub mod blocks;
 pub mod entity;
 pub mod highlight;
 pub mod injection;
