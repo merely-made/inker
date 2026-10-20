@@ -663,6 +663,9 @@ impl<'a> DocumentLayouter<'a> {
         let minimum_table_width = minimum_cell_width * column_count as f32
             + gap * (column_count.saturating_sub(1)) as f32;
         let mut natural_widths = vec![minimum_cell_width; column_count];
+        // The widest run each column cannot break inside: its longest word,
+        // including a link's adornment prefix where it binds to the label.
+        let mut min_content_widths = vec![0.0_f32; column_count];
         let mut unbreakable_columns = vec![false; column_count];
         for (is_header, cells) in &flattened_rows {
             for (column, flattened) in cells.iter().enumerate() {
@@ -671,6 +674,8 @@ impl<'a> DocumentLayouter<'a> {
                 natural_widths[column] = natural_widths[column]
                     .max(minimum_cell_width)
                     .max(natural_width);
+                min_content_widths[column] = min_content_widths[column]
+                    .max(self.measure_table_cell_min_content(flattened, base));
                 if natural_width > minimum_cell_width
                     && !flattened.text.chars().any(char::is_whitespace)
                 {
@@ -682,12 +687,43 @@ impl<'a> DocumentLayouter<'a> {
         // they fit; when they do not, each column receives a proportional share
         // and parley wraps the cell into that share.
         let natural_total: f32 = natural_widths.iter().sum();
-        // When even the metric minimum cannot fit, preserve each cell's
-        // measured width and let the table overflow horizontally. This keeps
-        // unbreakable words from painting through their neighbouring cells.
         let inner_available = (available - gap * (column_count - 1) as f32).max(0.0);
-        let unbreakable_overflow = natural_total > inner_available
-            && unbreakable_columns.iter().any(|unbreakable| *unbreakable);
+        let minimum_inner_width = minimum_cell_width * column_count as f32;
+        let fitted: Vec<f32> = {
+            if natural_total > inner_available && inner_available >= minimum_inner_width {
+                let excess_total = natural_total - minimum_inner_width;
+                let excess_budget = inner_available - minimum_inner_width;
+                if excess_total > 0.0 {
+                    natural_widths
+                        .iter()
+                        .map(|width| {
+                            minimum_cell_width
+                                + (*width - minimum_cell_width) * (excess_budget / excess_total)
+                        })
+                        .collect()
+                } else {
+                    vec![minimum_cell_width; column_count]
+                }
+            } else if natural_total > inner_available {
+                vec![minimum_cell_width; column_count]
+            } else if natural_total > 0.0 {
+                let extra = (inner_available - natural_total) / column_count as f32;
+                natural_widths.iter().map(|width| width + extra).collect()
+            } else {
+                vec![inner_available / column_count as f32; column_count]
+            }
+        };
+        // When even the metric minimum cannot fit, preserve each cell's measured
+        // width and let the table overflow horizontally. This keeps unbreakable
+        // words from painting through their neighbouring cells: a cell without
+        // whitespace, or one whose min-content run (a long word after a link's
+        // adornment prefix, say) is wider than the share it would receive.
+        let unbreakable_overflow = (natural_total > inner_available
+            && unbreakable_columns.iter().any(|unbreakable| *unbreakable))
+            || fitted
+                .iter()
+                .zip(&min_content_widths)
+                .any(|(share, min_content)| *min_content > *share + 0.5);
         let horizontal_overflow = available < minimum_table_width || unbreakable_overflow;
         let table_width = if horizontal_overflow {
             natural_total + gap * (column_count - 1) as f32
@@ -701,31 +737,10 @@ impl<'a> DocumentLayouter<'a> {
                 BlockAlignment::Center => ((available - table_width) * 0.5).max(0.0),
                 BlockAlignment::End => (available - table_width).max(0.0),
             };
-        let inner_width = (table_width - gap * (column_count - 1) as f32).max(0.0);
-        let minimum_inner_width = minimum_cell_width * column_count as f32;
         let column_widths = if horizontal_overflow {
             natural_widths.clone()
-        } else if natural_total > inner_width && inner_width >= minimum_inner_width {
-            let excess_total = natural_total - minimum_inner_width;
-            let excess_budget = inner_width - minimum_inner_width;
-            if excess_total > 0.0 {
-                natural_widths
-                    .iter()
-                    .map(|width| {
-                        minimum_cell_width
-                            + (*width - minimum_cell_width) * (excess_budget / excess_total)
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                vec![minimum_cell_width; column_count]
-            }
-        } else if natural_total > inner_width {
-            vec![minimum_cell_width; column_count]
-        } else if natural_total > 0.0 {
-            let extra = (inner_width - natural_total) / column_count as f32;
-            natural_widths.iter().map(|width| width + extra).collect()
         } else {
-            vec![inner_width / column_count as f32; column_count]
+            fitted
         };
 
         let link_color = self.style.token_color(ColorToken::LinkText);
@@ -798,6 +813,31 @@ impl<'a> DocumentLayouter<'a> {
             self.env,
             flattened,
             &natural_base,
+            self.style.token_color(ColorToken::LinkText),
+            self.style.token_color(ColorToken::CodeText),
+            0.0,
+            Point::ZERO,
+            &mut fonts,
+            SemanticInteractionId::from_lowered_ordinal(1),
+        )
+        .total_size
+        .width
+    }
+
+    /// The cell's min-content width: laid out wrapping at every opportunity,
+    /// its widest line is the widest run it cannot break.
+    fn measure_table_cell_min_content(
+        &mut self,
+        flattened: &Flattened,
+        base: &TextBaseStyle,
+    ) -> f32 {
+        let mut fonts = FontInterner::new();
+        let mut wrapping_base = base.clone();
+        wrapping_base.wrap = crate::style_sheet::WrapPolicy::Wrap;
+        layout_text_block_with_link_identity_base(
+            self.env,
+            flattened,
+            &wrapping_base,
             self.style.token_color(ColorToken::LinkText),
             self.style.token_color(ColorToken::CodeText),
             0.0,
