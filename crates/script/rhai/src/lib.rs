@@ -26,11 +26,16 @@
 //! value, stringified) for plain/auto-detected output, or an object map
 //! `#{ format: "gemtext", text: "## hi" }` to declare the format explicitly
 //! (so the output nested-renders through that engine).
+//!
+//! The separate [`command`] lane lets an explicitly registered and allowlisted
+//! script collect Hest invocation data. It neither executes requests nor changes
+//! the ordinary note evaluator's bindings; receivers retain authority and outcomes.
 
 use inker::{BlockEvaluator, EvalOutput};
 use rhai::{Dynamic, Engine, Map};
 
 mod value;
+pub mod command;
 
 pub use value::{RhaiValueEngine, register_libm_maths};
 

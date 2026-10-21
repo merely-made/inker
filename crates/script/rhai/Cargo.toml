@@ -21,8 +21,8 @@ inker = { workspace = true }
 # cap is first-class rather than hand-rolled.
 # `sync` makes Engine Send + Sync (Rc becomes Arc, RefCell becomes RwLock
 # throughout rhai). Required because a KnotEndpoint holds its evaluators and a
-# resident host schedules endpoints across threads. We register no host
-# bindings and no custom types, so the feature costs us nothing at the API
+# resident host schedules endpoints across threads. Ordinary note evaluators
+# register no host bindings or custom types, so the feature costs no API
 # boundary; it costs atomic refcounting inside script evaluation, which is an
 # on-demand fence with an operation budget rather than a hot path.
 rhai = { version = "1", features = ["sync"] }
@@ -31,6 +31,10 @@ rhai = { version = "1", features = ["sync"] }
 script-engine-api = { workspace = true }
 # Host maths for rules (SE40, SE94); rhai's own float-maths package is not loaded.
 libm = { workspace = true }
+# Explicit command-producing scripts share declarations and opaque invocation
+# data with hosts; evaluating one never executes or authorizes a command.
+hest = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 # The rule runner tests resolve a real rule set (SE92); the library itself links
