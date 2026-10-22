@@ -630,7 +630,7 @@ impl SmolwebDocument {
     /// missing from the prose face; all font bytes remain host-owned.
     pub fn set_font_family(&mut self, family: &str) {
         if !FIXED_WIDTH_MENU_TYPES.contains(&self.document.content_type.as_str()) {
-            self.style.body_font_family = format!("{family}, sans-serif");
+            self.style.body_font_family = format!("{family}, sans-serif, monospace");
         }
         self.layout = None;
         self.presented = false;
@@ -1176,7 +1176,7 @@ fn style_for_theme(
     style.body_font_family = if FIXED_WIDTH_MENU_TYPES.contains(&content_type) {
         style.mono_font_family.clone()
     } else {
-        "serif, sans-serif".into()
+        "serif, sans-serif, monospace".into()
     };
     // Reader, small-web and normalized document projections share a prose
     // baseline. This does not restyle an authored HTML browser session.
@@ -1714,7 +1714,7 @@ mod tests {
         // A prose format keeps the body serif: gemtext is not column-aligned.
         for content_type in ["text/gemini", "text/plain"] {
             let (style, _) = style_for_theme(&SmolwebTheme::Dark, "gemini://x.test/", content_type);
-            assert_eq!(style.body_font_family, "serif, sans-serif", "{content_type} keeps prose and glyph fallback roles");
+            assert_eq!(style.body_font_family, "serif, sans-serif, monospace", "{content_type} keeps prose and glyph fallback roles");
         }
     }
 
