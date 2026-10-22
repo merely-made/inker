@@ -1161,10 +1161,18 @@ fn style_for_theme(
     } else {
         "serif".into()
     };
-    style.body_font_size = 16.0;
-    style.line_height_ratio = 1.5;
-    style.horizontal_padding = 32.0;
-    style.max_content_width = Some(720.0);
+    // Reader, small-web and normalized document projections share a prose
+    // baseline. This does not restyle an authored HTML browser session.
+    style.body_font_size = 18.0;
+    style.line_height_ratio = 1.6;
+    style.horizontal_padding = 24.0;
+    // About 65-75 Latin characters with the ordinary proportional faces.
+    // The layout always clamps this to the current appearance's viewport.
+    style.max_content_width = Some(36.0 * style.body_font_size);
+    style.roles.heading.sizes = [32.0, 26.0, 22.0, 20.0, 18.0, 18.0];
+    style.roles.heading.line_height_ratio = Some(1.25);
+    style.roles.code.size = document_canvas::SizeSpec::ScaleOfBody(0.85);
+    style.roles.metadata.size = document_canvas::SizeSpec::ScaleOfBody(0.75);
     style.vertical_padding = 24.0;
     style.colors = ColorVocabulary {
         body_text: foreground,
@@ -1714,6 +1722,37 @@ mod tests {
 #[cfg(test)]
 mod typography_tests {
     use super::*;
+    #[test]
+    fn prose_measure_reflows_to_the_appearance_without_changing_its_source() {
+        let source = Arc::new(EngineDocument {
+            address: "mere://reading/test".into(),
+            title: Some("Reading".into()),
+            content_type: "text/plain".into(),
+            lang: None,
+            provenance: Default::default(),
+            trust: Default::default(),
+            diagnostics: Vec::new(),
+            navigation: Default::default(),
+            blocks: vec![Block::Paragraph {
+                spans: vec![inker::InlineSpan::Text("A measured line keeps the next sentence in reach. ".repeat(80))],
+            }],
+        });
+        let mut doc = SmolwebDocument::from_shared_document_with_theme(source.clone(), SmolwebTheme::Plain);
+        doc.frame(1200, 600);
+        let wide = doc.layout.as_ref().unwrap().packet.clone();
+        let paragraph = &wide.blocks[0].bounds;
+        assert!(paragraph.origin.x > 200.0, "wide reading is centered with a bounded measure");
+        assert!(paragraph.size.width < 750.0);
+        doc.frame(320, 600);
+        let narrow = &doc.layout.as_ref().unwrap().packet;
+        assert!(narrow.content_bounds.size.height > wide.content_bounds.size.height, "narrow reading must reflow");
+        for block in &narrow.blocks {
+            assert!(block.bounds.origin.x >= 0.0);
+            assert!(block.bounds.origin.x + block.bounds.size.width <= 320.1, "prose does not require horizontal scrolling");
+        }
+        assert!(Arc::ptr_eq(&source, &doc.document));
+    }
+
     #[test]
     fn restyling_reflows_without_replacing_source_or_session_state() {
         let source = Arc::new(EngineDocument {
