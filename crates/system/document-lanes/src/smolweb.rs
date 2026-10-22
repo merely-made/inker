@@ -78,6 +78,8 @@ pub struct SmolwebDocument {
     document: Arc<EngineDocument>,
     style: DocumentStyleSheet,
     display_scale: f32,
+    reading: tabard::ReadingPreferences,
+    find: crate::reading_find::ReadingFind,
     background: [f32; 4],
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
@@ -252,6 +254,8 @@ impl SmolwebDocument {
             document,
             style,
             display_scale: 1.0,
+            reading: Default::default(),
+            find: Default::default(),
             background,
             images: HashMap::new(),
             inline_media,
@@ -288,6 +292,33 @@ impl SmolwebDocument {
         self.style = style;
         self.invalidate_layout();
         true
+    }
+
+    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.reading }
+    pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
+        value.validate()?;
+        if value == self.reading { return Ok(false); }
+        self.reading = value;
+        self.invalidate_layout();
+        Ok(true)
+    }
+    pub fn document_find(&mut self, query: &inker::DocumentFindQuery) -> inker::DocumentFindState {
+        self.ensure_layout(self.size.0.max(1), self.size.1.max(1));
+        self.find.replace(query.clone(), &self.layout.as_ref().unwrap().searchable);
+        self.reveal_find();
+        self.find.state()
+    }
+    pub fn document_find_step(&mut self, direction: inker::DocumentFindDirection) -> inker::DocumentFindState {
+        self.ensure_layout(self.size.0.max(1), self.size.1.max(1));
+        self.find.step(direction);
+        self.reveal_find();
+        self.find.state()
+    }
+    pub fn clear_document_find(&mut self) { self.find = Default::default(); }
+    fn reveal_find(&mut self) {
+        if let Some(y) = self.find.current_y() {
+            self.scroll_y = (y - 24.0 * self.display_scale).clamp(0.0, self.max_scroll());
+        }
     }
 
     pub fn document(&self) -> &EngineDocument {
@@ -337,6 +368,7 @@ impl SmolwebDocument {
         let retained_images: HashSet<_> = image_urls(&document.blocks).into_iter().collect();
         self.images
             .retain(|url, _| retained_images.contains(url.as_str()));
+        self.find = Default::default();
         self.document = Arc::new(document);
         self.pending_reveal = None;
         self.invalidate_layout();
@@ -705,7 +737,7 @@ impl SmolwebDocument {
             document_canvas::layout::layout_document_with_folds_and_font_resources(
                 &self.document,
                 Viewport::new(size.0 as f32, size.1 as f32),
-                &crate::typography::document_style_at_display_scale(&self.style, self.display_scale),
+                &crate::typography::document_style_for_reading(&self.style, self.reading, self.display_scale),
                 &self.folds,
                 &self.fonts,
                 &self.generic_fonts,
@@ -713,6 +745,7 @@ impl SmolwebDocument {
             )
             .expect("admitted generic font ledger"),
         );
+        self.find.reflow(&self.layout.as_ref().unwrap().searchable);
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());
@@ -763,6 +796,7 @@ impl SmolwebDocument {
                 return Err(error.to_string());
             },
         };
+        self.find.paint(&mut scene, self.scroll_x, self.scroll_y, self.size);
         self.paint_focus(&mut scene);
         scene.push_rect(
             0.0,

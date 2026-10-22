@@ -256,9 +256,19 @@ fn flatten_link(
 /// Per-block layout output.
 #[derive(Clone, Debug)]
 pub struct LaidOutText {
+    /// Rendered text and measured cluster geometry, independent of glyph IDs.
+    pub searchable: SearchableText,
     pub glyph_runs: Vec<GlyphRun>,
     pub total_size: Size,
     pub interactions: Vec<InteractionRegion>,
+}
+
+/// Text retained for selection/find. Byte ranges name the exact flattened
+/// buffer passed to Parley, including inline style boundaries and soft wraps.
+#[derive(Clone, Debug, Default)]
+pub struct SearchableText {
+    pub text: String,
+    pub clusters: Vec<(Range<usize>, Rect)>,
 }
 
 /// Owns parley contexts so consumers don't recreate them per call.
@@ -469,11 +479,22 @@ pub(crate) fn layout_text_block_with_link_identity_base(
     let mut glyph_runs: Vec<GlyphRun> = Vec::new();
     let mut interactions: Vec<InteractionRegion> = Vec::new();
     let mut line_top_y = 0.0_f32;
+    let mut searchable = SearchableText { text: flattened.text.clone(), clusters: Vec::new() };
 
     for line in layout.lines() {
         let line_metrics = line.metrics();
         let line_height = line_metrics.line_height;
         let baseline_in_line = line_metrics.baseline - line_top_y;
+        let mut cluster_x = origin.x + line_metrics.offset;
+        for run in line.runs() {
+            for cluster in run.visual_clusters() {
+                let width = cluster.advance();
+                searchable.clusters.push((cluster.text_range(), Rect::from_xywh(
+                    cluster_x, origin.y + line_top_y, width, line_height,
+                )));
+                cluster_x += width;
+            }
+        }
 
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(parley_run) = item else {
@@ -614,6 +635,7 @@ pub(crate) fn layout_text_block_with_link_identity_base(
     let total_width = layout.width();
 
     LaidOutText {
+        searchable,
         glyph_runs,
         total_size: Size::new(total_width, total_height),
         interactions,

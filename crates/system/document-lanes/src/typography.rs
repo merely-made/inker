@@ -90,6 +90,22 @@ pub fn document_style_at_display_scale(
     style
 }
 
+/// Reading controls adjust a projection's logical type and measure. Font
+/// custody and baseline roles survive, and display density is applied once.
+pub fn document_style_for_reading(
+    baseline: &DocumentStyleSheet, preferences: tabard::ReadingPreferences, display_scale: f32,
+) -> DocumentStyleSheet {
+    let ratio = f32::from(preferences.text_size) / 18.0;
+    let scaled = document_style_at_display_scale(baseline, ratio);
+    let mut style = document_style_with_typography(&scaled, &preferences.typography())
+        .expect("validated projection reading preferences");
+    // Gutters do not grow with text size; line length does.
+    style.horizontal_padding = baseline.horizontal_padding;
+    style.vertical_padding = baseline.vertical_padding;
+    style.max_content_width = Some(preferences.width_px());
+    document_style_at_display_scale(&style, display_scale)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

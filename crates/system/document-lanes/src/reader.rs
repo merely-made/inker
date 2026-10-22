@@ -379,6 +379,10 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
+    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.doc.reading_preferences() }
+    pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
+        self.doc.set_reading_preferences(value)
+    }
     pub fn display_scale(&self) -> f32 { self.doc.display_scale() }
     pub fn set_display_scale(&mut self, scale: f32) -> bool { self.doc.set_display_scale(scale) }
     pub fn set_font_family(&mut self, family: &str) {
@@ -535,11 +539,19 @@ impl ReaderDocumentSession {
 }
 
 impl DocumentSession<Scene> for ReaderDocumentSession {
+    fn document_find(&mut self, query: &inker::DocumentFindQuery) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find(query))
+    }
+    fn document_find_step(&mut self, direction: inker::DocumentFindDirection) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find_step(direction))
+    }
+    fn clear_document_find(&mut self) -> Result<(), inker::SessionError> {
+        self.doc.clear_document_find(); Ok(())
+    }
+
     fn document_capabilities(&self) -> DocumentCapabilities {
         DocumentCapabilities {
-            find_in_page: DocumentCapabilityStatus::unsupported(
-                "reader sessions do not expose document find",
-            ),
+            find_in_page: DocumentCapabilityStatus::Supported,
             page_zoom: DocumentCapabilityStatus::unsupported(
                 "reader sessions do not expose page zoom",
             ),
