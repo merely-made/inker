@@ -22,8 +22,8 @@ right order is:
 
 1. keep the current publish train unblocked;
 2. repair capability honesty and sync/async mismatches in the existing crates;
-3. extract a small `surface-engine-api` crate only after the event and request
-   model is stable enough to be a public semver surface.
+3. extract a small neutral surface-contract crate only after the event and
+   request model is stable enough to be a public semver surface.
 
 The assessment should not block `grafting` 0.6.0, `scrying` 0.7.0, or
 `welding` 0.14.0. It should block any stronger public claim that these crates
@@ -124,8 +124,9 @@ answers would become a shared lie.
 ## Recommended public shape
 
 A future neutral surface-contract crate should be wgpu-free and
-producer-neutral. The crate name remains open; `surface-engine-api` below is
-descriptive, not a confirmed package name.
+producer-neutral. The 2026-10-22 naming decision chooses `wgpu-cue` for the
+project and wgpu-facing crate, with `webcue` for a separate wgpu-free core if
+needed (see the dated cues below).
 It should contain:
 
 - `SurfaceFrame` as an owned transport frame from Graft's wgpu-free boundary,
@@ -398,6 +399,17 @@ What the overlap costs:
   still has a default, and Turnstone's Servo report fills its unstated fields
   from it (`turnstone/src/shell/servo.rs:744`).
 
+**Naming (2026-10-22, with Mark).** `wgpu-cue` is the chosen project and
+wgpu-facing crate name. It places the shared embedding contract beside
+`wgpu-graft`, `wgpu-scry` and `wgpu-weld`, with "cue" covering the inputs,
+commands, events and readiness exchanged between producer and host. If the
+dependency boundary needs a separately packaged wgpu-free core, its name is
+`webcue`. That core would carry the neutral control vocabulary without
+selecting a wgpu major; the wgpu-facing package would carry GPU-specific
+presentation integration. The earlier `surface-engine-api` and
+`web-surface-api` names were descriptive placeholders. This naming decision
+does not settle the repository home or require a separate core package.
+
 **Where a neutral crate could live.** The constraints above still hold: the
 crate is wgpu-free, does not depend on Mere or Inker registries, and sits
 above Graft. Licensing does not decide it, because Mere has been MPL-2.0
@@ -436,8 +448,8 @@ users see.
 
 ## Open decisions
 
-- The public crate name. `surface-engine-api` and `web-surface-api` are working
-  descriptions only.
+- Whether the wgpu-free contract needs a separate `webcue` core package
+  within the `wgpu-cue` project (names chosen in the 2026-10-22 cues).
 - The crate's home: Genet, the Graft repository, a repository of its own, or
   Inker (see the 2026-10-22 cues).
 - Whether one contract names both frame directions, owned native frame and
