@@ -126,6 +126,8 @@ impl SmolwebDocumentSession {
 
     /// The concrete document, for observation downcasts and host-side
     /// banding/link-table inspection.
+    pub fn document(&self) -> &SmolwebDocument { &self.doc }
+
     pub fn document_mut(&mut self) -> &mut SmolwebDocument {
         &mut self.doc
     }
