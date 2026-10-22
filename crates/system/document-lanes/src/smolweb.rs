@@ -294,6 +294,16 @@ impl SmolwebDocument {
         true
     }
 
+    pub fn source_document(&self) -> Arc<EngineDocument> { self.document.clone() }
+    /// Fresh viewport/search/reading state over the same source and held fonts.
+    pub fn new_appearance(&self) -> Self {
+        let mut appearance = Self::from_shared_document(self.document.clone(), self.style.clone(), self.background, self.inline_media);
+        appearance.fonts = self.fonts.clone();
+        appearance.generic_fonts = self.generic_fonts.clone();
+        appearance.dictionaries = self.dictionaries.clone();
+        appearance.images = self.images.clone();
+        appearance
+    }
     pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.reading }
     pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
         value.validate()?;
@@ -751,7 +761,7 @@ impl SmolwebDocument {
         self.scroll_y = self.scroll_y.min(self.max_scroll());
         if let Some(block) = self.pending_reveal.take() {
             self.scroll_to_block(block);
-        }
+        } else { self.reveal_find(); }
     }
 
     fn max_scroll_x(&self) -> f32 {

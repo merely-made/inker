@@ -113,6 +113,9 @@ pub struct SmolwebDocumentSession {
 }
 
 impl SmolwebDocumentSession {
+    pub fn new_appearance(&self, viewport: (u32, u32)) -> Self {
+        Self::new(self.doc.new_appearance(), viewport)
+    }
     pub fn new(doc: SmolwebDocument, viewport: (u32, u32)) -> Self {
         Self {
             doc,
