@@ -911,6 +911,22 @@ mod tests {
     }
 
     #[test]
+    fn retina_reading_paints_code_and_links_after_maximizing_and_reflow() {
+        let html = r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Reading from the graph</title></head><body><main><article><h1>Reading from the graph</h1><p>A useful reading space keeps the text close enough to follow and leaves room for a thought to settle. The document remains part of the graph: its sources, connections and saved places are available without crowding the page.</p><p>A Map and a Read are different projections of the same material. Moving between them changes the presentation, while the document keeps its identity. An Inspector can follow the current view or stay pinned to a source that is worth keeping nearby.</p><h2>Room to think</h2><p>Long lines make it easy to lose the next sentence. A measured column and a little space between lines give the eye a reliable place to return. On a narrow window the column follows the available space; the text stays readable without a second horizontal journey.</p><pre>document → reading projection
+         → map projection
+         → related sources</pre><p><a href="https://example.test/field-notes">Visit the related field notes</a></p><p>The surrounding controls use a smaller interface scale. Their labels remain clear, but their spacing gives the page priority. This local document is a deterministic layout sample; it does not fetch remote content.</p></article></main></body></html>"#;
+        let mut session = ReaderSessionEngine::new(SmolwebTheme::System).spawn(
+            &SessionSpawnRequest::new("https://example.test/reading").with_body(html).with_viewport(549, 1382)
+        ).unwrap();
+        let reader = session.as_any().downcast_mut::<ReaderDocumentSession>().unwrap();
+        reader.set_display_scale(2.0);
+        for width in [549, 2200, 1280, 549] {
+            let scene = reader.doc.try_frame(width, 1382).expect("every visible band must translate");
+            assert!(!scene.ops.is_empty(), "reading must remain painted after resize");
+        }
+    }
+
+    #[test]
     fn reader_owned_virtual_focus_is_current_visible_and_appearance_local() {
         let html = format!("<html><body><main><h1>Focus article</h1><p>A substantial paragraph offers <a href='/next'>visible continuation</a> and enough prose to retain article content.</p>{}</main></body></html>", "<p>Substantial remaining article content extends below this viewport so scrolling can hide the first link.</p>".repeat(80));
         let mut first = reader_session(&html, 480, 300);
