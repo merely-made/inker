@@ -78,7 +78,7 @@ pub struct SmolwebDocument {
     document: Arc<EngineDocument>,
     style: DocumentStyleSheet,
     display_scale: f32,
-    reading: tabard::ReadingPreferences,
+    reading: Option<tabard::ReadingPreferences>,
     find: crate::reading_find::ReadingFind,
     background: [f32; 4],
     images: HashMap<String, DecodedImage>,
@@ -254,7 +254,7 @@ impl SmolwebDocument {
             document,
             style,
             display_scale: 1.0,
-            reading: Default::default(),
+            reading: None,
             find: Default::default(),
             background,
             images: HashMap::new(),
@@ -304,11 +304,11 @@ impl SmolwebDocument {
         appearance.images = self.images.clone();
         appearance
     }
-    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.reading }
+    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.reading.unwrap_or_default() }
     pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
         value.validate()?;
-        if value == self.reading { return Ok(false); }
-        self.reading = value;
+        if Some(value) == self.reading { return Ok(false); }
+        self.reading = Some(value);
         self.invalidate_layout();
         Ok(true)
     }
@@ -747,7 +747,10 @@ impl SmolwebDocument {
             document_canvas::layout::layout_document_with_folds_and_font_resources(
                 &self.document,
                 Viewport::new(size.0 as f32, size.1 as f32),
-                &crate::typography::document_style_for_reading(&self.style, self.reading, self.display_scale),
+                &self.reading.map_or_else(
+                    || crate::typography::document_style_at_display_scale(&self.style, self.display_scale),
+                    |preferences|crate::typography::document_style_for_reading(&self.style, preferences, self.display_scale),
+                ),
                 &self.folds,
                 &self.fonts,
                 &self.generic_fonts,
