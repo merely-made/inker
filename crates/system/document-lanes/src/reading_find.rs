@@ -144,8 +144,12 @@ fn occurrences(text: &str, query: &DocumentFindQuery) -> Vec<std::ops::Range<usi
             ));
         }
     }
+    // Use the same scalar transform for both sides. Whole-string lowercase
+    // applies contextual rules (for example Greek final sigma) that would
+    // otherwise make an uppercase query fail to match the identical source.
+    let needle: String = query.text.chars().flat_map(char::to_lowercase).collect();
     folded
-        .match_indices(&query.text.to_lowercase())
+        .match_indices(&needle)
         .map(|(start, value)| map[start].0..map[start + value.len() - 1].1)
         .fold(Vec::new(), |mut out, range| {
             if out.last() != Some(&range) {
@@ -169,6 +173,7 @@ mod tests {
             assert_eq!(&text[range], "İ");
         }
         assert!(occurrences(text, &DocumentFindQuery::new("xyz")).is_empty());
+        assert_eq!(occurrences("ΟΣ", &DocumentFindQuery::new("ΟΣ")), vec![0..4]);
     }
     #[test]
     fn off_origin_highlights_keep_ordered_edges_inside_the_viewport() {

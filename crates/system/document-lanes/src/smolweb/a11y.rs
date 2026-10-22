@@ -1273,7 +1273,10 @@ mod tests {
         let _ = session.frame(400, 200);
         let scrolled = session.accessibility_projection().unwrap();
         let end_box = scrolled.node(end.id).unwrap().bounds.unwrap();
-        assert!(end_box.y >= 0.0 && end_box.y + end_box.height <= 200.0);
+        // Subtracting the scroll offset can leave a few f32 ULPs at the
+        // viewport edge (for example 200.00002 after revealing the last row).
+        assert!(end_box.y >= -0.01 && end_box.y + end_box.height <= 200.01,
+            "revealed link bounds: {end_box:?}");
         assert!(session.accessibility_click_target(end.id).is_some());
         assert!(
             !session.dispatch_accessibility_action(&request),
