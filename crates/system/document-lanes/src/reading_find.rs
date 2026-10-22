@@ -66,7 +66,7 @@ impl ReadingFind {
                 let right = (rect.max_x() - left).min(size.0 as f32);
                 let bottom = (rect.max_y() - top).min(size.1 as f32);
                 if right > x && bottom > y {
-                    marks.push_rect(x, y, right - x, bottom - y,
+                    marks.push_rect(x, y, right, bottom,
                         if current { [1.0, 0.67, 0.12, 0.65] } else { [1.0, 0.88, 0.25, 0.35] });
                 }
             }
@@ -108,6 +108,21 @@ mod tests {
         assert_eq!(occurrences(text, &DocumentFindQuery::new("café")), vec![10..15, 16..21]);
         for range in occurrences(text, &DocumentFindQuery::new("i")) { assert_eq!(&text[range], "İ"); }
         assert!(occurrences(text, &DocumentFindQuery::new("xyz")).is_empty());
+    }
+    #[test]
+    fn off_origin_highlights_keep_ordered_edges_inside_the_viewport() {
+        let mut find=ReadingFind::default();
+        find.replace(DocumentFindQuery::new("needle"), &[SearchableText {
+            text:"needle".into(), clusters:vec![(0..6,Rect::from_xywh(400.0,350.0,60.0,20.0))],
+        }]);
+        let mut scene=netrender::Scene::new(640,400);
+        find.paint(&mut scene,0.0,0.0,(640,400));
+        assert!(!scene.ops.is_empty());
+        for op in &scene.ops {
+            let netrender::SceneOp::Rect(rect)=op else { panic!("find emits rectangle highlights"); };
+            assert!(rect.x1 > rect.x0 && rect.y1 > rect.y0,"renderer requires ordered edges");
+            assert!(rect.x0>=0.0 && rect.y0>=0.0 && rect.x1<=640.0 && rect.y1<=400.0);
+        }
     }
     #[test]
     fn stepping_wraps_reflows_and_clears() {
