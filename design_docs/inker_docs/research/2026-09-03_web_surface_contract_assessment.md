@@ -5,6 +5,10 @@ extraction remains open. `mere-surface-api` is the separately landed
 application discovery/settings contract, not the browser protocol proposed
 here. Ordered Scry/Weld completions and owned native-frame delivery have
 advanced; the local B0 capability corrections pass their focused tests.
+The [2026-10-22 cues](#four-producers-and-two-frame-directions-2026-10-22)
+add native Genet as a fourth producer and record that Inker's
+`SurfaceProducer` and Cambium's `TextureProducer` move frames in opposite
+directions.
 
 The original assessment sections below describe the September 3 source
 snapshot. Dated findings and migration progress record later repairs and
@@ -301,10 +305,130 @@ on it. Do not create a second, subtly different raw-handle vocabulary in Mere.
   extraction or a unified public browser-contract claim. Preserve the completed
   registry triplet release as its own, narrower qualification.
 
+## Four producers and two frame directions (2026-10-22)
+
+Source read at Mere `7136592c`, Genet `729414db`, Scry `36bac85`, Weld
+`776ed44`, Graft `574ebc4` and Turnstone `cfb2904`. These are cues: what is
+wrong and what fixing it would improve. They do not set an order.
+
+**Native Genet is already a producer.** Graphshell's `ContentProducer`
+(`ports/graphshell/src/retained_content/producer.rs:20`) paints a retained
+Pelt document on the embedding host's device and exposes its semantics and
+actions, and Pelt core has an embeddable controller and routed content API.
+What Genet lacks is the browser-control face that hosts use for Scry, Weld
+and Servo: navigation, one ordered event stream, correlated requests and a
+complete capability report. A packaged Genet producer (a "wgpu Genet") would
+mostly assemble pieces that exist: the document session, the render host and
+the Graphshell producer. Because Mere and Genet own both sides of it, it is
+the one producer where the contract's hard parts can be proven without a
+supplier in the way: the full IME lifecycle, accessibility semantics and
+actions, and a frame that is genuinely non-blocking.
+
+**Two frame directions.** The contracts move frames opposite ways.
+
+- Inker `SurfaceProducer` (`crates/inker/inker/src/surface_engine.rs:985`):
+  the producer renders on its own device or process and hands over a
+  `SurfaceFrame` that the host imports through Graft. Scry, Weld and Servo
+  work this way.
+- Cambium `TextureProducer`
+  (`crates/cambium/cambium-rootstock/src/producer.rs:123`): the host lends its
+  `wgpu::Device`, queue and `RenderCore`, and the producer renders a
+  `ProducedTexture` on them. It also carries `portable_scene`, `semantics`,
+  `act`, `suspend` and `retire`. Native Genet works this way.
+
+Sending Genet through native export and import would add a copy and a sync
+point for nothing, and external engines cannot render on a lent device. A
+four-producer contract therefore needs a transport that names both: an owned
+native frame under Graft's `grafting-frame` custody, or rendering into a
+host-lent device. One control plane can sit over both. Pelt already does this
+inside one application: `PeltContent` (`ports/pelt/core/README.md`) puts a
+document lane and a live web-engine surface lane behind one command, input,
+frame and routing API. It is the closest existing precedent for a front that
+spans both directions, although it is Pelt's API rather than a neutral one. The lent-device path
+names a wgpu major by construction, so it belongs in a wgpu-specific adapter
+while the neutral types stay wgpu-free, as the recommended shape above
+requires. Each side currently owns half of what a unified contract needs:
+the producer-side accessibility channel exists only on `TextureProducer`
+(`semantics`/`act`), while `WebSurfaceCapabilities.accessibility` is a status
+with no channel behind it, and the browser controls exist only on
+`WebSurface`.
+
+**Five overlapping contracts.**
+
+| Contract | Home | Shape | Overlap |
+| --- | --- | --- | --- |
+| `ShellEngine` / `ShellEngineCapabilities` | Genet `components/genet-host-api` | Five booleans (JavaScript, WebDriver, DevTools, WebGPU, WebXR) for diagnostic Pelt | A coarse capability report beside `WebSurfaceCapabilities` |
+| `document-session-api` | Genet `components/shared/document-session-api` | Retained sessions; `SessionIme` and `SessionInput` (`session_engine.rs:421`, `:439`); `DocumentCapabilities`; accessibility; capture | `DocumentCapabilities` is already shared: Inker embeds it as `WebSurfaceCapabilities.document` |
+| `SurfaceProducer` / `WebSurface` | Mere `crates/inker/inker/src/surface_engine.rs` | Import-direction frames, browser controls, ordered events, `WebSurfaceCapabilities` | The de facto shared browser contract |
+| `TextureProducer` | Mere `crates/cambium/cambium-rootstock` | Host-device frames, scene export, semantics and actions | The only producer-side accessibility channel |
+| Supplier traits | `scrying` `WebSurfaceProducer`; `welding` `CefSurfaceProducer` | Each has its own `NativeFrame`, events and capability struct | Translated by `scrying-engine` and `weld-engine`. Graft has no web-control trait; Servo's lives in Turnstone `src/shell/servo.rs` |
+
+What the overlap costs:
+
+- Three capability vocabularies (`ShellEngineCapabilities`,
+  `WebSurfaceCapabilities` and each supplier's struct) can disagree, and only
+  the middle one reaches Turnstone's inspector.
+- Scry, Weld and Graft each define a native-frame type beside the published
+  `grafting-frame`.
+- IME is split four ways. Genet's `SessionIme` carries preedit with selection
+  and commit. Weld exposes composition set/commit/finish/cancel and geometry.
+  Scry only observes editable focus and caret. Inker's surface keyboard
+  envelope carries no composition, and `scrying-engine` turns Scry's
+  text-input events into diagnostics without projecting composition or caret
+  geometry. Genet's `SessionInput` (key, keyboard-produced text, independent
+  text, IME) is the richest of the four and the natural source for shared
+  input and IME types.
+- Two earlier mismatches still hold. Scry's default `try_acquire_frame` calls
+  the blocking `acquire_frame` (`scrying/src/lib.rs:1549`), against "a frame
+  is either immediately available or it is not". `WebSurface::capabilities`
+  still has a default, and Turnstone's Servo report fills its unstated fields
+  from it (`turnstone/src/shell/servo.rs:744`).
+
+**Where a neutral crate could live.** The constraints above still hold: the
+crate is wgpu-free, does not depend on Mere or Inker registries, and sits
+above Graft. Licensing does not decide it, because Mere has been MPL-2.0
+like the rest of the family since `e9aadb4ac` (2026-08-27).
+
+- *Genet, as a dependency-free component beside `genet-host-api`.* Genet
+  already owns `DocumentCapabilities` and the richest input vocabulary, and
+  Inker depends on `document-session-api` today. The cost is that Scry, Weld
+  and Servo consumers would depend on a Genet-repository crate, making Genet
+  the owner of the external engines' contract.
+- *The Graft repository, beside `grafting-frame`.* Graft already owns custody,
+  and Scry and Weld already depend on it. The cost is that browser control is
+  not Graft's subject; the architectural ruling above keeps Graft below the
+  protocol.
+- *A repository of its own.* It is neutral for all four producers. The cost
+  is one more release train in a family that releases in one breath.
+- *Inker, as today.* The dependency-direction ruling rules this out for the
+  neutral types, and an external host would have to pull Mere.
+
+Any home other than Inker changes this document's ruling that Inker owns
+`WebSurface`, and the ownership note in Genet's
+`docs/2026-08-14_web_platform_host_contract_plan.md` with it.
+
+**Capability reports as the browser taxonomy.** A report describes a live
+producer configuration, not an engine name. A useful one distinguishes
+backend identity and version; platform and enabled build features; the
+selected frame direction and transport; supported, partial and unavailable
+operations with reasons; and runtime observations that confirm or degrade
+the initial probe. Scry needs this most, because one name covers WebView2,
+WKWebView, WebKitGTK and WPE. CEF's statically plausible acceleration is not
+observed acceleration. Turnstone's inspector
+(`turnstone/src/inspector_controls.rs:80`) shows the four
+`DocumentCapabilities` controls out of roughly twenty
+`WebSurfaceCapabilities` fields, so the full report is not yet the taxonomy
+users see.
+
 ## Open decisions
 
 - The public crate name. `surface-engine-api` and `web-surface-api` are working
   descriptions only.
+- The crate's home: Genet, the Graft repository, a repository of its own, or
+  Inker (see the 2026-10-22 cues).
+- Whether one contract names both frame directions, owned native frame and
+  host-lent device, or whether `TextureProducer` stays a separate in-device
+  contract beside it.
 - Whether synchronous compatibility helpers live in adapter crates only or in
   the API crate as explicitly blocking convenience functions.
 - Whether CPU snapshot and native child overlay outputs are first-class v1 frame
