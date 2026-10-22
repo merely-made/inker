@@ -243,6 +243,15 @@ impl ResourceFetcher for RemoteFetcher {
 /// a protocol error line as a document, matching the http path's non-2xx handling.
 #[cfg(feature = "smolweb")]
 fn smolweb_get_bytes(url: &str) -> Option<Vec<u8>> {
+    let parsed = url::Url::parse(url).ok()?;
+    // The shared-site plan (2026-10-20_shared_site_model_plan.md) requires
+    // explicit Submit for Titan and Spartan query/data exchanges. This is
+    // the same host read-admission rule as mere-fetch's redirect-hop guard;
+    // keep this tiny predicate local rather than adding a fetch dependency.
+    // Refuse before either trust setup or the general-purpose transport.
+    if parsed.scheme() == "titan" || (parsed.scheme() == "spartan" && parsed.query().is_some()) {
+        return None;
+    }
     install_tofu();
     runtime().block_on(async move {
         match errand::fetch(url).await {
@@ -502,6 +511,149 @@ mod smolweb_tests {
         assert!(
             RemoteFetcher::shared().fetch("wat://nope/").is_none(),
             "a non-smolweb scheme is not an errand fetch nor a readable path"
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn submission_targets_are_refused_without_a_connection() {
+        use std::{
+            io,
+            net::TcpListener,
+            sync::{
+                Arc,
+                atomic::{AtomicBool, Ordering},
+            },
+            thread,
+            time::{Duration, Instant},
+        };
+
+        let fetcher = RemoteFetcher::shared();
+        for (scheme, query) in [
+            ("titan", ""),
+            ("spartan", "?private%20payload"),
+            ("spartan", "?"),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let url = format!(
+                "{scheme}://{}/submit{query}",
+                listener.local_addr().unwrap()
+            );
+            let stop = Arc::new(AtomicBool::new(false));
+            let worker_stop = stop.clone();
+            let probe = thread::spawn(move || {
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let mut accepted = 0;
+                loop {
+                    match listener.accept() {
+                        Ok((socket, _)) => {
+                            // Close immediately: a missing admission guard must
+                            // fail the assertion instead of hanging in TLS/read.
+                            accepted += 1;
+                            drop(socket);
+                        },
+                        Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                            if worker_stop.load(Ordering::Acquire) || Instant::now() >= deadline {
+                                break;
+                            }
+                            thread::sleep(Duration::from_millis(2));
+                        },
+                        Err(error) => panic!("submission probe accept failed: {error}"),
+                    }
+                }
+                accepted
+            });
+            let bytes = fetcher.fetch(&url);
+            let response = fetcher.fetch_response(&url);
+            stop.store(true, Ordering::Release);
+            let accepted = probe.join().unwrap();
+            assert_eq!(accepted, 0, "a refused read must not reach the transport");
+            assert!(bytes.is_none());
+            assert!(response.is_none());
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spartan_fixture(response: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<u8>>) {
+        use std::{
+            io::{self, Read, Write},
+            net::TcpListener,
+            thread,
+            time::{Duration, Instant},
+        };
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let url = format!("spartan://{}/saved", listener.local_addr().unwrap());
+        let worker = thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let mut stream = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                        assert!(
+                            Instant::now() < deadline,
+                            "Spartan fixture was not contacted"
+                        );
+                        thread::sleep(Duration::from_millis(5));
+                    },
+                    Err(error) => panic!("Spartan fixture accept failed: {error}"),
+                }
+            };
+            // Accepted sockets inherit the listener's nonblocking flag on
+            // Windows; switch to bounded blocking IO for the fixture exchange.
+            stream.set_nonblocking(false).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n") {
+                assert!(request.len() < 1024);
+                let mut byte = [0];
+                stream.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            assert_eq!(request, b"127.0.0.1 /saved 0\r\n");
+            stream.write_all(&response).unwrap();
+            request
+        });
+        (url, worker)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn queryless_spartan_read_keeps_exact_body_bytes() {
+        let body = b"# Saved\r\n\0\xff";
+        let mut response = b"2 application/octet-stream\r\n".to_vec();
+        response.extend_from_slice(body);
+        let (url, server) = spartan_fixture(response);
+        let bytes = RemoteFetcher::shared().fetch(&url);
+        server.join().unwrap();
+        assert_eq!(bytes.unwrap(), body);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn spartan_redirect_stays_a_failed_load_and_is_not_followed() {
+        use std::{io, net::TcpListener};
+
+        let target = TcpListener::bind("127.0.0.1:0").unwrap();
+        target.set_nonblocking(true).unwrap();
+        let response = format!(
+            "3 spartan://{}/submit?private\r\n",
+            target.local_addr().unwrap()
+        );
+        let (url, server) = spartan_fixture(response.into_bytes());
+        let bytes = RemoteFetcher::shared().fetch(&url);
+        server.join().unwrap();
+        assert!(bytes.is_none());
+        assert!(
+            matches!(target.accept(), Err(error) if error.kind() == io::ErrorKind::WouldBlock),
+            "the helper must continue to leave redirects unfollowed"
         );
     }
 }
