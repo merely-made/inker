@@ -1902,6 +1902,16 @@ mod typography_tests {
                 .height
                 > old_height
         );
+        let body_size = |doc: &SmolwebDocument| doc.layout.as_ref().unwrap().packet.blocks.iter().find_map(|block| match &block.kind {
+            document_canvas::RenderedBlockKind::Text{glyph_runs}=>glyph_runs.first().map(|run|run.font_size), _=>None,
+        }).unwrap();
+        assert_eq!(body_size(&doc),24.0,"hosts which did not opt into reading controls retain explicit styles");
+        let mut other=doc.new_appearance();
+        let mut preferences=tabard::ReadingPreferences::default(); preferences.step_text(true);
+        doc.set_reading_preferences(preferences).unwrap();
+        doc.frame(300,200); other.frame(300,200);
+        assert_eq!(body_size(&doc),20.0);
+        assert_eq!(body_size(&other),24.0,"a fresh projection retains the host baseline until it selects reading intent");
         assert!(!doc.set_style_sheet(style));
     }
 }
