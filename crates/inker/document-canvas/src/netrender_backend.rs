@@ -14,7 +14,7 @@
 //! module only exists to feed the result through the renderer-coupled
 //! translator (behind the `netrender` feature).
 
-use netrender::Scene;
+use netrender::{Scene, SceneOp};
 use paint_list_render::TranslationError;
 
 use crate::font_table::FontTable;
@@ -36,7 +36,7 @@ pub fn scene_from_packet(
     colors: &ColorVocabulary,
 ) -> Result<Scene, TranslationError> {
     let list = paint_list_from_packet(packet, fonts, colors);
-    paint_list_render::translate_paint_list(&list)
+    paint_list_render::translate_paint_list(&list).map(bounded_text_draws)
 }
 
 /// Build a scene while resolving image blocks against decoded host resources.
@@ -47,7 +47,30 @@ pub fn scene_from_packet_with_images(
     images: &HashMap<String, DecodedImage>,
 ) -> Result<Scene, TranslationError> {
     let list = paint_list_from_packet_with_images(packet, fonts, colors, images);
-    paint_list_render::translate_paint_list(&list)
+    paint_list_render::translate_paint_list(&list).map(bounded_text_draws)
+}
+
+// Retained tiles otherwise repeat a whole line's glyph paths in every tile
+// that line crosses. Bounded draws keep that work local at large native text
+// sizes. Glyph positions, shaping, font sidecars and painter order are retained.
+fn bounded_text_draws(mut scene: Scene) -> Scene {
+    scene.ops = scene
+        .ops
+        .into_iter()
+        .flat_map(|op| match op {
+            SceneOp::GlyphRun(run) if run.glyphs.len() > 32 => run
+                .glyphs
+                .chunks(32)
+                .map(|glyphs| {
+                    let mut part = run.clone();
+                    part.glyphs = glyphs.to_vec();
+                    SceneOp::GlyphRun(part)
+                })
+                .collect::<Vec<_>>(),
+            op => vec![op],
+        })
+        .collect();
+    scene
 }
 
 #[cfg(test)]
@@ -100,6 +123,50 @@ mod tests {
             .filter(|op| matches!(op, netrender::SceneOp::GlyphRun(_)))
             .count();
         assert!(glyph_runs >= 1, "expected at least one GlyphRun op");
+    }
+
+    #[test]
+    fn large_reading_draws_preserve_every_shaped_glyph_and_resource() {
+        let mut style = DocumentStyleSheet::default();
+        style.body_font_size = 36.0;
+        let laid = layout_document(
+            &doc(vec![Block::Paragraph {
+                spans: vec![InlineSpan::Text(
+                    "A measured reading line retains every shaped glyph. ".repeat(20),
+                )],
+            }]),
+            Viewport::new(2200.0, 1382.0),
+            &style,
+        );
+        let raw = paint_list_render::translate_paint_list(&paint_list_from_packet(
+            &laid.packet,
+            &laid.fonts,
+            &style.colors,
+        ))
+        .unwrap();
+        assert!(raw.iter_glyph_runs().any(|run| run.glyphs.len() > 32));
+        let bounded = scene_from_packet(&laid.packet, &laid.fonts, &style.colors).unwrap();
+        let glyphs = |scene: &Scene| {
+            scene
+                .iter_glyph_runs()
+                .flat_map(|run| {
+                    run.glyphs
+                        .iter()
+                        .map(move |glyph| (run.font_id, run.font_size, glyph.id, glyph.x, glyph.y))
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            glyphs(&raw),
+            glyphs(&bounded),
+            "shaping and absolute positions are unchanged"
+        );
+        assert_eq!(raw.fonts.len(), bounded.fonts.len());
+        for (before, after) in raw.fonts.iter().zip(&bounded.fonts) {
+            assert_eq!(before.index, after.index);
+            assert_eq!(before.data.as_ref(), after.data.as_ref());
+        }
+        assert!(bounded.iter_glyph_runs().all(|run| run.glyphs.len() <= 32));
     }
 
     #[test]
