@@ -76,6 +76,8 @@ impl Default for SmolwebInlineMediaPolicy {
 /// A retained engine document, its document-canvas layout, and host viewport.
 pub struct SmolwebDocument {
     document: Arc<EngineDocument>,
+    /// Supplied response MIME, distinct from the lowerer's canonical output type.
+    source_content_type: Option<String>,
     style: DocumentStyleSheet,
     display_scale: f32,
     reading: Option<tabard::ReadingPreferences>,
@@ -149,10 +151,13 @@ impl SmolwebDocument {
         url: &str,
         theme: SmolwebTheme,
     ) -> Result<Self, String> {
-        let bytes = fetcher
-            .fetch(without_fragment(url))
-            .ok_or_else(|| format!("could not load {url}"))?;
-        Ok(Self::parse(url, &String::from_utf8_lossy(&bytes), theme))
+        Self::load_input_with_inline_media(
+            fetcher,
+            url,
+            None,
+            theme,
+            SmolwebInlineMediaPolicy::default(),
+        )
     }
 
     /// Fetch a document and apply the host's inline-media presentation policy.
@@ -163,23 +168,39 @@ impl SmolwebDocument {
         theme: SmolwebTheme,
         policy: SmolwebInlineMediaPolicy,
     ) -> Result<Self, String> {
-        let bytes = fetcher
-            .fetch(without_fragment(url))
+        Self::load_input_with_inline_media(fetcher, url, None, theme, policy)
+    }
+
+    #[cfg(feature = "smolweb")]
+    pub(crate) fn load_input_with_inline_media(
+        fetcher: &impl ResourceFetcher,
+        url: &str,
+        fallback_content_type: Option<&str>,
+        theme: SmolwebTheme,
+        policy: SmolwebInlineMediaPolicy,
+    ) -> Result<Self, String> {
+        let response = fetcher
+            .fetch_response(without_fragment(url))
             .ok_or_else(|| format!("could not load {url}"))?;
-        Ok(Self::parse_with_inline_media(
-            url,
-            &String::from_utf8_lossy(&bytes),
-            theme,
-            policy,
-        ))
+        // Keep the existing requested document/fragment identity. Redirect and
+        // effective-base policy remain with the embedding host.
+        let mut input = EngineInput::new(url, String::from_utf8_lossy(&response.bytes));
+        input.content_type = response
+            .content_type
+            .or_else(|| fallback_content_type.map(str::to_owned));
+        Ok(Self::parse_input_with_inline_media(&input, theme, policy))
     }
 
     /// Lower already-fetched content through the matching Nematic engine.
     #[cfg(feature = "smolweb")]
     pub fn parse(url: &str, body: &str, theme: SmolwebTheme) -> Self {
-        let document = lower(url, body);
-        let (style, background) = style_for_theme(&theme, url, &document.content_type);
-        Self::from_document(document, style, background)
+        Self::parse_input(&EngineInput::new(url, body), theme)
+    }
+
+    /// Lower supplied text and response MIME without performing a fetch.
+    #[cfg(feature = "smolweb")]
+    pub fn parse_input(input: &EngineInput, theme: SmolwebTheme) -> Self {
+        Self::parse_input_with_inline_media(input, theme, SmolwebInlineMediaPolicy::default())
     }
 
     /// Lower an already-fetched body and expose eligible linked images for the
@@ -191,10 +212,23 @@ impl SmolwebDocument {
         theme: SmolwebTheme,
         policy: SmolwebInlineMediaPolicy,
     ) -> Self {
-        let mut document = lower(url, body);
+        Self::parse_input_with_inline_media(&EngineInput::new(url, body), theme, policy)
+    }
+
+    /// Preserve supplied response MIME while applying host inline-media policy.
+    #[cfg(feature = "smolweb")]
+    pub fn parse_input_with_inline_media(
+        input: &EngineInput,
+        theme: SmolwebTheme,
+        policy: SmolwebInlineMediaPolicy,
+    ) -> Self {
+        let mut document = lower(input);
         promote_inline_image_links(&mut document, policy);
-        let (style, background) = style_for_theme(&theme, url, &document.content_type);
-        Self::from_document_with_media_policy(document, style, background, policy)
+        let (style, background) = style_for_theme(&theme, &input.address, &document.content_type);
+        let mut retained =
+            Self::from_document_with_media_policy(document, style, background, policy);
+        retained.source_content_type = input.content_type.clone();
+        retained
     }
 
     /// Retain an already-lowered document with an explicit host style.
@@ -252,6 +286,7 @@ impl SmolwebDocument {
     ) -> Self {
         Self {
             document,
+            source_content_type: None,
             style,
             display_scale: 1.0,
             reading: None,
@@ -297,7 +332,13 @@ impl SmolwebDocument {
     pub fn source_document(&self) -> Arc<EngineDocument> { self.document.clone() }
     /// Fresh viewport/search/reading state over the same source and held fonts.
     pub fn new_appearance(&self) -> Self {
-        let mut appearance = Self::from_shared_document(self.document.clone(), self.style.clone(), self.background, self.inline_media);
+        let mut appearance = Self::from_shared_document(
+            self.document.clone(),
+            self.style.clone(),
+            self.background,
+            self.inline_media,
+        );
+        appearance.source_content_type = self.source_content_type.clone();
         appearance.fonts = self.fonts.clone();
         appearance.generic_fonts = self.generic_fonts.clone();
         appearance.dictionaries = self.dictionaries.clone();
@@ -359,9 +400,21 @@ impl SmolwebDocument {
     /// the replacement document.
     #[cfg(feature = "smolweb")]
     pub fn replace_body(&mut self, url: &str, body: &str) {
-        let mut document = lower(url, body);
+        let mut input = EngineInput::new(url, body);
+        if url == self.document.address {
+            input.content_type = self.source_content_type.clone();
+        }
+        self.replace_input(&input);
+    }
+
+    /// Replace a streamed body and its response MIME explicitly. `None` means
+    /// unknown MIME; it never borrows interpretation metadata from an old page.
+    #[cfg(feature = "smolweb")]
+    pub fn replace_input(&mut self, input: &EngineInput) {
+        let mut document = lower(input);
         promote_inline_image_links(&mut document, self.inline_media);
         self.replace_document(document);
+        self.source_content_type = input.content_type.clone();
     }
 
     /// Replace the retained document in place with an already-lowered one,
@@ -369,6 +422,7 @@ impl SmolwebDocument {
     /// reconciled by heading key, so it survives streamed prefixes and drops
     /// only for an edited heading; a new address starts fresh.
     pub fn replace_document(&mut self, document: EngineDocument) {
+        self.source_content_type = None;
         if document.address == self.document.address {
             self.folds.reconcile(&document.navigation);
         } else {
@@ -1161,12 +1215,42 @@ fn decode_image(bytes: &[u8], policy: SmolwebInlineMediaPolicy) -> Option<Decode
 }
 
 #[cfg(feature = "smolweb")]
-fn lower(url: &str, body: &str) -> EngineDocument {
-    let scheme = url
+fn lower(input: &EngineInput) -> EngineDocument {
+    let scheme = input
+        .address
         .split_once("://")
         .map(|(scheme, _)| scheme)
         .unwrap_or("");
-    let engine: Box<dyn Engine> = match scheme {
+    let primary = input
+        .content_type
+        .as_deref()
+        .and_then(|value| value.split(';').next())
+        .map(|value| value.trim().to_ascii_lowercase());
+    // MIME refinements already named by EngineRoutePolicy take precedence over
+    // the carrier. In particular a literal response is never sniffed as markup.
+    let by_type: Option<Box<dyn Engine>> = match primary.as_deref() {
+        Some("text/plain") => Some(Box::new(nematic::TextEngine::new())),
+        Some("text/markdown" | "text/x-markdown") => Some(Box::new(nematic::MarkdownEngine::new())),
+        Some("text/gemini") => Some(Box::new(nematic::GemtextEngine::new())),
+        Some("text/scroll" | "text/x-scroll") => Some(Box::new(nematic::ScrollEngine::new())),
+        Some("application/gopher-menu") => Some(Box::new(nematic::GopherEngine::new())),
+        Some("text/x-finger") => Some(Box::new(nematic::FingerEngine::new())),
+        Some("application/x-nex") => Some(Box::new(nematic::NexEngine::new())),
+        Some("application/x-guppy") => Some(Box::new(nematic::GuppyEngine::new())),
+        Some("application/x-titan") => Some(Box::new(nematic::TitanEngine::new())),
+        Some("message/x-misfin") => Some(Box::new(nematic::MisfinEngine::new())),
+        Some(
+            "application/rss+xml"
+            | "application/atom+xml"
+            | "application/feed+xml"
+            | "application/feed+json",
+        ) => Some(Box::new(nematic::FeedEngine::new())),
+        Some("application/xml" | "text/xml") if looks_like_feed(&input.body) => {
+            Some(Box::new(nematic::FeedEngine::new()))
+        },
+        _ => None,
+    };
+    let engine: Box<dyn Engine> = by_type.unwrap_or_else(|| match scheme {
         "gopher" => Box::new(nematic::GopherEngine::new()),
         "nex" => Box::new(nematic::NexEngine::new()),
         "finger" => Box::new(nematic::FingerEngine::new()),
@@ -1175,13 +1259,12 @@ fn lower(url: &str, body: &str) -> EngineDocument {
         "misfin" => Box::new(nematic::MisfinEngine::new()),
         "guppy" => Box::new(nematic::GuppyEngine::new()),
         "scroll" => Box::new(nematic::ScrollEngine::new()),
-        _ if looks_like_feed(body) => Box::new(nematic::FeedEngine::new()),
+        _ if looks_like_feed(&input.body) => Box::new(nematic::FeedEngine::new()),
         _ => Box::new(nematic::GemtextEngine::new()),
-    };
-    let input = EngineInput::new(url, body);
-    engine.render(&input).unwrap_or_else(|_| {
+    });
+    engine.render(input).unwrap_or_else(|_| {
         nematic::GemtextEngine::new()
-            .render(&input)
+            .render(input)
             .expect("gemtext lowering is infallible")
     })
 }
@@ -1292,6 +1375,89 @@ fn parse_color(value: &str) -> Option<[f32; 4]> {
 #[cfg(all(test, feature = "smolweb"))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn response_mime_precedes_carrier_and_plain_text_is_not_sniffed() {
+        let body = "# Literal heading\n<rss><channel><title>Still literal</title></channel></rss>";
+        let plain = SmolwebDocument::parse_input(
+            &EngineInput::new("scroll://source.test/page", body)
+                .with_content_type("Text/Plain; charset=utf-8"),
+            SmolwebTheme::Plain,
+        );
+        assert!(plain.document().title.is_none());
+        assert_eq!(
+            plain.document().provenance.source_kind.as_deref(),
+            Some("nematic.text")
+        );
+        assert!(
+            plain
+                .document()
+                .blocks
+                .iter()
+                .all(|block| matches!(block, Block::Paragraph { .. }))
+        );
+        let markdown = SmolwebDocument::parse_input(
+            &EngineInput::new("gopher://source.test/page", "# Markdown heading\n")
+                .with_content_type("text/markdown;charset=utf-8"),
+            SmolwebTheme::Plain,
+        );
+        assert_eq!(
+            markdown.document().provenance.source_kind.as_deref(),
+            Some("nematic.markdown")
+        );
+        assert_eq!(
+            markdown.document().title.as_deref(),
+            Some("Markdown heading")
+        );
+        let feed = SmolwebDocument::parse_input(
+            &EngineInput::new("gemini://source.test/feed", "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Feed</title><link>https://source.test/</link><description>Saved</description></channel></rss>")
+                .with_content_type("application/xml"),
+            SmolwebTheme::Plain,
+        );
+        assert_eq!(
+            feed.document().provenance.source_kind.as_deref(),
+            Some("nematic.feed")
+        );
+        assert_eq!(feed.document().title.as_deref(), Some("Feed"));
+    }
+
+    #[test]
+    fn streamed_replacement_retains_response_mime_and_clears_stale_interpretation() {
+        let url = "scroll://source.test/page";
+        let input =
+            EngineInput::new(url, "##### Prefix\n").with_content_type("text/scroll;lang=fr");
+        let mut document = SmolwebDocument::parse_input(&input, SmolwebTheme::Plain);
+        let mut appearance = document.new_appearance();
+        appearance.replace_body(url, "##### Complete\n=> /record Cited [Citation]\n");
+        assert_eq!(
+            appearance.source_content_type.as_deref(),
+            Some("text/scroll;lang=fr")
+        );
+        assert!(
+            appearance
+                .document()
+                .blocks
+                .iter()
+                .any(|block| matches!(block, Block::Heading { level: 5, .. }))
+        );
+        assert_eq!(
+            appearance.document().provenance.source_label.as_deref(),
+            Some("scrolltext")
+        );
+        document.replace_input(
+            &EngineInput::new(url, "# Literal now\n").with_content_type("text/plain"),
+        );
+        assert!(document.document().title.is_none());
+        document.replace_body("gemini://source.test/new", "# New address\n");
+        assert_eq!(document.document().title.as_deref(), Some("New address"));
+        assert!(document.source_content_type.is_none());
+        document.replace_input(&EngineInput::new(url, "# Explicit unknown MIME\n"));
+        assert_eq!(
+            document.document().title.as_deref(),
+            Some("Explicit unknown MIME")
+        );
+        assert!(document.source_content_type.is_none());
+    }
 
     fn test_png() -> Vec<u8> {
         let image = image::RgbaImage::from_pixel(2, 1, image::Rgba([20, 40, 60, 255]));

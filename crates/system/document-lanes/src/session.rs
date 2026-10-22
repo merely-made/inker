@@ -82,15 +82,19 @@ impl<Fetch: ResourceFetcher + Send + Sync> SessionEngine<Scene> for SmolwebSessi
         request: &SessionSpawnRequest,
     ) -> Result<Box<dyn DocumentSession<Scene>>, SessionError> {
         let doc = match &request.body {
-            Some(body) => SmolwebDocument::parse_with_inline_media(
-                &request.address,
-                body,
-                self.theme.clone(),
-                self.inline_media,
-            ),
-            None => SmolwebDocument::load_with_inline_media(
+            Some(body) => {
+                let mut input = inker::EngineInput::new(&request.address, body);
+                input.content_type = request.content_type.clone();
+                SmolwebDocument::parse_input_with_inline_media(
+                    &input,
+                    self.theme.clone(),
+                    self.inline_media,
+                )
+            },
+            None => SmolwebDocument::load_input_with_inline_media(
                 &self.fetcher,
                 &request.address,
+                request.content_type.as_deref(),
                 self.theme.clone(),
                 self.inline_media,
             )
@@ -148,6 +152,12 @@ impl SmolwebDocumentSession {
     #[cfg(feature = "smolweb")]
     pub fn replace_body(&mut self, url: &str, body: &str) {
         self.doc.replace_body(url, body);
+    }
+
+    /// Replace streamed content while preserving its explicit response MIME.
+    #[cfg(feature = "smolweb")]
+    pub fn replace_input(&mut self, input: &inker::EngineInput) {
+        self.doc.replace_input(input);
     }
 
     /// Swap in an already-lowered document in place, keeping scroll and fold
@@ -316,6 +326,7 @@ mod navigation_tests;
 mod tests {
     use genet_host_api::ResourceFetcher;
     use inker::session_engine::{DocumentSession, SessionEngine, SessionSpawnRequest};
+    use netrender::Scene;
 
     use super::{SmolwebDocumentSession, SmolwebSessionEngine};
 
@@ -332,6 +343,116 @@ mod tests {
         fn fetch(&self, _url: &str) -> Option<Vec<u8>> {
             None
         }
+    }
+
+    fn assert_native_scroll(session: &dyn DocumentSession<Scene>) {
+        let session = session
+            .as_any_ref()
+            .downcast_ref::<SmolwebDocumentSession>()
+            .unwrap();
+        let document = session.document().document();
+        assert_eq!(
+            document.provenance.source_label.as_deref(),
+            Some("scrolltext")
+        );
+        assert!(
+            document
+                .blocks
+                .iter()
+                .any(|block| matches!(block, inker::Block::Heading { level: 5, .. }))
+        );
+        assert!(document.blocks.iter().any(|block| matches!(block,
+            inker::Block::Paragraph { spans } if spans.iter().any(|span| matches!(span,
+                inker::InlineSpan::Link { predicate: Some(predicate), .. } if predicate == "Citation"
+            ))
+        )));
+    }
+
+    #[test]
+    fn supplied_scroll_body_and_mime_win_without_fetching() {
+        struct PanicFetch;
+        impl ResourceFetcher for PanicFetch {
+            fn fetch(&self, _: &str) -> Option<Vec<u8>> {
+                panic!("supplied bodies must never fetch")
+            }
+            fn fetch_request(
+                &self,
+                _: &genet_host_api::ResourceRequest,
+            ) -> Option<genet_host_api::ResourceFetchResponse> {
+                panic!("supplied bodies must never fetch")
+            }
+        }
+        let engine =
+            SmolwebSessionEngine::new("nematic.scroll", PanicFetch, crate::SmolwebTheme::Plain);
+        let request = SessionSpawnRequest::new("scroll://source.test/page")
+            .with_body("##### Native fifth level\n=> /record Cited [Citation]\n")
+            .with_content_type("Text/Scroll; charset=utf-8;lang=fr");
+        let session = engine.spawn(&request).unwrap();
+        assert_native_scroll(session.as_ref());
+        let empty = engine
+            .spawn(
+                &SessionSpawnRequest::new("scroll://source.test/page")
+                    .with_body("")
+                    .with_content_type("text/plain"),
+            )
+            .unwrap();
+        assert!(empty.inspect().unwrap().title.is_none());
+    }
+
+    #[test]
+    fn bodyless_spawn_uses_response_mime_before_a_request_hint() {
+        struct ResponseFetch(Option<&'static str>);
+        impl ResourceFetcher for ResponseFetch {
+            fn fetch(&self, _: &str) -> Option<Vec<u8>> {
+                panic!("use the response seam")
+            }
+            fn fetch_request(
+                &self,
+                _: &genet_host_api::ResourceRequest,
+            ) -> Option<genet_host_api::ResourceFetchResponse> {
+                None
+            }
+            fn fetch_response(&self, url: &str) -> Option<genet_host_api::ResourceResponse> {
+                assert_eq!(url, "scroll://source.test/page");
+                Some(genet_host_api::ResourceResponse {
+                    final_url: url.to_owned(),
+                    content_type: self.0.map(str::to_owned),
+                    bytes: b"##### Loaded fifth level\n=> /record Cited [Citation]\n".to_vec(),
+                })
+            }
+        }
+        let engine = SmolwebSessionEngine::new(
+            "nematic.scroll",
+            ResponseFetch(Some("text/scroll;lang=fr")),
+            crate::SmolwebTheme::Plain,
+        );
+        let session = engine
+            .spawn(
+                &SessionSpawnRequest::new("scroll://source.test/page#anchor")
+                    .with_content_type("text/plain"),
+            )
+            .unwrap();
+        assert_native_scroll(session.as_ref());
+        let held = session
+            .as_any_ref()
+            .downcast_ref::<SmolwebDocumentSession>()
+            .unwrap();
+        assert_eq!(
+            held.document().document().address,
+            "scroll://source.test/page#anchor"
+        );
+        let engine = SmolwebSessionEngine::new(
+            "nematic.scroll",
+            ResponseFetch(None),
+            crate::SmolwebTheme::Plain,
+        );
+        let session = engine
+            .spawn(
+                &SessionSpawnRequest::new("scroll://source.test/page")
+                    .with_content_type("text/scroll"),
+            )
+            .unwrap();
+        assert_native_scroll(session.as_ref());
     }
 
     #[test]
