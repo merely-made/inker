@@ -216,7 +216,7 @@ impl ResourceFetcher for RemoteFetcher {
             .and_then(|(scheme, _)| errand::Scheme::parse(scheme))
             .is_some()
         {
-            return smolweb_get_bytes(url).map(|bytes| ResourceResponse::new(url, bytes));
+            return smolweb_get_response(url);
         }
         let response = self.fetch_request(&ResourceRequest::plain_get(url))?;
         (200..300)
@@ -242,7 +242,7 @@ impl ResourceFetcher for RemoteFetcher {
 /// runtime. The caller surfaces the `None` as a clean load error rather than painting
 /// a protocol error line as a document, matching the http path's non-2xx handling.
 #[cfg(feature = "smolweb")]
-fn smolweb_get_bytes(url: &str) -> Option<Vec<u8>> {
+fn smolweb_get_response(url: &str) -> Option<ResourceResponse> {
     let parsed = url::Url::parse(url).ok()?;
     // The shared-site plan (2026-10-20_shared_site_model_plan.md) requires
     // explicit Submit for Titan and Spartan query/data exchanges. This is
@@ -255,7 +255,23 @@ fn smolweb_get_bytes(url: &str) -> Option<Vec<u8>> {
     install_tofu();
     runtime().block_on(async move {
         match errand::fetch(url).await {
-            Ok(resp) if resp.status == errand::Status::Success => Some(resp.body),
+            Ok(resp) if resp.status == errand::Status::Success => {
+                // These are host representation tags, not wire MIME fields.
+                // Match mere-fetch's existing carrier policy so a synthetic
+                // text/plain Finger reply keeps its literal native lane.
+                let content_type = match errand::Scheme::parse(parsed.scheme()) {
+                    Some(errand::Scheme::Finger) => Some("text/x-finger".to_string()),
+                    Some(errand::Scheme::Nex) => Some("application/x-nex".to_string()),
+                    Some(errand::Scheme::Guppy) => Some("application/x-guppy".to_string()),
+                    Some(errand::Scheme::Titan) => Some("application/x-titan".to_string()),
+                    _ => resp.mime().map(|_| resp.meta.clone()),
+                };
+                Some(ResourceResponse {
+                    final_url: url.to_owned(),
+                    content_type,
+                    bytes: resp.body,
+                })
+            },
             _ => None,
         }
     })
@@ -575,7 +591,12 @@ mod smolweb_tests {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn spartan_fixture(response: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<u8>>) {
+    fn tcp_fixture(
+        scheme: &str,
+        path: &str,
+        expected_request: Vec<u8>,
+        response: Vec<u8>,
+    ) -> (String, std::thread::JoinHandle<Vec<u8>>) {
         use std::{
             io::{self, Read, Write},
             net::TcpListener,
@@ -585,7 +606,7 @@ mod smolweb_tests {
 
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
-        let url = format!("spartan://{}/saved", listener.local_addr().unwrap());
+        let url = format!("{scheme}://{}{path}", listener.local_addr().unwrap());
         let worker = thread::spawn(move || {
             let deadline = Instant::now() + Duration::from_secs(5);
             let mut stream = loop {
@@ -594,11 +615,11 @@ mod smolweb_tests {
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
                         assert!(
                             Instant::now() < deadline,
-                            "Spartan fixture was not contacted"
+                            "Protocol fixture was not contacted"
                         );
                         thread::sleep(Duration::from_millis(5));
                     },
-                    Err(error) => panic!("Spartan fixture accept failed: {error}"),
+                    Err(error) => panic!("Protocol fixture accept failed: {error}"),
                 }
             };
             // Accepted sockets inherit the listener's nonblocking flag on
@@ -617,11 +638,59 @@ mod smolweb_tests {
                 stream.read_exact(&mut byte).unwrap();
                 request.push(byte[0]);
             }
-            assert_eq!(request, b"127.0.0.1 /saved 0\r\n");
+            assert_eq!(request, expected_request);
             stream.write_all(&response).unwrap();
             request
         });
         (url, worker)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spartan_fixture(response: Vec<u8>) -> (String, std::thread::JoinHandle<Vec<u8>>) {
+        tcp_fixture(
+            "spartan",
+            "/saved",
+            b"127.0.0.1 /saved 0\r\n".to_vec(),
+            response,
+        )
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn bodyless_finger_response_keeps_native_representation_and_literal_lines() {
+        struct CapturingFetch(std::sync::Mutex<Option<genet_host_api::ResourceResponse>>);
+        impl ResourceFetcher for CapturingFetch {
+            fn fetch(&self, _: &str) -> Option<Vec<u8>> {
+                panic!("use the response metadata seam")
+            }
+            fn fetch_request(
+                &self,
+                _: &genet_host_api::ResourceRequest,
+            ) -> Option<genet_host_api::ResourceFetchResponse> {
+                None
+            }
+            fn fetch_response(&self, url: &str) -> Option<genet_host_api::ResourceResponse> {
+                let response = RemoteFetcher::shared().fetch_response(url)?;
+                *self.0.lock().unwrap() = Some(response.clone());
+                Some(response)
+            }
+        }
+        let body = b"Login: alice   Name: Alice\r\nPlan:\r\n\r\n  * literal\r\n";
+        let (url, server) = tcp_fixture("finger", "/alice", b"alice\r\n".to_vec(), body.to_vec());
+        let fetcher = CapturingFetch(std::sync::Mutex::new(None));
+        let document = crate::SmolwebDocument::load(&fetcher, &url, crate::SmolwebTheme::Plain);
+        server.join().unwrap();
+        let response = fetcher.0.into_inner().unwrap().unwrap();
+        assert_eq!(response.content_type.as_deref(), Some("text/x-finger"));
+        assert_eq!(response.bytes, body);
+        let document = document.unwrap();
+        assert_eq!(
+            document.document().provenance.source_kind.as_deref(),
+            Some("nematic.finger")
+        );
+        assert!(matches!(document.document().blocks.as_slice(),
+            [inker::Block::Preformatted { text }] if text == "Login: alice   Name: Alice\r\nPlan:\r\n\r\n  * literal"
+        ));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -634,6 +703,22 @@ mod smolweb_tests {
         let bytes = RemoteFetcher::shared().fetch(&url);
         server.join().unwrap();
         assert_eq!(bytes.unwrap(), body);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn queryless_spartan_response_keeps_mime_parameters_and_exact_bytes() {
+        let mime = "text/plain; charset=utf-8;lang=fr";
+        let body = b"# Opaque\r\n\0\xff";
+        let mut wire = format!("2 {mime}\r\n").into_bytes();
+        wire.extend_from_slice(body);
+        let (url, server) = spartan_fixture(wire);
+        let response = RemoteFetcher::shared().fetch_response(&url);
+        server.join().unwrap();
+        let response = response.unwrap();
+        assert_eq!(response.final_url, url);
+        assert_eq!(response.content_type.as_deref(), Some(mime));
+        assert_eq!(response.bytes, body);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
