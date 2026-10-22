@@ -39,6 +39,7 @@ use crate::types::{
 /// `PaintList`'s font side-table). See [`crate::font_table`].
 #[derive(Clone, Debug)]
 pub struct LaidOutDocument {
+    pub searchable: Vec<crate::text::SearchableText>,
     pub packet: DocumentRenderPacket,
     pub fonts: FontTable,
     /// Segmenter dictionaries the text met and the layout did not have; a
@@ -241,6 +242,7 @@ struct DocumentLayouter<'a> {
     cursor_y: f32,
     blocks: Vec<RenderedBlock>,
     interactions: Vec<InteractionRegion>,
+    searchable: Vec<crate::text::SearchableText>,
     max_x: f32,
     /// Interns parley's chosen face per run; sealed into the
     /// [`LaidOutDocument`]'s [`FontTable`] sidecar at `finish`.
@@ -273,6 +275,7 @@ impl<'a> DocumentLayouter<'a> {
             cursor_y: style.vertical_padding,
             blocks: Vec::new(),
             interactions: Vec::new(),
+            searchable: Vec::new(),
             max_x: 0.0,
             fonts: FontInterner::new(),
             base_scheme,
@@ -771,6 +774,7 @@ impl<'a> DocumentLayouter<'a> {
                 });
                 if let Some(laid_out) = &mut laid_out {
                     align_table_cell(laid_out, x, width, alignments.get(column).copied());
+                    self.searchable.push(laid_out.searchable.clone());
                     row_height = row_height.max(laid_out.total_size.height);
                 }
                 row_cells.push((x, width, laid_out));
@@ -869,6 +873,7 @@ impl<'a> DocumentLayouter<'a> {
         let code_color = self.style.token_color(ColorToken::CodeText);
         let link_identity_base = self.reserve_link_identities(flattened.links.len());
         let LaidOutText {
+            searchable,
             glyph_runs,
             total_size,
             mut interactions,
@@ -885,6 +890,7 @@ impl<'a> DocumentLayouter<'a> {
         );
 
         self.interactions.append(&mut interactions);
+        self.searchable.push(searchable);
 
         let bounds = Rect::new(
             origin,
@@ -1199,6 +1205,7 @@ impl<'a> DocumentLayouter<'a> {
             .width
             .max(self.max_x + self.style.horizontal_padding);
         LaidOutDocument {
+            searchable: self.searchable,
             packet: DocumentRenderPacket {
                 viewport: self.viewport,
                 content_bounds: Rect::from_xywh(0.0, 0.0, content_width, total_height),
@@ -1265,6 +1272,9 @@ fn align_table_cell(
 
     for run in &mut laid_out.glyph_runs {
         run.origin.x += shift_for(run.origin.y);
+    }
+    for (_, bounds) in &mut laid_out.searchable.clusters {
+        bounds.origin.x += shift_for(bounds.origin.y);
     }
     for interaction in &mut laid_out.interactions {
         interaction.bounds.origin.x += shift_for(interaction.bounds.origin.y);

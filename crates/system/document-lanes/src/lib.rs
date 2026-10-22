@@ -39,4 +39,5 @@ pub use smolweb::{
 pub mod retained_clip;
 
 pub mod typography;
+mod reading_find;
 pub use typography::document_style_with_typography;

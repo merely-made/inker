@@ -355,7 +355,9 @@ impl ReaderDocumentSession {
     /// document. The source packet is shared; all viewport-dependent state is
     /// fresh for the new appearance.
     pub fn new_appearance(&self, viewport: (u32, u32)) -> Self {
-        Self::from_source(self.source.clone(), viewport)
+        let mut appearance = Self::from_source(self.source.clone(), viewport);
+        appearance.doc = self.doc.new_appearance();
+        appearance
     }
 
     /// Identity receipt for hosts which need to prove two appearances share
@@ -379,6 +381,10 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
+    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.doc.reading_preferences() }
+    pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
+        self.doc.set_reading_preferences(value)
+    }
     pub fn display_scale(&self) -> f32 { self.doc.display_scale() }
     pub fn set_display_scale(&mut self, scale: f32) -> bool { self.doc.set_display_scale(scale) }
     pub fn set_font_family(&mut self, family: &str) {
@@ -535,11 +541,19 @@ impl ReaderDocumentSession {
 }
 
 impl DocumentSession<Scene> for ReaderDocumentSession {
+    fn document_find(&mut self, query: &inker::DocumentFindQuery) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find(query))
+    }
+    fn document_find_step(&mut self, direction: inker::DocumentFindDirection) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find_step(direction))
+    }
+    fn clear_document_find(&mut self) -> Result<(), inker::SessionError> {
+        self.doc.clear_document_find(); Ok(())
+    }
+
     fn document_capabilities(&self) -> DocumentCapabilities {
         DocumentCapabilities {
-            find_in_page: DocumentCapabilityStatus::unsupported(
-                "reader sessions do not expose document find",
-            ),
+            find_in_page: DocumentCapabilityStatus::Supported,
             page_zoom: DocumentCapabilityStatus::unsupported(
                 "reader sessions do not expose page zoom",
             ),
@@ -728,6 +742,38 @@ mod tests {
     }
 
     #[test]
+    fn reading_preferences_and_find_reflow_one_appearance_without_changing_its_source() {
+        let prose = "Words before the <em>needle</em> and after it give this paragraph enough substance to read comfortably. ".repeat(8);
+        let html = format!("<html><body><main><h1>Reading Find</h1><p>{prose}</p><p>Final NEEDLE after the long paragraph.</p></main></body></html>");
+        let mut first = reader_session(&html, 520, 180);
+        let first = first.as_any().downcast_mut::<ReaderDocumentSession>().unwrap();
+        let mut second = first.new_appearance((520,180));
+        first.frame(520,180); second.frame(520,180);
+        let source = first.source_document();
+        let baseline = second.content_height(520,180);
+        let query = inker::DocumentFindQuery::new("the needle and");
+        let found = first.document_find(&query).unwrap();
+        assert_eq!(found.count,8,"inline emphasis is not a search boundary");
+        assert_eq!(found.current,Some(0));
+        let last=first.document_find_step(inker::DocumentFindDirection::Previous).unwrap();
+        assert_eq!(last.current,Some(7));
+        assert!(first.scroll_y()>0.0,"the session reveals the offscreen occurrence");
+        let mut value=tabard::ReadingPreferences::default(); value.step_text(true); value.step_column(false);
+        first.set_reading_preferences(value).unwrap(); first.set_display_scale(2.0);
+        let scene = first.frame(700,360);
+        assert!(scene.ops.iter().any(|op|matches!(op,netrender::SceneOp::GlyphRun(_))));
+        assert_eq!(first.document_find_step(inker::DocumentFindDirection::Next).unwrap().current,Some(0));
+        assert!(Arc::ptr_eq(&source,&first.source_document()));
+        assert!(Arc::ptr_eq(&source,&second.source_document()));
+        assert_eq!(second.reading_preferences(),Default::default());
+        assert_eq!(second.scroll_y(),0.0);
+        assert_eq!(second.content_height(520,180),baseline);
+        assert!(first.document_find(&inker::DocumentFindQuery::new("NEEDLE")).unwrap().count >= 9);
+        first.clear_document_find().unwrap();
+        assert_eq!(first.document_find_step(inker::DocumentFindDirection::Next).unwrap().count,0);
+    }
+
+    #[test]
     fn reader_route_lowers_renders_links_and_reports_lineage() {
         let mut registry = SessionRegistry::<Scene>::new();
         registry.register(Box::new(ReaderSessionEngine::new(SmolwebTheme::Plain)));
@@ -860,13 +906,13 @@ mod tests {
              <a href='/go'>{label}</a> and keeps enough prose for Fleece to retain the article.\
              </p></main></body></html>"
         );
-        let mut session = reader_session(&html, 130, 300);
+        let mut session = reader_session(&html, 130, 900);
         assert!(
             reader(session.as_ref()).accessibility_snapshot().is_none(),
             "sizing and construction do not publish a semantic snapshot"
         );
 
-        let _ = session.frame(130, 300);
+        let _ = session.frame(130, 900);
         let narrow = reader(session.as_ref())
             .accessibility_snapshot()
             .expect("completed frame publishes snapshot");
@@ -886,7 +932,7 @@ mod tests {
         let (x, y) = reader(session.as_ref())
             .accessibility_pointer_target(identity)
             .expect("visible semantic link resolves to a retained point");
-        assert!((0.0..130.0).contains(&x) && (0.0..300.0).contains(&y));
+        assert!((0.0..130.0).contains(&x) && (0.0..900.0).contains(&y));
 
         // A sizing query can rebuild retained geometry but cannot publish it
         // as the next a11y snapshot before the corresponding frame finishes.

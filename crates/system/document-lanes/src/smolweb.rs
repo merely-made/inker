@@ -78,6 +78,8 @@ pub struct SmolwebDocument {
     document: Arc<EngineDocument>,
     style: DocumentStyleSheet,
     display_scale: f32,
+    reading: Option<tabard::ReadingPreferences>,
+    find: crate::reading_find::ReadingFind,
     background: [f32; 4],
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
@@ -252,6 +254,8 @@ impl SmolwebDocument {
             document,
             style,
             display_scale: 1.0,
+            reading: None,
+            find: Default::default(),
             background,
             images: HashMap::new(),
             inline_media,
@@ -288,6 +292,43 @@ impl SmolwebDocument {
         self.style = style;
         self.invalidate_layout();
         true
+    }
+
+    pub fn source_document(&self) -> Arc<EngineDocument> { self.document.clone() }
+    /// Fresh viewport/search/reading state over the same source and held fonts.
+    pub fn new_appearance(&self) -> Self {
+        let mut appearance = Self::from_shared_document(self.document.clone(), self.style.clone(), self.background, self.inline_media);
+        appearance.fonts = self.fonts.clone();
+        appearance.generic_fonts = self.generic_fonts.clone();
+        appearance.dictionaries = self.dictionaries.clone();
+        appearance.images = self.images.clone();
+        appearance
+    }
+    pub fn reading_preferences(&self) -> tabard::ReadingPreferences { self.reading.unwrap_or_default() }
+    pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
+        value.validate()?;
+        if Some(value) == self.reading { return Ok(false); }
+        self.reading = Some(value);
+        self.invalidate_layout();
+        Ok(true)
+    }
+    pub fn document_find(&mut self, query: &inker::DocumentFindQuery) -> inker::DocumentFindState {
+        self.ensure_layout(self.size.0.max(1), self.size.1.max(1));
+        self.find.replace(query.clone(), &self.layout.as_ref().unwrap().searchable);
+        self.reveal_find();
+        self.find.state()
+    }
+    pub fn document_find_step(&mut self, direction: inker::DocumentFindDirection) -> inker::DocumentFindState {
+        self.ensure_layout(self.size.0.max(1), self.size.1.max(1));
+        self.find.step(direction);
+        self.reveal_find();
+        self.find.state()
+    }
+    pub fn clear_document_find(&mut self) { self.find = Default::default(); }
+    fn reveal_find(&mut self) {
+        if let Some(y) = self.find.current_y() {
+            self.scroll_y = (y - 24.0 * self.display_scale).clamp(0.0, self.max_scroll());
+        }
     }
 
     pub fn document(&self) -> &EngineDocument {
@@ -337,6 +378,7 @@ impl SmolwebDocument {
         let retained_images: HashSet<_> = image_urls(&document.blocks).into_iter().collect();
         self.images
             .retain(|url, _| retained_images.contains(url.as_str()));
+        self.find = Default::default();
         self.document = Arc::new(document);
         self.pending_reveal = None;
         self.invalidate_layout();
@@ -705,7 +747,10 @@ impl SmolwebDocument {
             document_canvas::layout::layout_document_with_folds_and_font_resources(
                 &self.document,
                 Viewport::new(size.0 as f32, size.1 as f32),
-                &crate::typography::document_style_at_display_scale(&self.style, self.display_scale),
+                &self.reading.map_or_else(
+                    || crate::typography::document_style_at_display_scale(&self.style, self.display_scale),
+                    |preferences|crate::typography::document_style_for_reading(&self.style, preferences, self.display_scale),
+                ),
                 &self.folds,
                 &self.fonts,
                 &self.generic_fonts,
@@ -713,12 +758,13 @@ impl SmolwebDocument {
             )
             .expect("admitted generic font ledger"),
         );
+        self.find.reflow(&self.layout.as_ref().unwrap().searchable);
         self.size = size;
         self.scroll_x = self.scroll_x.min(self.max_scroll_x());
         self.scroll_y = self.scroll_y.min(self.max_scroll());
         if let Some(block) = self.pending_reveal.take() {
             self.scroll_to_block(block);
-        }
+        } else { self.reveal_find(); }
     }
 
     fn max_scroll_x(&self) -> f32 {
@@ -763,6 +809,7 @@ impl SmolwebDocument {
                 return Err(error.to_string());
             },
         };
+        self.find.paint(&mut scene, self.scroll_x, self.scroll_y, self.size);
         self.paint_focus(&mut scene);
         scene.push_rect(
             0.0,
@@ -1855,6 +1902,16 @@ mod typography_tests {
                 .height
                 > old_height
         );
+        let body_size = |doc: &SmolwebDocument| doc.layout.as_ref().unwrap().packet.blocks.iter().find_map(|block| match &block.kind {
+            document_canvas::RenderedBlockKind::Text{glyph_runs}=>glyph_runs.first().map(|run|run.font_size), _=>None,
+        }).unwrap();
+        assert_eq!(body_size(&doc),24.0,"hosts which did not opt into reading controls retain explicit styles");
+        let mut other=doc.new_appearance();
+        let mut preferences=tabard::ReadingPreferences::default(); preferences.step_text(true);
+        doc.set_reading_preferences(preferences).unwrap();
+        doc.frame(300,200); other.frame(300,200);
+        assert_eq!(body_size(&doc),20.0);
+        assert_eq!(body_size(&other),24.0,"a fresh projection retains the host baseline until it selects reading intent");
         assert!(!doc.set_style_sheet(style));
     }
 }

@@ -26,9 +26,9 @@ use crate::{SmolwebInlineMediaPolicy, SmolwebTheme};
 #[cfg(feature = "smolweb")]
 use inker::{SessionEngine, SessionError, SessionSpawnRequest};
 
-fn retained_document_capabilities(find_reason: impl Into<String>) -> DocumentCapabilities {
+fn retained_document_capabilities(_find_reason: impl Into<String>) -> DocumentCapabilities {
     DocumentCapabilities {
-        find_in_page: DocumentCapabilityStatus::unsupported(find_reason),
+        find_in_page: DocumentCapabilityStatus::Supported,
         page_zoom: DocumentCapabilityStatus::unsupported(
             "smolweb sessions do not expose page zoom",
         ),
@@ -113,6 +113,9 @@ pub struct SmolwebDocumentSession {
 }
 
 impl SmolwebDocumentSession {
+    pub fn new_appearance(&self, viewport: (u32, u32)) -> Self {
+        Self::new(self.doc.new_appearance(), viewport)
+    }
     pub fn new(doc: SmolwebDocument, viewport: (u32, u32)) -> Self {
         Self {
             doc,
@@ -123,6 +126,8 @@ impl SmolwebDocumentSession {
 
     /// The concrete document, for observation downcasts and host-side
     /// banding/link-table inspection.
+    pub fn document(&self) -> &SmolwebDocument { &self.doc }
+
     pub fn document_mut(&mut self) -> &mut SmolwebDocument {
         &mut self.doc
     }
@@ -159,6 +164,16 @@ impl SmolwebDocumentSession {
 }
 
 impl DocumentSession<Scene> for SmolwebDocumentSession {
+    fn document_find(&mut self, query: &inker::DocumentFindQuery) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find(query))
+    }
+    fn document_find_step(&mut self, direction: inker::DocumentFindDirection) -> Result<inker::DocumentFindState, inker::SessionError> {
+        Ok(self.doc.document_find_step(direction))
+    }
+    fn clear_document_find(&mut self) -> Result<(), inker::SessionError> {
+        self.doc.clear_document_find(); Ok(())
+    }
+
     fn document_capabilities(&self) -> DocumentCapabilities {
         retained_document_capabilities("Smolweb sessions do not expose document find")
     }
