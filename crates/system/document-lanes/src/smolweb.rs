@@ -204,7 +204,6 @@ impl SmolwebDocument {
         Self::from_document_with_media_policy(
             document,
             style,
-            display_scale: 1.0,
             background,
             SmolwebInlineMediaPolicy::default(),
         )
@@ -252,6 +251,7 @@ impl SmolwebDocument {
         Self {
             document,
             style,
+            display_scale: 1.0,
             background,
             images: HashMap::new(),
             inline_media,
