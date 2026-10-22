@@ -611,10 +611,13 @@ impl SmolwebDocument {
         true
     }
 
-    /// Fonts supplied by the embedding host, never fetched by this view.
+    /// The host's reading face. Code and column-aligned menu formats retain
+    /// their monospace role. A supplied sans-serif generic can fill glyphs
+    /// missing from the prose face; all font bytes remain host-owned.
     pub fn set_font_family(&mut self, family: &str) {
-        self.style.body_font_family = family.into();
-        self.style.mono_font_family = family.into();
+        if !FIXED_WIDTH_MENU_TYPES.contains(&self.document.content_type.as_str()) {
+            self.style.body_font_family = format!("{family}, sans-serif");
+        }
         self.layout = None;
         self.presented = false;
     }
@@ -1738,6 +1741,10 @@ mod typography_tests {
             }],
         });
         let mut doc = SmolwebDocument::from_shared_document_with_theme(source.clone(), SmolwebTheme::Plain);
+        let code = doc.style_sheet().resolve(document_canvas::BlockRole::Code);
+        doc.set_font_family("serif");
+        assert_eq!(doc.style_sheet().resolve(document_canvas::BlockRole::Code), code,
+            "a prose face cannot replace the code role");
         doc.frame(1200, 600);
         let wide = doc.layout.as_ref().unwrap().packet.clone();
         let paragraph = &wide.blocks[0].bounds;
