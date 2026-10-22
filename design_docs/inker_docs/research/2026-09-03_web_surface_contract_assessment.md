@@ -336,8 +336,11 @@ actions, and a frame that is genuinely non-blocking.
   `ProducedTexture` on them. It also carries `portable_scene`, `semantics`,
   `act`, `suspend` and `retire`. Native Genet works this way.
 
-Sending Genet through native export and import would add a copy and a sync
-point for nothing, and external engines cannot render on a lent device. A
+Sending Genet through native export and import would introduce an
+unnecessary custody and import boundary, with its synchronization
+requirements, and could add copying depending on the transport; its existing
+host-device path should remain directly representable. External engines
+cannot render on a lent device. A
 four-producer contract therefore needs a transport that names both: an owned
 native frame under Graft's `grafting-frame` custody, or rendering into a
 host-lent device. One control plane can sit over both. Pelt already does this
@@ -347,11 +350,22 @@ frame and routing API. It is the closest existing precedent for a front that
 spans both directions, although it is Pelt's API rather than a neutral one. The lent-device path
 names a wgpu major by construction, so it belongs in a wgpu-specific adapter
 while the neutral types stay wgpu-free, as the recommended shape above
-requires. Each side currently owns half of what a unified contract needs:
-the producer-side accessibility channel exists only on `TextureProducer`
-(`semantics`/`act`), while `WebSurfaceCapabilities.accessibility` is a status
-with no channel behind it, and the browser controls exist only on
-`WebSurface`.
+requires.
+
+Accessibility has two producer-facing forms with different semantics.
+`TextureProducer` describes the slot's current state through `semantics` and
+carries actions through `act`, with no snapshot or transaction guarantee
+between reads. `SurfaceProducer` (`surface_engine.rs:1083`) has activation
+returning a root tree identity, ordered tree updates via
+`poll_accessibility_update`, resynchronization that retires the old root,
+and typed actions the host validates against tree, node, generation and
+advertised actions. Turnstone's Servo producer implements all four and
+refuses unadvertised actions; `scrying-engine` and `weld-engine` keep the
+trait defaults. The gap is overlapping channels with different identity,
+update and lifecycle rules, not a missing one. A shared contract that keeps
+the stronger guarantees and makes unwired backends explicit would let one
+host accessibility path serve every producer. Browser controls exist only
+on `WebSurface`.
 
 **Five overlapping contracts.**
 
@@ -359,8 +373,8 @@ with no channel behind it, and the browser controls exist only on
 | --- | --- | --- | --- |
 | `ShellEngine` / `ShellEngineCapabilities` | Genet `components/genet-host-api` | Five booleans (JavaScript, WebDriver, DevTools, WebGPU, WebXR) for diagnostic Pelt | A coarse capability report beside `WebSurfaceCapabilities` |
 | `document-session-api` | Genet `components/shared/document-session-api` | Retained sessions; `SessionIme` and `SessionInput` (`session_engine.rs:421`, `:439`); `DocumentCapabilities`; accessibility; capture | `DocumentCapabilities` is already shared: Inker embeds it as `WebSurfaceCapabilities.document` |
-| `SurfaceProducer` / `WebSurface` | Mere `crates/inker/inker/src/surface_engine.rs` | Import-direction frames, browser controls, ordered events, `WebSurfaceCapabilities` | The de facto shared browser contract |
-| `TextureProducer` | Mere `crates/cambium/cambium-rootstock` | Host-device frames, scene export, semantics and actions | The only producer-side accessibility channel |
+| `SurfaceProducer` / `WebSurface` | Mere `crates/inker/inker/src/surface_engine.rs` | Import-direction frames, browser controls, ordered events, ordered accessibility tree updates, `WebSurfaceCapabilities` | The de facto shared browser contract |
+| `TextureProducer` | Mere `crates/cambium/cambium-rootstock` | Host-device frames, scene export, semantics and actions | A second accessibility form, read as current state rather than an ordered stream |
 | Supplier traits | `scrying` `WebSurfaceProducer`; `welding` `CefSurfaceProducer` | Each has its own `NativeFrame`, events and capability struct | Translated by `scrying-engine` and `weld-engine`. Graft has no web-control trait; Servo's lives in Turnstone `src/shell/servo.rs` |
 
 What the overlap costs:
