@@ -77,6 +77,7 @@ impl Default for SmolwebInlineMediaPolicy {
 pub struct SmolwebDocument {
     document: Arc<EngineDocument>,
     style: DocumentStyleSheet,
+    display_scale: f32,
     background: [f32; 4],
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
@@ -250,6 +251,7 @@ impl SmolwebDocument {
         Self {
             document,
             style,
+            display_scale: 1.0,
             background,
             images: HashMap::new(),
             inline_media,
@@ -611,10 +613,25 @@ impl SmolwebDocument {
         true
     }
 
-    /// Fonts supplied by the embedding host, never fetched by this view.
+    /// Physical pixels per logical reading pixel, independent of a producer's
+    /// raster scale. Each retained appearance owns this presentation value.
+    pub fn display_scale(&self) -> f32 { self.display_scale }
+    pub fn set_display_scale(&mut self, scale: f32) -> bool {
+        let scale = if scale.is_finite() { scale.clamp(0.5, 4.0) } else { 1.0 };
+        if self.display_scale == scale { return false; }
+        self.display_scale = scale;
+        self.layout = None;
+        self.presented = false;
+        true
+    }
+
+    /// The host's reading face. Code and column-aligned menu formats retain
+    /// their monospace role. A supplied sans-serif generic can fill glyphs
+    /// missing from the prose face; all font bytes remain host-owned.
     pub fn set_font_family(&mut self, family: &str) {
-        self.style.body_font_family = family.into();
-        self.style.mono_font_family = family.into();
+        if !FIXED_WIDTH_MENU_TYPES.contains(&self.document.content_type.as_str()) {
+            self.style.body_font_family = format!("{family}, sans-serif, monospace");
+        }
         self.layout = None;
         self.presented = false;
     }
@@ -688,7 +705,7 @@ impl SmolwebDocument {
             document_canvas::layout::layout_document_with_folds_and_font_resources(
                 &self.document,
                 Viewport::new(size.0 as f32, size.1 as f32),
-                &self.style,
+                &crate::typography::document_style_at_display_scale(&self.style, self.display_scale),
                 &self.folds,
                 &self.fonts,
                 &self.generic_fonts,
@@ -1159,12 +1176,20 @@ fn style_for_theme(
     style.body_font_family = if FIXED_WIDTH_MENU_TYPES.contains(&content_type) {
         style.mono_font_family.clone()
     } else {
-        "serif".into()
+        "serif, sans-serif, monospace".into()
     };
-    style.body_font_size = 16.0;
-    style.line_height_ratio = 1.5;
-    style.horizontal_padding = 32.0;
-    style.max_content_width = Some(720.0);
+    // Reader, small-web and normalized document projections share a prose
+    // baseline. This does not restyle an authored HTML browser session.
+    style.body_font_size = 18.0;
+    style.line_height_ratio = 1.6;
+    style.horizontal_padding = 24.0;
+    // About 65-75 Latin characters with the ordinary proportional faces.
+    // The layout always clamps this to the current appearance's viewport.
+    style.max_content_width = Some(36.0 * style.body_font_size);
+    style.roles.heading.sizes = [32.0, 26.0, 22.0, 20.0, 18.0, 18.0];
+    style.roles.heading.line_height_ratio = Some(1.25);
+    style.roles.code.size = document_canvas::SizeSpec::ScaleOfBody(0.85);
+    style.roles.metadata.size = document_canvas::SizeSpec::ScaleOfBody(0.75);
     style.vertical_padding = 24.0;
     style.colors = ColorVocabulary {
         body_text: foreground,
@@ -1689,7 +1714,7 @@ mod tests {
         // A prose format keeps the body serif: gemtext is not column-aligned.
         for content_type in ["text/gemini", "text/plain"] {
             let (style, _) = style_for_theme(&SmolwebTheme::Dark, "gemini://x.test/", content_type);
-            assert_eq!(style.body_font_family, "serif", "{content_type} is prose");
+            assert_eq!(style.body_font_family, "serif, sans-serif, monospace", "{content_type} keeps prose and glyph fallback roles");
         }
     }
 
@@ -1714,6 +1739,63 @@ mod tests {
 #[cfg(test)]
 mod typography_tests {
     use super::*;
+    #[test]
+    fn prose_measure_reflows_to_the_appearance_without_changing_its_source() {
+        let source = Arc::new(EngineDocument {
+            address: "mere://reading/test".into(),
+            title: Some("Reading".into()),
+            content_type: "text/plain".into(),
+            lang: None,
+            provenance: Default::default(),
+            trust: Default::default(),
+            diagnostics: Vec::new(),
+            navigation: Default::default(),
+            blocks: vec![Block::Paragraph {
+                spans: vec![inker::InlineSpan::Text("A measured line keeps the next sentence in reach. ".repeat(80))],
+            }],
+        });
+        let mut doc = SmolwebDocument::from_shared_document_with_theme(source.clone(), SmolwebTheme::Plain);
+        let code = doc.style_sheet().resolve(document_canvas::BlockRole::Code);
+        doc.set_font_family("serif");
+        assert_eq!(doc.style_sheet().resolve(document_canvas::BlockRole::Code), code,
+            "a prose face cannot replace the code role");
+        doc.frame(1200, 600);
+        let wide = doc.layout.as_ref().unwrap().packet.clone();
+        let paragraph = &wide.blocks[0].bounds;
+        assert!(paragraph.origin.x > 200.0, "wide reading is centered with a bounded measure");
+        assert!(paragraph.size.width < 750.0);
+        doc.frame(320, 600);
+        let narrow = &doc.layout.as_ref().unwrap().packet;
+        assert!(narrow.content_bounds.size.height > wide.content_bounds.size.height, "narrow reading must reflow");
+        for block in &narrow.blocks {
+            assert!(block.bounds.origin.x >= 0.0);
+            assert!(block.bounds.origin.x + block.bounds.size.width <= 320.1, "prose does not require horizontal scrolling");
+        }
+        assert!(Arc::ptr_eq(&source, &doc.document));
+    }
+
+    #[test]
+    fn display_density_reflows_physical_viewports_without_rewriting_style_intent() {
+        let source = Arc::new(EngineDocument {
+            address: "mere://reading/density".into(), title: None,
+            content_type: "text/plain".into(), lang: None,
+            provenance: Default::default(), trust: Default::default(),
+            diagnostics: Vec::new(), navigation: Default::default(),
+            blocks: vec![Block::Paragraph { spans: vec![inker::InlineSpan::Text("The same source at a readable logical size. ".repeat(70))] }],
+        });
+        let mut doc = SmolwebDocument::from_shared_document_with_theme(source.clone(), SmolwebTheme::Plain);
+        let intent = doc.style_sheet().clone();
+        doc.frame(1000, 600);
+        let one = doc.layout.as_ref().unwrap().packet.content_bounds.size.height;
+        assert!(doc.set_display_scale(2.0));
+        doc.frame(1000, 600);
+        assert!(doc.layout.as_ref().unwrap().packet.content_bounds.size.height > one * 2.0,
+            "Retina density must scale text and reflow in the physical aperture");
+        assert_eq!(doc.style_sheet(), &intent);
+        assert!(Arc::ptr_eq(&source, &doc.document));
+        assert!(!doc.set_display_scale(2.0), "an unchanged display does not invalidate layout");
+    }
+
     #[test]
     fn restyling_reflows_without_replacing_source_or_session_state() {
         let source = Arc::new(EngineDocument {

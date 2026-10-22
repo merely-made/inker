@@ -379,11 +379,20 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
+    pub fn display_scale(&self) -> f32 { self.doc.display_scale() }
+    pub fn set_display_scale(&mut self, scale: f32) -> bool { self.doc.set_display_scale(scale) }
     pub fn set_font_family(&mut self, family: &str) {
         self.doc.set_font_family(family);
     }
     pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
         self.doc.set_fonts(fonts);
+    }
+    /// Host-held generic faces used by this Reader appearance, including code.
+    pub fn set_generic_fonts(
+        &mut self,
+        fonts: Vec<(String, Vec<u8>)>,
+    ) -> Result<bool, document_canvas::text::GenericFontError> {
+        self.doc.set_generic_fonts(fonts)
     }
     pub fn set_segmenter_dictionaries(
         &mut self,
@@ -899,6 +908,22 @@ mod tests {
             wide_link.identity, identity,
             "geometry does not define identity"
         );
+    }
+
+    #[test]
+    fn retina_reading_paints_code_and_links_after_maximizing_and_reflow() {
+        let html = r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Reading from the graph</title></head><body><main><article><h1>Reading from the graph</h1><p>A useful reading space keeps the text close enough to follow and leaves room for a thought to settle. The document remains part of the graph: its sources, connections and saved places are available without crowding the page.</p><p>A Map and a Read are different projections of the same material. Moving between them changes the presentation, while the document keeps its identity. An Inspector can follow the current view or stay pinned to a source that is worth keeping nearby.</p><h2>Room to think</h2><p>Long lines make it easy to lose the next sentence. A measured column and a little space between lines give the eye a reliable place to return. On a narrow window the column follows the available space; the text stays readable without a second horizontal journey.</p><pre>document → reading projection
+         → map projection
+         → related sources</pre><p><a href="https://example.test/field-notes">Visit the related field notes</a></p><p>The surrounding controls use a smaller interface scale. Their labels remain clear, but their spacing gives the page priority. This local document is a deterministic layout sample; it does not fetch remote content.</p></article></main></body></html>"#;
+        let mut session = ReaderSessionEngine::new(SmolwebTheme::System).spawn(
+            &SessionSpawnRequest::new("https://example.test/reading").with_body(html).with_viewport(549, 1382)
+        ).unwrap();
+        let reader = session.as_any().downcast_mut::<ReaderDocumentSession>().unwrap();
+        reader.set_display_scale(2.0);
+        for width in [549, 2200, 1280, 549] {
+            let scene = reader.doc.try_frame(width, 1382).expect("every visible band must translate");
+            assert!(!scene.ops.is_empty(), "reading must remain painted after resize");
+        }
     }
 
     #[test]
