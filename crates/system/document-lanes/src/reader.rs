@@ -379,11 +379,20 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
+    pub fn display_scale(&self) -> f32 { self.doc.display_scale() }
+    pub fn set_display_scale(&mut self, scale: f32) -> bool { self.doc.set_display_scale(scale) }
     pub fn set_font_family(&mut self, family: &str) {
         self.doc.set_font_family(family);
     }
     pub fn set_fonts(&mut self, fonts: Vec<Vec<u8>>) {
         self.doc.set_fonts(fonts);
+    }
+    /// Host-held generic faces used by this Reader appearance, including code.
+    pub fn set_generic_fonts(
+        &mut self,
+        fonts: Vec<(String, Vec<u8>)>,
+    ) -> Result<bool, document_canvas::text::GenericFontError> {
+        self.doc.set_generic_fonts(fonts)
     }
     pub fn set_segmenter_dictionaries(
         &mut self,
