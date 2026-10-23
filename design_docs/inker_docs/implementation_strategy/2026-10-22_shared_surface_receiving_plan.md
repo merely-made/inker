@@ -118,3 +118,26 @@ native view callbacks while its texture producer uses the shared rasterizer.
   explicit Pelt Metal tests pass, and all 16 Graphshell retained tests pass
   including real GPU receiving. The adapter source and dependency lock match
   the qualified source above; the receipt retains both qualification cohorts.
+
+
+## Concrete browser reports — 2026-10-23
+
+**Status (2026-10-23): in progress.** Turnstone's actual Servo host forces an
+independent Stop/inline-HTML refusal: the old navigation capability cannot
+express those operations separately. `BrowserSurface::new_with_report` accepts
+an explicit complete report, refuses claims outside its implemented subset,
+and gates shared input before native dispatch. `PeltSharedContent::from_browser`
+keeps that already-bound producer's report and scope. Done when independent
+refusals preserve request IDs, existing receiving suites pass, and Turnstone's
+real Metal receiver consumes the installed report. Native physical IME and
+human AT remain separate acceptance gates.
+
+- 2026-10-23: Servo's public `WebView::page_zoom` supplies a real effective-value
+  readback. Graft's producer seam forwards typed zoom only when its host
+  implements it; the default refuses rather than turning settings into an
+  invented applied value. Turnstone owns the concrete Servo implementation.
+
+- 2026-10-23: the concrete-report and typed-Graft-zoom prerequisites pass
+  251 Inker/Pelt/Graft tests and both explicit Pelt Metal tests. The native
+  Servo consumer and pixel qualification are tracked in
+  `turnstone/design_docs/2026-08-25_browser_surface_implementation_plan.md`.

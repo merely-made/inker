@@ -247,6 +247,13 @@ pub trait GraftSurface {
         ))
     }
 
+    /// Typed zoom requires an actual effective-value readback. A settings
+    /// setter alone cannot fabricate the returned state.
+    fn set_page_zoom(&mut self, _factor: f32) -> Result<inker::DocumentZoomState, SurfaceError> {
+        Err(SurfaceError::Unsupported(
+            "typed page zoom is not wired by this Graft host".into(),
+        ))
+    }
     fn apply_settings(&mut self, settings: &SurfaceSettings) -> Result<(), SurfaceError>;
 }
 
@@ -327,6 +334,9 @@ impl SurfaceProducer for GraftProducer {
 
     fn apply_settings(&mut self, settings: &SurfaceSettings) -> Result<(), SurfaceError> {
         self.inner.apply_settings(settings)
+    }
+    fn set_page_zoom(&mut self, factor: f32) -> Result<inker::DocumentZoomState, SurfaceError> {
+        self.inner.set_page_zoom(factor)
     }
 
     fn set_accessibility_active(

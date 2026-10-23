@@ -41,15 +41,6 @@ impl BrowserSurface {
         presentation: PresentationMode,
         frames: FrameReader,
     ) -> Result<Self> {
-        let viewport = viewport.validate()?;
-        if presentation == PresentationMode::HostDevice {
-            return Err(Error::Invalid(
-                "native browser requires a frame-source binding".into(),
-            ));
-        }
-        producer
-            .resize(viewport.width, viewport.height)
-            .map_err(backend)?;
         let caps = producer
             .as_web_surface()
             .ok_or_else(|| Error::Unsupported("browser control binding required".into()))?
@@ -64,6 +55,50 @@ impl BrowserSurface {
                 Feature::Keyboard|Feature::NativeKeyboard|Feature::Text=>Support::Partial("virtual key and composed text fields; repeat and independent native character fields are unavailable in the platform extension".into()),
                 _=>Support::Unsupported("use the explicit platform extension; this shared adapter does not expose this operation".into()),
             })))?;
+        Self::new_with_report(producer, scope, viewport, report, frames)
+    }
+    /// Bind a concrete producer with its complete, effective capability report.
+    /// The report describes this installed control/frame binding, including
+    /// refusals that the older platform vocabulary cannot name independently.
+    pub fn new_with_report(
+        mut producer: Box<dyn SurfaceProducer>,
+        scope: Scope,
+        viewport: Viewport,
+        report: CapabilityReport,
+        frames: FrameReader,
+    ) -> Result<Self> {
+        let viewport = viewport.validate()?;
+        if report.presentation == PresentationMode::HostDevice
+            || report.semantics != SemanticProtocol::Unavailable
+            || report.features().any(|(feature, support)| {
+                support.permits()
+                    && !matches!(
+                        feature,
+                        Feature::Navigation
+                            | Feature::Reload
+                            | Feature::Stop
+                            | Feature::History
+                            | Feature::InlineHtml
+                            | Feature::Zoom
+                            | Feature::Mouse
+                            | Feature::Scroll
+                            | Feature::Focus
+                            | Feature::Keyboard
+                            | Feature::NativeKeyboard
+                            | Feature::Text
+                    )
+            })
+        {
+            return Err(Error::Invalid("report advertises an operation or frame direction absent from this browser binding".into()));
+        }
+        if producer.as_web_surface().is_none() {
+            return Err(Error::Unsupported(
+                "browser control binding required".into(),
+            ));
+        }
+        producer
+            .resize(viewport.width, viewport.height)
+            .map_err(backend)?;
         Ok(Self {
             producer,
             protocol: Protocol::new(scope, 256)?,
@@ -210,6 +245,22 @@ impl Surface for BrowserSurface {
         if !self.visible {
             return Err(Error::Invalid("surface is hidden".into()));
         }
+        let feature = match &input {
+            Input::Scroll { .. } => Feature::Scroll,
+            Input::NativeKey(_) => Feature::NativeKeyboard,
+            Input::Document(input) => match input {
+                SessionInput::PointerMoved { .. } | SessionInput::PointerButton { .. } => {
+                    Feature::Mouse
+                },
+                SessionInput::Text(_) | SessionInput::KeyboardText(_) => Feature::Text,
+                SessionInput::Key { .. } => Feature::Keyboard,
+                SessionInput::Ime(_) => Feature::Ime,
+                SessionInput::Focus(_) | SessionInput::FocusMove(_) | SessionInput::Cancel => {
+                    Feature::Focus
+                },
+            },
+        };
+        self.report.require(feature)?;
         match input {
             Input::Scroll {
                 x,
@@ -616,5 +667,78 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(titles, (0..128).collect::<Vec<_>>());
+    }
+    #[test]
+    fn concrete_reports_keep_independent_refusals_and_gate_input() {
+        let report = CapabilityReport::new(
+            BackendIdentity {
+                engine: "concrete.browser".into(),
+                version: Some("1".into()),
+                platform: "test".into(),
+                build_features: vec!["native".into()],
+            },
+            PresentationMode::NativeFrame,
+            Evidence::Constructed,
+            SemanticProtocol::Unavailable,
+            Feature::ALL.map(|f| {
+                (
+                    f,
+                    if matches!(f, Feature::Navigation | Feature::Reload) {
+                        Support::Supported
+                    } else {
+                        Support::Unsupported(
+                            "concrete binding does not implement this operation".into(),
+                        )
+                    },
+                )
+            }),
+        )
+        .unwrap();
+        let mut surface = BrowserSurface::new_with_report(
+            Box::new(Page {
+                events: Default::default(),
+            }),
+            Scope {
+                owner: 125,
+                generation: 1,
+            },
+            Viewport {
+                width: 1,
+                height: 1,
+                scale: 1.,
+            },
+            report,
+            Box::new(|_, _| Ok(None)),
+        )
+        .unwrap();
+        assert_eq!(
+            surface.capabilities().identity.version.as_deref(),
+            Some("1")
+        );
+        assert!(matches!(
+            surface.request(RequestId(1), Command::Stop),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            surface.request(
+                RequestId(1),
+                Command::LoadHtml {
+                    address: "test:".into(),
+                    html: String::new()
+                }
+            ),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            surface.input(Input::Document(SessionInput::Text("unadvertised".into()))),
+            Err(Error::Unsupported(_))
+        ));
+        // Refused admissions do not spend a request id or produce completions.
+        let key = surface.request(RequestId(1), Command::Reload).unwrap();
+        surface.advance(Duration::ZERO).unwrap();
+        assert!(
+            matches!(surface.poll_event().unwrap().event, Event::Completed { request, result: Ok(Reply::Dispatched) } if request == key)
+        );
+        assert!(surface.poll_event().is_none());
     }
 }
