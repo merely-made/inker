@@ -30,6 +30,20 @@ fn support(value: CapabilityStatus) -> Support {
         CapabilityStatus::Unsupported { reason } => Support::Unsupported(reason),
     }
 }
+/// Some targets (notably wasm32-unknown-unknown) have no OS name. Webcue
+/// still requires an honest, nonempty platform identity for those adapters.
+pub(crate) fn platform_id() -> &'static str {
+    platform_id_for(std::env::consts::OS, std::env::consts::ARCH)
+}
+fn platform_id_for<'a>(os: &'a str, arch: &'a str) -> &'a str {
+    if os.is_empty() { arch } else { os }
+}
+#[cfg(test)]
+#[test]
+fn platform_identity_covers_targets_without_an_os_name() {
+    assert_eq!(platform_id_for("", "wasm32"), "wasm32");
+    assert_eq!(platform_id_for("macos", "aarch64"), "macos");
+}
 impl<F: 'static> SessionSurface<F> {
     pub fn new(
         session: Box<dyn DocumentSession<F>>,
@@ -42,7 +56,7 @@ impl<F: 'static> SessionSurface<F> {
         let viewport = viewport.validate()?;
         let caps = session.document_capabilities();
         let report = CapabilityReport::new(
-            BackendIdentity { engine, version: None, platform: std::env::consts::OS.into(),
+            BackendIdentity { engine, version: None, platform: platform_id().into(),
                 build_features: vec!["retained-session".into()] },
             PresentationMode::HostDevice, Evidence::Constructed,
             if semantic { SemanticProtocol::DocumentSnapshot } else { SemanticProtocol::Unavailable },

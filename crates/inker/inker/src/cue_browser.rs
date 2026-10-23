@@ -54,7 +54,7 @@ impl BrowserSurface {
             .as_web_surface()
             .ok_or_else(|| Error::Unsupported("browser control binding required".into()))?
             .capabilities();
-        let report=CapabilityReport::new(BackendIdentity{engine:caps.backend_name.clone(),version:caps.backend_version.clone(),platform:std::env::consts::OS.into(),build_features:vec!["inker-platform-binding".into()]},
+        let report=CapabilityReport::new(BackendIdentity{engine:caps.backend_name.clone(),version:caps.backend_version.clone(),platform:crate::cue::platform_id().into(),build_features:vec!["inker-platform-binding".into()]},
             presentation,Evidence::Constructed,SemanticProtocol::Unavailable,Feature::ALL.map(|f|(f,match f {
                 Feature::Navigation|Feature::Reload|Feature::Stop|Feature::History=>support(caps.document.navigation.clone()),
                 Feature::InlineHtml=>Support::Partial("inline HTML dispatch; base address remains engine-owned".into()),
