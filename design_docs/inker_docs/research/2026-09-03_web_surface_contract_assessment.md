@@ -512,3 +512,9 @@ users see.
   pointer cancellation precede hiding. Hidden retained surfaces reject late
   shared input, while reopening the placement preserves the session and gives
   the appearance a new admission. A renderer cache never owns that lifetime.
+
+- **A pending frame must not consume a later mutation's redraw.** The retained
+  pool exposes a visual revision distinct from receiver lifetime and placement
+  admission. Input, mutable resource access, runnable work and exact due timers
+  can require a follow-up frame after an older submission completes. Idle
+  layout preparation does not continually invalidate that submission.
