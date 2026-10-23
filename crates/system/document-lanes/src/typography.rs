@@ -65,13 +65,10 @@ pub fn document_style_with_typography(
     Ok(style)
 }
 
-/// Resolve logical reading lengths in a host whose viewport uses physical
-/// pixels. This changes presentation geometry, leaving authored intent, source
-/// identity, leading ratios, font families and color roles unchanged.
-pub fn document_style_at_display_scale(
-    baseline: &DocumentStyleSheet,
-    scale: f32,
-) -> DocumentStyleSheet {
+/// Every reading length of `baseline` multiplied by `scale`, leaving authored
+/// intent, source identity, leading ratios, font families and color roles
+/// unchanged.
+fn scaled_document_style(baseline: &DocumentStyleSheet, scale: f32) -> DocumentStyleSheet {
     let scale = if scale.is_finite() { scale.clamp(0.5, 4.0) } else { 1.0 };
     let mut style = baseline.clone();
     style.body_font_size *= scale;
@@ -91,19 +88,20 @@ pub fn document_style_at_display_scale(
 }
 
 /// Reading controls adjust a projection's logical type and measure. Font
-/// custody and baseline roles survive, and display density is applied once.
+/// custody and baseline roles survive. Lengths stay logical: the host lays the
+/// document out at its layout size and rasterizes at the window's scale.
 pub fn document_style_for_reading(
-    baseline: &DocumentStyleSheet, preferences: tabard::ReadingPreferences, display_scale: f32,
+    baseline: &DocumentStyleSheet, preferences: tabard::ReadingPreferences,
 ) -> DocumentStyleSheet {
     let ratio = f32::from(preferences.text_size) / 18.0;
-    let scaled = document_style_at_display_scale(baseline, ratio);
+    let scaled = scaled_document_style(baseline, ratio);
     let mut style = document_style_with_typography(&scaled, &preferences.typography())
         .expect("validated projection reading preferences");
     // Gutters do not grow with text size; line length does.
     style.horizontal_padding = baseline.horizontal_padding;
     style.vertical_padding = baseline.vertical_padding;
     style.max_content_width = Some(preferences.width_px());
-    document_style_at_display_scale(&style, display_scale)
+    style
 }
 
 #[cfg(test)]
