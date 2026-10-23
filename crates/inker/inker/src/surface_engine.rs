@@ -1281,6 +1281,24 @@ impl SurfaceEngineRegistry {
         self.engines.keys().map(String::as_str)
     }
 
+    /// Spawn the selected platform browser on the engine-neutral contract.
+    /// The host/engine pair supplies its concrete non-blocking frame custody
+    /// conversion; borrowed handles are never guessed into owned shared frames.
+    pub fn spawn_shared(
+        &self,
+        decision: &EngineRouteDecision,
+        request: &SurfaceSpawnRequest,
+        scope: webcue::Scope,
+        viewport: webcue::Viewport,
+        presentation: webcue::PresentationMode,
+        frames: crate::cue_browser::FrameReader,
+    ) -> webcue::Result<crate::cue_browser::BrowserSurface> {
+        let producer = self
+            .spawn(decision, request)
+            .map_err(|error| webcue::Error::Backend(error.to_string()))?;
+        crate::cue_browser::BrowserSurface::new(producer, scope, viewport, presentation, frames)
+    }
+
     /// Spawn a producer using the engine selected by `decision.engine_id`.
     #[tracing::instrument(
         level = "debug",

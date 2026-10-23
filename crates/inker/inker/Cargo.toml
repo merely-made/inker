@@ -31,6 +31,8 @@ path = "src/lib.rs"
 genet-donor = ["dep:genet-scripted-dom", "dep:layout-dom-api"]
 
 [dependencies]
+webcue.workspace = true
+serde_json.workspace = true
 # Native surface semantic updates share the host's existing AccessKit family.
 accesskit.workspace = true
 # Root-workspace genet.git pins, used only by the `genet-donor` flip feature.

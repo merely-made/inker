@@ -459,3 +459,39 @@ users see.
   the API crate as explicitly blocking convenience functions.
 - Whether CPU snapshot and native child overlay outputs are first-class v1 frame
   transports or deliberately deferred until a consumer needs them.
+
+## Shared-contract receiving (2026-10-23)
+
+- **The retained session stays with its owner.** Inker's `SessionSurface`
+  adapts the canonical document session already held by Pelt. Genet keeps its
+  admitted resources, fonts and document state; acquisition, routing and history
+  stay with the host. Another static HTML session would have lost those owners.
+- **Retained input has one dispatch and observation mapping.** Webcue supplies
+  the canonical dispatch plus ordered input-result, cursor, navigation and form
+  observations. Inker and the standalone Genet adapter use those functions.
+  Input results preserve capture and editability; dedicated navigation/form
+  events carry host policy once. Unrepresentable modifiers are refused.
+- **Both frame directions reach Pelt's shared-content API.** Its source is a
+  native frame reader or a host-device texture producer behind the same control
+  object. Inker's browser binding requires an explicit owned frame conversion
+  from the engine/host pair. Existing native browser extensions remain explicit;
+  the shared subset reports unsupported operations rather than inheriting a
+  supplier's theoretical capabilities.
+- **Private quality state makes the host device shareable.** Genet and
+  Graphshell use a private retained renderer on the host's existing device.
+  Producers and the shell cannot consume one another's quality results. This
+  adds renderer cache cost, while removing the synchronous checked raster wait
+  from the migrated producer path. Content revisions stay with the retained
+  receiver; allocation epochs survive renderer reconstruction.
+- **A replacement has a final stream.** Pelt reserves bounded space for the old
+  scope's accepted-request cancellations before replacing its session. A failed
+  reservation retains the actual receiver. Semantic mutations invalidate old
+  publication keys before another frame, and qualified GPU frames advance the
+  capability report from constructed to observed.
+- **Publication and qualification have separate bounds.** `webcue` and
+  `wgpu-cue` 0.1.1 are published; `wgpu-cue-netrender` is a source adapter pinned
+  to Cue `94ba59574838a70c8283d3f5d3cf3ddbb838cfc5`. Retained Genet input/IME,
+  semantic invalidation and Metal pixels are exercised through Pelt and
+  Graphshell. Native candidate-window placement, human OS AT, physical device
+  loss, and concrete Servo/CEF/native-WebView frame bindings retain their own
+  qualification; these receiving tests do not stand for them.

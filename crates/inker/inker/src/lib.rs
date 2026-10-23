@@ -48,6 +48,11 @@ pub mod engine;
 /// long-lived, frame-streaming engines (e.g. `scrying.web`).
 pub mod surface_engine;
 
+/// Shared engine-neutral control protocol and retained-session adapter.
+pub use webcue;
+pub mod cue;
+pub mod cue_browser;
+
 /// Content-type sniffing for unlabelled byte streams.
 pub mod sniff;
 
