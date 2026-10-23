@@ -1,6 +1,6 @@
 # Shared surface receiving
 
-**Status (2026-10-23): in progress; published-dependency and merged-main checks running.** Shared controls and retained Genet receiving
+**Status (2026-10-23): bounded Genet/Pelt/Graphshell receiving landed; concrete native browser integration and platform qualification remain open.** Shared controls and retained Genet receiving
 in Inker, Pelt and Graphshell. The neutral owner is `wgpu-cue`; `webcue` is its
 renderer-free core. Existing browser-specific host extensions remain explicit.
 
@@ -89,7 +89,26 @@ native view callbacks while its texture producer uses the shared rasterizer.
   tests. Strict Clippy passed for the four changed Cue packages. The standalone
   Genet GPU fixture passed IME commit, stale semantic actions, straight-alpha
   pixels and 128 accepted navigation completions.
-- 2026-10-23: final published-dependency, merged-main and independent-registry
-  checks are running. This is not a native-window, physical IME, human AT or
-  physical GPU-reset qualification. The D2 audit retains its baseline snapshot
-  digest mismatch and 39 missing records; this plan has a supplemental judgment.
+- 2026-10-23: the final published-dependency receiving run, after rebasing onto
+  Mere `6dc420602`, passed 273 Inker/Pelt/native-adapter tests, both explicit
+  Pelt GPU tests and all 16 Graphshell retained tests including its GPU case.
+  The final browser regression proves an existing callback backlog cannot starve
+  an accepted host command while callback order is preserved.
+- 2026-10-23: the separate registry-only consumer passed nine API tests and both
+  explicit Metal transport tests. Both downloaded crate archives match their
+  registry checksums and source `94ba595`. The
+  [receiving receipt](../../../support/receipts/inker-cue-20261023/qualification.json)
+  retains exact source/lock identities, test logs and preservation bounds.
+- 2026-10-23: this is not native-window, physical IME, human AT or physical
+  GPU-reset qualification. The D2 audit retains its baseline snapshot digest
+  mismatch and 39 missing records; this plan has a supplemental judgment.
+  Existing workspace Clippy warnings remain; the new adapter modules introduce
+  none. The owning broader native-browser phase remains open; the bounded
+  Genet receiving targets above are implemented and qualified.
+
+- 2026-10-23: current-main continuation on `a6d44855b` preserves its native
+  publication/AccessKit patch beside the Cue document-API patch. The combined
+  source again passes 273 Inker/Pelt/engine-adapter tests, both Pelt GPU tests,
+  all 16 Graphshell retained tests including GPU receiving, and Clippy with the
+  existing workspace warnings. Type identity remains singular, including the
+  patched AccessKit 0.25.1 cohort.
