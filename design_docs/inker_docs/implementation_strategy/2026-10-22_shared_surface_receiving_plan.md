@@ -112,3 +112,9 @@ native view callbacks while its texture producer uses the shared rasterizer.
   all 16 Graphshell retained tests including GPU receiving, and Clippy with the
   existing workspace warnings. Type identity remains singular, including the
   patched AccessKit 0.25.1 cohort.
+
+- 2026-10-23: final integration `7039ba386` includes current-main density/input
+  changes from `f76758b6b`. All 274 Inker/Pelt/native-adapter tests pass, both
+  explicit Pelt Metal tests pass, and all 16 Graphshell retained tests pass
+  including real GPU receiving. The adapter source and dependency lock match
+  the qualified source above; the receipt retains both qualification cohorts.
