@@ -5,10 +5,13 @@
 Graphshell use the shared receiving boundary. Genet and Servo have finite
 headed and offscreen Metal receiving evidence. Turnstone's retained and
 Servo/Metal product pool, main/lens presentation, mixed-engine cards and live
-Inspector now have bounded product receiving evidence through that boundary. Linux/Vulkan, other concrete native browser bindings, physical IME,
-human accessibility and physical device-loss qualification retain their own
-bounds. `mere-surface-api` remains the separate application discovery/settings
-contract.
+Inspector now have bounded product receiving evidence through that boundary.
+Retained Genet/Reader also has hardware Vulkan and native Wayland receiving
+evidence on the ThinkPad. Linux native-frame import, other concrete native
+browser bindings, physical IME, human accessibility and physical device-loss
+qualification retain their own bounds. Positive scrolling also exposes an open
+Genet canvas-background defect before host staging. `mere-surface-api` remains the separate
+application discovery/settings contract.
 
 The [2026-10-22 cues](#four-producers-and-two-frame-directions-2026-10-22)
 explain the fourth producer and two frame directions; the
@@ -510,7 +513,8 @@ users see.
   Concrete Servo and Genet have since passed the finite headed and offscreen
   Metal receiver on one host device; see the receiving plan and Turnstone's
   `docs/receipts/servo_cue_20261023/`. That finite receiver and the product
-  receiving below have different scopes. Linux/Vulkan remains unqualified.
+  receiving below have different scopes. Linux retained host-device receiving
+  is qualified below; the native-frame direction remains a platform gap.
 
 - **The placement pool can lend its retained receiver to Cue.** Pelt's shared
   renderer now borrows the controller already admitted by the pool. Routing,
@@ -559,7 +563,41 @@ users see.
   reaches its bound even though both producers present correctly. A wake/work
   signal would distinguish a quiet browser from work requiring another turn.
 - **Product adoption does not fill every platform binding.** Concrete
-  Weld/Scry shared-native adapters, Linux/Vulkan and fresh Windows receiving,
+  Weld/Scry shared-native adapters, Linux native-frame and fresh Windows receiving,
   native Servo IME/semantic exposure, physical candidate-window input, human AT,
   physical device loss and transparent native colour/alpha acceptance keep
   their own gaps and qualification bounds.
+
+- **A platform result needs a frame direction.** Retained Genet/Reader reaches
+  Turnstone's primary and lens windows on the ThinkPad's hardware Vulkan device
+  in a native GNOME Wayland session. Actual source-raster observations name RADV
+  Renoir and `IntegratedGpu`; the driver rejects CPU Vulkan and another backend.
+  The unchanged retained consumer also passes the pending-frame mutation test.
+  This qualifies the host-device direction without implying Linux native-frame
+  import or an X11/Xwayland run.
+- **Linux native frames need an adapter as well as lower import primitives.**
+  Published `wgpu-cue` 0.1.1 currently exposes the Metal importer, Turnstone uses
+  a refusing importer outside macOS, and its concrete Servo registration is
+  Windows/macOS-only. Graft's Vulkan/DMA-BUF support is a lower building block.
+  Supplying the shared importer and a concrete producer binding would let the
+  other frame direction earn the same product receiving evidence.
+- **A live Linux report is narrower than blanket engine support.** The native
+  Inspector exposes `linux`, `HostDevice`, `Observed`, `DocumentSnapshot` and all
+  28 feature answers. Effective 110% zoom, scrolling and a replacement scope on
+  close/reopen have receiving evidence; native candidate windows and human AT
+  do not. The canonical IME tests pass with an ICU4X complex-script segmentation
+  diagnostic, so they also leave CJK segmentation quality unqualified.
+- **Successful receiving can reveal an incorrect producer image.** A positive
+  scroll moves the article but leaves a lower viewport band without its beige
+  canvas background. The producer raster is already transparent there before
+  host staging. Pinned Genet's cached paint-list translation includes the
+  viewport-sized canvas fill; keeping that fill anchored would preserve opaque
+  coverage and readable text while the document moves. The finding remains
+  open, and this pass does not establish whether other backends reproduce it.
+
+The [ThinkPad Vulkan/Wayland receipt](https://github.com/merely-made/turnstone/tree/f45db39f117bc41315de1ffc2e7c95d631a89f14/docs/receipts/cue_ui_linux_20261023)
+binds the initial receiving and the refreshed Turnstone `b4628119` dependency
+cohort to separate binary identities. Both native cases and the focused checks
+pass on the refreshed cohort. The producer-background finding remains an
+explicit failed appearance check, separate from successful transport, controls
+and lifecycle receiving; physical IME and human AT remain unqualified.
