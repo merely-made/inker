@@ -151,3 +151,12 @@ human AT remain separate acceptance gates.
 - 2026-10-23: 127 Inker library tests pass with the hidden engine-turn
   regression; the earlier 251-test receiving cohort and two Pelt Metal cases
   remain the prerequisite evidence.
+
+- 2026-10-23: the real two-engine Metal receiver caught retained input still
+  being admitted while hidden. Both shared input and synchronous retained
+  dispatch now refuse before touching the session, with retirement retaining
+  precedence. Commands continue advancing while hidden. The real Genet
+  regression checks unchanged editor contents, no input result on refusal,
+  reload progress and resumed input after showing. The complete focused
+  Inker/Pelt/Graft cohort and both explicit Pelt Metal cases pass after this
+  correction; the receiving host retains the failing native run as evidence.

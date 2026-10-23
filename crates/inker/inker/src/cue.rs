@@ -131,9 +131,17 @@ impl<F: 'static> SessionSurface<F> {
     /// The result is consumed directly by that host, rather than queued twice.
     pub fn dispatch(&mut self, input: SessionInput) -> Result<SessionInputResult> {
         self.protocol.ensure_live()?;
+        self.ensure_visible()?;
         let result = dispatch_document_input(self.session.as_mut(), Input::Document(input))?;
         self.invalidate();
         Ok(result)
+    }
+    fn ensure_visible(&self) -> Result<()> {
+        if self.visible {
+            Ok(())
+        } else {
+            Err(Error::Invalid("surface is hidden".into()))
+        }
     }
     pub fn frame(&mut self, width: u32, height: u32) -> F {
         self.invalidate();
@@ -229,6 +237,8 @@ impl<F: 'static> Surface for SessionSurface<F> {
         Ok(())
     }
     fn input(&mut self, input: Input) -> Result<()> {
+        self.protocol.ensure_live()?;
+        self.ensure_visible()?;
         self.protocol.ensure_observations(4)?;
         let result = dispatch_document_input(self.session.as_mut(), input)?;
         self.invalidate();
