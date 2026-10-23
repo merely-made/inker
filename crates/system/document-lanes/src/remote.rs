@@ -16,9 +16,9 @@
 //! `fetch()` uses.
 
 use std::sync::OnceLock;
-#[cfg(feature = "netfetch")]
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
 use std::sync::{Arc, Condvar, Mutex};
-#[cfg(feature = "netfetch")]
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
 use std::time::Instant;
 
 #[cfg(feature = "netfetch")]
@@ -52,6 +52,11 @@ fn runtime() -> &'static Runtime {
 #[cfg(feature = "netfetch")]
 pub(crate) struct HttpResourceHost {
     context: netfetcher::FetchContext,
+    budget: Arc<RemoteFetchBudget>,
+}
+
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
+struct RemoteFetchBudget {
     policy: ResourceFetchPolicy,
     available: Mutex<usize>,
     changed: Condvar,
@@ -59,19 +64,36 @@ pub(crate) struct HttpResourceHost {
 
 #[cfg(feature = "netfetch")]
 impl HttpResourceHost {
+    #[cfg(test)]
     pub(crate) fn new(policy: ResourceFetchPolicy) -> Self {
+        Self::with_budget(Arc::new(RemoteFetchBudget::new(policy)))
+    }
+
+    fn with_budget(budget: Arc<RemoteFetchBudget>) -> Self {
         let mut context =
-            netfetcher::FetchContext::permissive().with_redirect_limit(policy.max_redirects);
+            netfetcher::FetchContext::permissive().with_redirect_limit(budget.policy.max_redirects);
         context.cache = Arc::new(netfetcher::InMemoryHttpCache::new());
+        Self { context, budget }
+    }
+}
+
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
+impl RemoteFetchBudget {
+    fn new(policy: ResourceFetchPolicy) -> Self {
         Self {
-            context,
             policy,
             available: Mutex::new(policy.max_concurrent_fetches),
             changed: Condvar::new(),
         }
     }
 
-    fn acquire_until(&self, deadline: Instant) -> Option<HttpFetchPermit<'_>> {
+    fn acquire_until(&self, deadline: Instant) -> Option<RemoteFetchPermit<'_>> {
+        if self.policy.max_concurrent_fetches == 0
+            || self.policy.max_response_bytes == 0
+            || self.policy.timeout.is_zero()
+        {
+            return None;
+        }
         let mut available = self.available.lock().expect("HTTP fetch permit lock");
         while *available == 0 {
             let remaining = deadline.saturating_duration_since(Instant::now());
@@ -85,23 +107,26 @@ impl HttpResourceHost {
             available = waiting;
         }
         *available -= 1;
-        Some(HttpFetchPermit { host: self })
+        Some(RemoteFetchPermit { host: self })
     }
+}
 
+#[cfg(feature = "netfetch")]
+impl HttpResourceHost {
     pub(crate) fn fetch_request(&self, request: &ResourceRequest) -> Option<ResourceFetchResponse> {
-        if self.policy.max_concurrent_fetches == 0 {
-            return None;
-        }
-        let deadline = Instant::now().checked_add(self.policy.timeout)?;
+        let deadline = Instant::now().checked_add(self.budget.policy.timeout)?;
         let wire = netfetcher::Request::from_host(request)?;
-        let _permit = self.acquire_until(deadline)?;
+        let _permit = self.budget.acquire_until(deadline)?;
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
             return None;
         }
-        let policy = self.policy;
+        let policy = self.budget.policy;
         runtime().block_on(async move {
-            tokio::time::timeout(remaining, async move {
+            if Instant::now() >= deadline {
+                return None;
+            }
+            tokio::time::timeout_at(tokio::time::Instant::from_std(deadline), async move {
                 let response = netfetcher::fetch(wire, &self.context).await;
                 if response.is_network_error() {
                     return None;
@@ -156,13 +181,13 @@ impl HttpResourceHost {
     }
 }
 
-#[cfg(feature = "netfetch")]
-struct HttpFetchPermit<'a> {
-    host: &'a HttpResourceHost,
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
+struct RemoteFetchPermit<'a> {
+    host: &'a RemoteFetchBudget,
 }
 
-#[cfg(feature = "netfetch")]
-impl Drop for HttpFetchPermit<'_> {
+#[cfg(any(feature = "netfetch", feature = "smolweb"))]
+impl Drop for RemoteFetchPermit<'_> {
     fn drop(&mut self) {
         if let Ok(mut available) = self.host.available.lock() {
             *available += 1;
@@ -178,19 +203,47 @@ impl Drop for HttpFetchPermit<'_> {
 /// cache, redirect cap and concurrency budget.
 #[derive(Clone)]
 pub struct RemoteFetcher {
+    #[cfg(any(feature = "netfetch", feature = "smolweb"))]
+    budget: Arc<RemoteFetchBudget>,
     #[cfg(feature = "netfetch")]
     http: Arc<HttpResourceHost>,
+    #[cfg(feature = "smolweb")]
+    smolweb_request_bytes: usize,
+    #[cfg(feature = "smolweb")]
+    smolweb_header_line_bytes: usize,
 }
 
 impl RemoteFetcher {
     /// A fetcher with its own HTTP cache, redirect cap and concurrency budget.
     pub fn new(policy: ResourceFetchPolicy) -> Self {
-        #[cfg(not(feature = "netfetch"))]
+        #[cfg(not(any(feature = "netfetch", feature = "smolweb")))]
         let _ = policy;
+        #[cfg(any(feature = "netfetch", feature = "smolweb"))]
+        let budget = Arc::new(RemoteFetchBudget::new(policy));
         Self {
             #[cfg(feature = "netfetch")]
-            http: Arc::new(HttpResourceHost::new(policy)),
+            http: Arc::new(HttpResourceHost::with_budget(Arc::clone(&budget))),
+            #[cfg(any(feature = "netfetch", feature = "smolweb"))]
+            budget,
+            #[cfg(feature = "smolweb")]
+            smolweb_request_bytes: errand::FetchOptions::default().max_request_bytes,
+            #[cfg(feature = "smolweb")]
+            smolweb_header_line_bytes: errand::FetchOptions::default().max_header_line_bytes,
         }
+    }
+
+    /// Configure native request and response-line allowances. Body and total
+    /// deadline remain those of the host's ResourceFetchPolicy. Native protocol
+    /// ceilings still apply, and smolweb redirects remain unfollowed.
+    #[cfg(feature = "smolweb")]
+    pub fn with_smolweb_request_limits(
+        mut self,
+        request_bytes: usize,
+        header_line_bytes: usize,
+    ) -> Self {
+        self.smolweb_request_bytes = request_bytes;
+        self.smolweb_header_line_bytes = header_line_bytes;
+        self
     }
 
     /// One process-shared fetcher under the default policy, so document loads
@@ -205,6 +258,17 @@ impl RemoteFetcher {
 }
 
 impl ResourceFetcher for RemoteFetcher {
+    fn max_concurrent_fetches(&self) -> usize {
+        #[cfg(any(feature = "netfetch", feature = "smolweb"))]
+        {
+            self.budget.policy.max_concurrent_fetches
+        }
+        #[cfg(not(any(feature = "netfetch", feature = "smolweb")))]
+        {
+            0
+        }
+    }
+
     fn fetch(&self, url: &str) -> Option<Vec<u8>> {
         self.fetch_response(url).map(|response| response.bytes)
     }
@@ -216,7 +280,12 @@ impl ResourceFetcher for RemoteFetcher {
             .and_then(|(scheme, _)| errand::Scheme::parse(scheme))
             .is_some()
         {
-            return smolweb_get_response(url);
+            return smolweb_get_response(
+                url,
+                &self.budget,
+                self.smolweb_request_bytes,
+                self.smolweb_header_line_bytes,
+            );
         }
         let response = self.fetch_request(&ResourceRequest::plain_get(url))?;
         (200..300)
@@ -242,7 +311,12 @@ impl ResourceFetcher for RemoteFetcher {
 /// runtime. The caller surfaces the `None` as a clean load error rather than painting
 /// a protocol error line as a document, matching the http path's non-2xx handling.
 #[cfg(feature = "smolweb")]
-fn smolweb_get_response(url: &str) -> Option<ResourceResponse> {
+fn smolweb_get_response(
+    url: &str,
+    budget: &RemoteFetchBudget,
+    request_bytes: usize,
+    header_line_bytes: usize,
+) -> Option<ResourceResponse> {
     let parsed = url::Url::parse(url).ok()?;
     // The shared-site plan (2026-10-20_shared_site_model_plan.md) requires
     // explicit Submit for Titan and Spartan query/data exchanges. This is
@@ -252,9 +326,31 @@ fn smolweb_get_response(url: &str) -> Option<ResourceResponse> {
     if parsed.scheme() == "titan" || (parsed.scheme() == "spartan" && parsed.query().is_some()) {
         return None;
     }
+    let deadline = Instant::now().checked_add(budget.policy.timeout)?;
+    let _permit = budget.acquire_until(deadline)?;
+    let remaining = deadline.saturating_duration_since(Instant::now());
+    if remaining.is_zero() {
+        return None;
+    }
     install_tofu();
     runtime().block_on(async move {
-        match errand::fetch(url).await {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return None;
+        }
+        let options = errand::FetchOptions {
+            timeout: remaining,
+            max_request_bytes: request_bytes,
+            max_header_line_bytes: header_line_bytes,
+            max_body_bytes: budget.policy.max_response_bytes,
+        };
+        match tokio::time::timeout_at(
+            tokio::time::Instant::from_std(deadline),
+            errand::fetch_with_options(url, &options),
+        )
+        .await
+        .ok()?
+        {
             Ok(resp) if resp.status == errand::Status::Success => {
                 // These are host representation tags, not wire MIME fields.
                 // Match mere-fetch's existing carrier policy so a synthetic
@@ -398,7 +494,7 @@ mod tests {
             ..ResourceFetchPolicy::default()
         };
         let host = HttpResourceHost::new(policy);
-        *host.available.lock().unwrap() = 0;
+        *host.budget.available.lock().unwrap() = 0;
         let request = ResourceRequest::plain_get("http://127.0.0.1:9/unreached");
         let started = Instant::now();
         assert!(host.fetch_request(&request).is_none());
@@ -498,6 +594,10 @@ mod tests {
         oversized.assert();
     }
 }
+
+#[cfg(all(test, feature = "smolweb", not(target_arch = "wasm32")))]
+#[path = "remote_client_limits_tests.rs"]
+mod client_limits_tests;
 
 #[cfg(all(test, feature = "smolweb"))]
 mod smolweb_tests {

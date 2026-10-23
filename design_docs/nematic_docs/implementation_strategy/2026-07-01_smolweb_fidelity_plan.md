@@ -910,6 +910,14 @@ Stop rules:
 
 ## Cross-references
 
+- Client limit continuation (2026-10-22):
+  `smolweb/design_docs/implementation_strategy/2026-10-22_client_limits_plan.md`
+  owns routed client early refusal and the explicit standalone-client queue.
+  Mere supplies host budgets before transport buffering, including the
+  bodyless document adapter. Retinue's encoded/decoded Resource bounds remain
+  separate from exact Micron page bytes. This supersedes the earlier deferred
+  client-limit scope only as each named owner records passing qualification.
+
 - [native smolweb rendering plan](../../archive_docs/2026-10-06_completed_plans/2026-06-27_native_smolweb_rendering_plan.md) — the
   shipped transport → parse → native render this extends; the two-family model and the
   crate/dependency direction it defines.
