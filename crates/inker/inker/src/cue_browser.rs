@@ -22,6 +22,7 @@ pub struct BrowserSurface {
     commands: VecDeque<(RequestKey, Command)>,
     frames: FrameReader,
     revision: u64,
+    turn: Option<Box<dyn FnMut(Duration) -> Result<()>>>,
 }
 fn backend(e: impl std::fmt::Display) -> Error {
     Error::Backend(e.to_string())
@@ -108,7 +109,14 @@ impl BrowserSurface {
             commands: VecDeque::new(),
             frames,
             revision: 0,
+            turn: None,
         })
+    }
+    /// Install the concrete engine's bounded UI/process turn. It runs through
+    /// `Surface::advance` even when frame acquisition is hidden or suspended.
+    pub fn with_engine_turn(mut self, turn: impl FnMut(Duration) -> Result<()> + 'static) -> Self {
+        self.turn = Some(Box::new(turn));
+        self
     }
     /// Advanced browser/native embedding extensions retain their original owner.
     /// The host must not independently drain their event queue.
@@ -398,7 +406,7 @@ impl Surface for BrowserSurface {
             "use the native semantic platform extension".into(),
         ))
     }
-    fn advance(&mut self, _now: Duration) -> Result<()> {
+    fn advance(&mut self, now: Duration) -> Result<()> {
         self.protocol.ensure_live()?;
         // Preserve callback order within a bounded batch, but do not let a
         // continuously busy page starve host navigation or stop dispatch.
@@ -406,6 +414,9 @@ impl Surface for BrowserSurface {
         if let Some((key, command)) = self.commands.pop_front() {
             let result = self.execute(command);
             self.protocol.settle(key, result)?;
+        }
+        if let Some(turn) = &mut self.turn {
+            turn(now)?;
         }
         self.drain_callbacks()?;
         self.protocol.ensure_observations(1)?;
@@ -740,5 +751,46 @@ mod tests {
             matches!(surface.poll_event().unwrap().event, Event::Completed { request, result: Ok(Reply::Dispatched) } if request == key)
         );
         assert!(surface.poll_event().is_none());
+    }
+    #[test]
+    fn engine_turns_continue_while_hidden_and_stop_after_retirement() {
+        let count = std::rc::Rc::new(std::cell::Cell::new(0));
+        let observed = count.clone();
+        let mut surface = BrowserSurface::new(
+            Box::new(Page {
+                events: Default::default(),
+            }),
+            Scope {
+                owner: 126,
+                generation: 1,
+            },
+            Viewport {
+                width: 1,
+                height: 1,
+                scale: 1.,
+            },
+            PresentationMode::NativeFrame,
+            Box::new(|_, _| panic!("hidden advancement must not acquire a frame")),
+        )
+        .unwrap()
+        .with_engine_turn(move |now| {
+            assert_eq!(now, Duration::from_millis(7));
+            observed.set(observed.get() + 1);
+            Ok(())
+        });
+        surface.set_visible(false).unwrap();
+        let key = surface.request(RequestId(1), Command::Reload).unwrap();
+        surface.advance(Duration::from_millis(7)).unwrap();
+        assert_eq!(count.get(), 1);
+        assert!(
+            matches!(surface.poll_event().unwrap().event, Event::Completed { request, result: Ok(Reply::Dispatched) } if request == key)
+        );
+        assert!(surface.try_acquire_frame().unwrap().is_none());
+        surface.retire().unwrap();
+        assert!(matches!(
+            surface.advance(Duration::from_millis(7)),
+            Err(Error::Retired)
+        ));
+        assert_eq!(count.get(), 1);
     }
 }
