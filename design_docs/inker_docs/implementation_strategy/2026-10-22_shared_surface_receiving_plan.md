@@ -122,15 +122,16 @@ native view callbacks while its texture producer uses the shared rasterizer.
 
 ## Concrete browser reports — 2026-10-23
 
-**Status (2026-10-23): in progress.** Turnstone's actual Servo host forces an
+**Status (2026-10-23): shared prerequisites landed; real Metal offscreen
+receiving passes.** Turnstone's actual Servo host forces an
 independent Stop/inline-HTML refusal: the old navigation capability cannot
 express those operations separately. `BrowserSurface::new_with_report` accepts
 an explicit complete report, refuses claims outside its implemented subset,
 and gates shared input before native dispatch. `PeltSharedContent::from_browser`
-keeps that already-bound producer's report and scope. Done when independent
-refusals preserve request IDs, existing receiving suites pass, and Turnstone's
-real Metal receiver consumes the installed report. Native physical IME and
-human AT remain separate acceptance gates.
+keeps that already-bound producer's report and scope. Independent refusals
+preserve request IDs, existing receiving suites pass, and Turnstone's real
+Metal receiver consumes the installed report. The visible-window gate awaits
+the user's unlock signal; native physical IME and human AT remain separate.
 
 - 2026-10-23: Servo's public `WebView::page_zoom` supplies a real effective-value
   readback. Graft's producer seam forwards typed zoom only when its host
@@ -160,3 +161,14 @@ human AT remain separate acceptance gates.
   reload progress and resumed input after showing. The complete focused
   Inker/Pelt/Graft cohort and both explicit Pelt Metal cases pass after this
   correction; the receiving host retains the failing native run as evidence.
+
+- 2026-10-23: Turnstone `681deff` publishes the concrete Servo/Metal binding
+  and finite same-host receiver. Real Genet and Servo frames, editing, typed
+  zoom, hidden navigation progress without frame acquisition, resize, scope
+  replacement and teardown pass offscreen on one producer device. Native
+  custody survives producer destruction; a foreign device/queue refuses import.
+  The [receipt](https://github.com/merely-made/turnstone/blob/681deff/docs/receipts/servo_cue_20261023/README.md)
+  retains source/binary identity, all 28 capability fields, pixels and failed
+  runs. This does not migrate the complete Turnstone product UI. Servo's report
+  stays `Constructed`; host-import observation currently lives in the external
+  receipt rather than feeding back into that report.
