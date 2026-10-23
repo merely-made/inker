@@ -1,50 +1,55 @@
 # Web Surface Contract Assessment
 
-**Status (2026-10-05):** assessment complete; the neutral browser-control
-extraction remains open. `mere-surface-api` is the separately landed
-application discovery/settings contract, not the browser protocol proposed
-here. Ordered Scry/Weld completions and owned native-frame delivery have
-advanced; the local B0 capability corrections pass their focused tests.
+**Status (2026-10-23):** the neutral contract is implemented and published as
+`webcue` and `wgpu-cue` 0.1.1 in the `wgpu-cue` repository. Inker, Pelt and
+Graphshell use the shared receiving boundary. Genet and Servo have finite
+headed and offscreen Metal receiving evidence. Turnstone's retained and
+Servo/Metal product pool, main/lens presentation, mixed-engine cards and live
+Inspector now have bounded product receiving evidence through that boundary. Linux/Vulkan, other concrete native browser bindings, physical IME,
+human accessibility and physical device-loss qualification retain their own
+bounds. `mere-surface-api` remains the separate application discovery/settings
+contract.
+
 The [2026-10-22 cues](#four-producers-and-two-frame-directions-2026-10-22)
-add native Genet as a fourth producer and record that Inker's
-`SurfaceProducer` and Cambium's `TextureProducer` move frames in opposite
-directions.
+explain the fourth producer and two frame directions; the
+[recorded choices](#recorded-choices-and-remaining-cues) and
+[October 23 receiving findings](#shared-contract-receiving-2026-10-23) describe
+the implemented boundary. The original sections below preserve the September 3
+source assessment. Their mismatches and candidate names are historical evidence,
+rather than an uncompleted extraction plan.
 
-The original assessment sections below describe the September 3 source
-snapshot. Dated findings and migration progress record later repairs and
-remaining gates; historical mismatches are not claims about today's source.
+<a id="verdict"></a>
 
-## Verdict
+## Original verdict (September 3 snapshot)
 
-Extracting a neutral contract is useful, but not before the contract is made
-fully honest about asynchronous browser operations and resource ownership. The
-right order is:
-
-1. keep the current publish train unblocked;
-2. repair capability honesty and sync/async mismatches in the existing crates;
-3. extract a small neutral surface-contract crate only after the event and
-   request model is stable enough to be a public semver surface.
-
-The assessment should not block `grafting` 0.6.0, `scrying` 0.7.0, or
-`welding` 0.14.0. It should block any stronger public claim that these crates
-already form a complete browser replacement platform.
+- **Capability honesty protects a shared API.** Explicit limitations and
+  correlated asynchronous outcomes would keep extraction from turning several
+  incompatible promises into one public promise.
+- **Ownership belongs below the browser protocol.** Correct native image
+  custody would prevent a safe public surface from inheriting copyable consumed
+  descriptors or guessed ownership.
+- **The release train and broader qualification have different bounds.** The
+  assessment did not block `grafting` 0.6.0, `scrying` 0.7.0 or `welding` 0.14.0.
+  It rejected a stronger claim that those releases already constituted a
+  complete browser replacement platform. The later shared-contract publication
+  does not remove those qualification limits.
 
 ## Architectural ruling
 
 There are three distinct layers, and combining them would recreate the present
 translation problem in a public crate:
 
-1. **Native image custody and import.** Graft owns OS/GPU resource lifetime,
+- **Native image custody and import.** Graft owns OS/GPU resource lifetime,
    synchronization, and adoption by the host's wgpu device. Its owned transport
    types eventually need a wgpu-free package/module boundary so a neutral
    surface protocol can use them without selecting the host's wgpu major.
-2. **One browser surface protocol.** A small neutral contract owns
+- **One browser surface protocol.** A small neutral contract owns
    non-blocking frame acquisition, input/focus, correlated commands, one ordered
    event stream, settings outcomes, and runtime capability evidence.
-3. **Host orchestration.** Inker owns engine registration and choice, profile
+- **Host orchestration.** Inker owns engine registration and choice, profile
    binding, fallback, document/graph integration, and application routing.
 
-Only layer 2 is an extraction candidate. Graft stays below it, including
+The browser surface protocol was the extraction candidate. Graft stays below it, including
 authority over any later transport-only package factored from its workspace.
 Inker stays above it. This is also the dependency direction: the neutral types
 must not depend on Mere, Inker registries, or a specific wgpu version.
@@ -121,13 +126,15 @@ unsupported while describing a working feature-enabled WPE path. Weld's static
 probe must account for `cef-runtime`. A neutral contract that copies those
 answers would become a shared lie.
 
-## Recommended public shape
+<a id="recommended-public-shape"></a>
 
-A future neutral surface-contract crate should be wgpu-free and
-producer-neutral. The 2026-10-22 naming decision chooses `wgpu-cue` for the
-project and wgpu-facing crate, with `webcue` for a separate wgpu-free core if
-needed (see the dated cues below).
-It should contain:
+## Public shape considered in the original snapshot
+
+The original proposal below named a renderer-free, producer-neutral browser
+protocol. Its candidate type names are retained for comparison; the implemented
+`webcue::Surface`, correlated requests, complete capability reports and
+`wgpu-cue` frame sources are described in the dated receiving findings.
+The September candidate included:
 
 - `SurfaceFrame` as an owned transport frame from Graft's wgpu-free boundary,
   plus an explicit CPU frame and an explicit native-overlay outcome. It should
@@ -446,6 +453,8 @@ observed acceleration. Turnstone's inspector
 `WebSurfaceCapabilities` fields, so the full report is not yet the taxonomy
 users see.
 
+<a id="open-decisions"></a>
+
 ## Recorded choices and remaining cues
 
 - **The name and home are settled.** `wgpu-cue` lives in its own repository;
@@ -500,8 +509,8 @@ users see.
   loss and CEF/native-WebView frame bindings retain their own qualification.
   Concrete Servo and Genet have since passed the finite headed and offscreen
   Metal receiver on one host device; see the receiving plan and Turnstone's
-  `docs/receipts/servo_cue_20261023/`. That receiver is separate from complete
-  Turnstone product adoption and Linux/Vulkan qualification.
+  `docs/receipts/servo_cue_20261023/`. That finite receiver and the product
+  receiving below have different scopes. Linux/Vulkan remains unqualified.
 
 - **The placement pool can lend its retained receiver to Cue.** Pelt's shared
   renderer now borrows the controller already admitted by the pool. Routing,
@@ -518,3 +527,39 @@ users see.
   admission. Input, mutable resource access, runnable work and exact due timers
   can require a follow-up frame after an older submission completes. Idle
   layout preparation does not continually invalidate that submission.
+
+- **The real host now consumes the boundary.** Turnstone implementation
+  `5e9e3bfea88e9e9b9133d01ec9486ed7fd056322` uses Cue for retained and
+  Servo/Metal main/lens content presentation. Its mixed case renders Genet and
+  Servo side by side on one device. Per-card selection, reading resources and
+  host loading stay with their existing owners. The
+  [product receipt](https://github.com/merely-made/turnstone/tree/86ccb619ba506d2a17d3fea0f26d0cf82566abd0/docs/receipts/cue_ui_20261023)
+  records 1,183 passing library tests, 17 explicit ignores and the complete
+  native UI cases; it retains failed and incomplete runs.
+- **Taxonomy reaches the live Inspector.** All 28 feature answers, platform,
+  frame direction, evidence and semantic protocol are visible for the installed
+  shared producer. Existing viewer selection remains separate from capability
+  evidence. Servo's report is still `Constructed`: an explicit host-import
+  feedback seam would let the report itself reflect the observed receiving.
+- **A browser traversal is different from a new visit.** A matching actual
+  Back/Forward commit moves Turnstone's existing history cursor. An ordinary
+  link to an old address still grows history. Correlated refusals and duplicate
+  callbacks must preserve that distinction; otherwise sharing event types
+  alone still loses Forward.
+- **Control observation must not look like document mutation.** Dedicated
+  pool event drains preserve retained semantic publications. Unrestricted
+  mutable iteration invalidates them; using it for every event-loop wake had
+  needlessly revoked the accessibility admission the host was about to use.
+- **A nonblank host window does not prove a document frame.** The lens gate
+  now requires a sampled shared-content entry as well as a composed capture.
+  Transient non-admitted geometry skips presentation without becoming an engine
+  failure. The earlier weaker receipt remains evidence of that distinction.
+- **Polling is still a separate cost.** Native browser work remains runnable
+  in the pool's bounded polling policy. The mixed receipt's global idle wait
+  reaches its bound even though both producers present correctly. A wake/work
+  signal would distinguish a quiet browser from work requiring another turn.
+- **Product adoption does not fill every platform binding.** Concrete
+  Weld/Scry shared-native adapters, Linux/Vulkan and fresh Windows receiving,
+  native Servo IME/semantic exposure, physical candidate-window input, human AT,
+  physical device loss and transparent native colour/alpha acceptance keep
+  their own gaps and qualification bounds.
