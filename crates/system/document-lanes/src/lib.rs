@@ -41,3 +41,20 @@ pub mod retained_clip;
 pub mod typography;
 mod reading_find;
 pub use typography::document_style_with_typography;
+
+mod reading_anchor;
+
+/// Bounded prose from an already retained packet. No fetch or passage inference.
+pub fn reading_excerpt(document:&inker::EngineDocument)->Option<String> {
+    fn prose(block:&inker::Block)->Option<String> {
+        use inker::Block;
+        match block {
+            Block::Paragraph{spans}=>Some(inker::inline_text(spans)),
+            Block::Presented{block,..}=>prose(block),
+            Block::Quote{blocks}=>blocks.iter().find_map(prose),
+            Block::List{items,..}=>items.iter().flatten().find_map(prose),
+            _=>None,
+        }
+    }
+    document.blocks.iter().filter_map(prose).find(|text|!text.trim().is_empty()).map(|text|text.chars().take(280).collect())
+}

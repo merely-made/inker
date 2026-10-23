@@ -334,6 +334,9 @@ struct ReaderAccessibilityNodeMap {
 }
 
 impl ReaderDocumentSession {
+    pub fn reading_anchor(&self) -> Option<tabard::ReadingAnchor> { self.doc.reading_anchor() }
+    pub fn restore_reading_anchor(&mut self, anchor: tabard::ReadingAnchor) { self.doc.restore_reading_anchor(anchor); self.bump_accessibility_revision(); }
+
     fn from_source(source: Arc<ReaderDocumentSource>, viewport: (u32, u32)) -> Self {
         let doc = SmolwebDocument::from_shared_document_with_theme(
             source.document.clone(),
