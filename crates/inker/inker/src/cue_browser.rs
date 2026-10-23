@@ -120,7 +120,13 @@ impl BrowserSurface {
     }
     /// Advanced browser/native embedding extensions retain their original owner.
     /// The host must not independently drain their event queue.
-    pub fn platform_mut(&mut self) -> &mut dyn SurfaceProducer {
+    pub fn platform(&self) -> &(dyn SurfaceProducer + 'static) {
+        self.producer.as_ref()
+    }
+    pub fn viewport(&self) -> Viewport {
+        self.viewport
+    }
+    pub fn platform_mut(&mut self) -> &mut (dyn SurfaceProducer + 'static) {
         self.producer.as_mut()
     }
     fn position(&self, x: f32, y: f32) -> PhysicalPosition {
