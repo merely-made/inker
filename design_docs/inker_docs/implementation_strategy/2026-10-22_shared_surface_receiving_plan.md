@@ -122,16 +122,16 @@ native view callbacks while its texture producer uses the shared rasterizer.
 
 ## Concrete browser reports — 2026-10-23
 
-**Status (2026-10-23): shared prerequisites landed; real Metal offscreen
-receiving passes.** Turnstone's actual Servo host forces an
+**Status (2026-10-23): shared prerequisites landed; real Metal offscreen and
+headed receiving pass.** Turnstone's actual Servo host forces an
 independent Stop/inline-HTML refusal: the old navigation capability cannot
 express those operations separately. `BrowserSurface::new_with_report` accepts
 an explicit complete report, refuses claims outside its implemented subset,
 and gates shared input before native dispatch. `PeltSharedContent::from_browser`
 keeps that already-bound producer's report and scope. Independent refusals
 preserve request IDs, existing receiving suites pass, and Turnstone's real
-Metal receiver consumes the installed report. The visible-window gate awaits
-the user's unlock signal; native physical IME and human AT remain separate.
+Metal receiver consumes the installed report. The same qualified binary also
+passes the visible-window gate; native physical IME and human AT remain separate.
 
 - 2026-10-23: Servo's public `WebView::page_zoom` supplies a real effective-value
   readback. Graft's producer seam forwards typed zoom only when its host
@@ -172,3 +172,11 @@ the user's unlock signal; native physical IME and human AT remain separate.
   runs. This does not migrate the complete Turnstone product UI. Servo's report
   stays `Constructed`; host-import observation currently lives in the external
   receipt rather than feeding back into that report.
+
+- 2026-10-23: Turnstone `b6983aa` closes the finite headed Metal receiving gate
+  after unlock: a visible, focused window presents 30 frames on one producer
+  device using the exact offscreen-qualified binary. The
+  [headed receipt](https://github.com/merely-made/turnstone/blob/b6983aa/docs/receipts/servo_cue_20261023/headed/qualification.json)
+  retains the complete same-host control/custody sequence. The driver also
+  corrects a bundled-Bash empty-array launch failure. The full product UI,
+  Linux/Vulkan, physical input and human AT remain separate boundaries.
