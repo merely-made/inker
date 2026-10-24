@@ -749,7 +749,11 @@ compositor correlation retain separate bounds.
   stream. The pool getter additionally checks prepared placement generation
   and receiver identity. A second appearance's viewport cannot supply another
   window's caret. This gives hosts geometry without a Genet downcast, duplicate
-  metadata cache or second event consumer.
+  metadata cache or second event consumer. Turnstone now reads that observation
+  after primary/lens frame preparation, adds placement and applies display scale
+  once before setting the native IME candidate area. Its
+  [host receiving receipt](https://github.com/merely-made/turnstone/blob/main/docs/receipts/cue_text_input_20261024/README.md)
+  binds the published cohort, exact executable and programmatic checks.
 - **Receiving remains bound to the exercised cases.** The
   [standalone contract proof](https://github.com/merely-made/wgpu-cue/blob/main/docs/2026-10-24-text-input.md)
   records fourteen ordinary Cue tests, hardware Metal metadata and pixel/lifecycle
@@ -760,7 +764,10 @@ compositor correlation retain separate bounds.
   Genet/Cue cohort. Graphshell's separate web lock uses the parser and renderer versions
   required by that cohort; locked wasm dependency
   resolution passes. These checks do not change the earlier physical receipt
-  or establish human AT and physical CJK behavior.
+  or establish human AT and physical CJK behavior. Turnstone's two-window
+  geometry test, existing IME-admission test, nine navigation compatibility tests
+  and default-feature all-target compile check pass. A fresh ThinkPad Linux/Vulkan
+  rerun remains blocked on mesh SSH identity unlock.
 - **Display masking still has its own index boundary.** Source inspection shows
   that native Genet shapes password display text as grapheme-counted bullets,
   while its caret queries use editing-value byte offsets. The shared publisher
