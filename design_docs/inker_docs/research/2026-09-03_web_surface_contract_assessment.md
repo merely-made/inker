@@ -705,10 +705,66 @@ compositor correlation retain separate bounds.
   and a passing automated Sky setup check close those harness gaps without
   relabelling the original outcomes or asking the operator to repeat successful
   typing.
-- **Successful placement still needs a producer observable.** The Genet shared
-  adapter does not publish the neutral `TextInput` geometry event. The host can
-  use the retained editor it owns, and the operator observed candidate placement
-  in this configuration, but an interchangeable producer still needs to report
-  its editable state and caret geometry. This physical Latin Typing Booster
-  result does not upgrade Servo IME availability, qualify physical CJK methods,
-  establish human AT or qualify physical device loss.
+- **Physical placement and shared publication are separate evidence.** At the
+  physical receipt's source, Genet did not publish the neutral `TextInput`
+  geometry event. The host could use its retained editor and the operator
+  observed candidate placement in that configuration. The shared observable
+  is now implemented and tested in the cues below; the earlier physical Latin
+  Typing Booster result retains its original binaries and does not upgrade
+  Servo IME availability, physical CJK methods, human AT or physical device loss.
+
+
+## Shared Genet text-input publication cues (2026-10-24)
+
+- **One native observation now reaches the shared control plane.** Genet's
+  renderer-free `document-session-api` 0.1.1 owns text-control metadata and the
+  logical caret rectangle; Webcue 0.1.2 reexports those types and Wgpu Cue 0.1.3
+  carries the updated control plane. All three packages are published. Static
+  and Boa-scripted sessions query completed current layout without causing
+  layout from the getter. Coordinates include document scroll and page zoom;
+  the host adds placement and applies device scale once. Selection uses UTF-16
+  while preedit retains its separate UTF-8 offsets. Values and document/native
+  identities do not enter this observation.
+- **Text input does not depend on semantic publication.** The standalone Genet
+  adapter and Inker's retained session adapter publish refreshed state after
+  frame preparation even with semantic snapshots disabled. Layout invalidation,
+  edits, blur, hiding and retirement revoke old geometry. Ignored input preserves
+  an unchanged current observation, including a publication retry that was
+  deferred by backpressure. Field removal also exposed a stale native editor
+  access; Genet now revokes that editor before the next frame reads it.
+- **A full mailbox can revoke geometry without stopping legacy frames.** A
+  published editor reserves its clearing event and sequence number, alongside
+  accepted-request completion reservations. Unchanged observations deduplicate.
+  With semantics disabled, a document host that does not consume the shared
+  stream continues producing frames; unavailable metadata clears and retries
+  when the host drains. A real Pelt fixture types and frames 150 edits without
+  consuming observations, then receives the current selection after draining.
+  Unclaimed renderer-only observations expire when a legacy host replaces its
+  document. Async input, requests, semantic actions, event polling or explicit
+  shared retirement claim the stream and retain its final observations and
+  accepted outcomes. This keeps adding an observable from freezing an existing
+  document host or growing an unseen retired-event backlog.
+- **A window needs the exact prepared appearance.** Pelt exposes the latest
+  successfully published observation from the same authority as its event
+  stream. The pool getter additionally checks prepared placement generation
+  and receiver identity. A second appearance's viewport cannot supply another
+  window's caret. This gives hosts geometry without a Genet downcast, duplicate
+  metadata cache or second event consumer.
+- **Receiving remains bound to the exercised cases.** The
+  [standalone contract proof](https://github.com/merely-made/wgpu-cue/blob/main/docs/2026-10-24-text-input.md)
+  records fourteen ordinary Cue tests, hardware Metal metadata and pixel/lifecycle
+  checks, lint and a renderer-free wasm build. Genet's static/scripted fixtures
+  cover editing, scroll, zoom, resize, empty and multiline controls, password
+  metadata/value exclusion, blur and detach. Inker's eight focused tests and
+  Pelt's thirty-four control/pool tests pass. Mere's root lock changes only the
+  Genet/Cue cohort. Graphshell's separate web lock uses the parser and renderer versions
+  required by that cohort; locked wasm dependency
+  resolution passes. These checks do not change the earlier physical receipt
+  or establish human AT and physical CJK behavior.
+- **Display masking still has its own index boundary.** Source inspection shows
+  that native Genet shapes password display text as grapheme-counted bullets,
+  while its caret queries use editing-value byte offsets. The shared publisher
+  inherits that native projection boundary. A mapping between editing and
+  projected text would align password caret and selection geometry. This run
+  checks password classification and value exclusion; password offset-to-glyph
+  behavior has not been qualified.

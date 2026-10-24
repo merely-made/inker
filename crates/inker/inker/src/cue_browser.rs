@@ -126,6 +126,10 @@ impl BrowserSurface {
     pub fn viewport(&self) -> Viewport {
         self.viewport
     }
+    /// Latest shared observation, without a second platform event drain.
+    pub fn text_input_state(&self) -> Option<&TextInputState> {
+        self.protocol.text_input_state()
+    }
     pub fn platform_mut(&mut self) -> &mut (dyn SurfaceProducer + 'static) {
         self.producer.as_mut()
     }
