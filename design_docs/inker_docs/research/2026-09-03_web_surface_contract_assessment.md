@@ -9,9 +9,10 @@ Inspector now have bounded product receiving evidence through that boundary.
 Retained Genet/Reader also has hardware Vulkan and native Wayland receiving
 evidence on the ThinkPad. Linux native-frame import, other concrete native
 browser bindings, physical IME, human accessibility and physical device-loss
-qualification retain their own bounds. Positive scrolling also exposes an open
-Genet canvas-background defect before host staging. `mere-surface-api` remains the separate
-application discovery/settings contract.
+qualification retain their own bounds. The Genet canvas-background defect exposed
+by positive scrolling is repaired, with a separate before/after source-raster
+gate on the ThinkPad. `mere-surface-api` remains the separate application
+discovery/settings contract.
 
 The [2026-10-22 cues](#four-producers-and-two-frame-directions-2026-10-22)
 explain the fourth producer and two frame directions; the
@@ -587,17 +588,38 @@ users see.
   close/reopen have receiving evidence; native candidate windows and human AT
   do not. The canonical IME tests pass with an ICU4X complex-script segmentation
   diagnostic, so they also leave CJK segmentation quality unqualified.
-- **Successful receiving can reveal an incorrect producer image.** A positive
-  scroll moves the article but leaves a lower viewport band without its beige
+- **Successful receiving can reveal an incorrect producer image.** The first
+  receiving run with a positive scroll moved the article but left a lower viewport band without its beige
   canvas background. The producer raster is already transparent there before
   host staging. Pinned Genet's cached paint-list translation includes the
   viewport-sized canvas fill; keeping that fill anchored would preserve opaque
-  coverage and readable text while the document moves. The finding remains
-  open, and this pass does not establish whether other backends reproduce it.
+  coverage and readable text while the document moves. That first receipt
+  preserves the failed appearance check; the repair and its separate receiving
+  evidence are recorded below.
 
 The [ThinkPad Vulkan/Wayland receipt](https://github.com/merely-made/turnstone/tree/f45db39f117bc41315de1ffc2e7c95d631a89f14/docs/receipts/cue_ui_linux_20261023)
 binds the initial receiving and the refreshed Turnstone `b4628119` dependency
 cohort to separate binary identities. Both native cases and the focused checks
-pass on the refreshed cohort. The producer-background finding remains an
-explicit failed appearance check, separate from successful transport, controls
+pass on that refreshed cohort. Its producer-background finding remains a
+historical failed appearance check, separate from successful transport, controls
 and lifecycle receiving; physical IME and human AT remain unqualified.
+
+- **Canvas colour belongs to the viewport while document paint scrolls.**
+  Genet `621aa33c` introduces a document-scroll operation that leaves the
+  propagated canvas colour outside the scroll transform. Cached frames, fresh
+  retained repaint, the scripted owner and Rootstock use that operation. Full
+  surface placement and page scale still move the complete result. Ordinary
+  element backgrounds and child/text/host slots remain in document coordinates;
+  a transparent canvas stays transparent. Five CPU pixel regressions cover those
+  boundaries, and the full Livery suite passes 725 tests with eight explicit
+  ignores. Background-image emission is unchanged by this repair.
+- **Appearance has a receiving gate independent of transport success.**
+  The repaired ThinkPad source raster keeps opaque beige at `(8,469)` after a
+  positive 120-pixel scroll at 110% zoom. All 477 rows of the sampled canvas
+  margin match the expected colour, and the centre follows the 120-pixel content
+  translation on the same producer scope. The same checker rejects the original
+  raster with 120 transparent lower rows. The new
+  [scroll repair receipt](https://github.com/merely-made/turnstone/tree/3372dab898d1148bd5132d69768006216c58c4a1/docs/receipts/cue_scroll_repair_20261023)
+  binds the before/after observations to their sources and executables. This
+  closes the observed colour-fill defect without extending the separate native
+  frame, physical IME, human AT or OS-compositor qualification bounds.
