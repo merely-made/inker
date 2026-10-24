@@ -1,6 +1,6 @@
 # Web Surface Contract Assessment
 
-**Status (2026-10-23):** the neutral contract is implemented and published as
+**Status (2026-10-24):** the neutral contract is implemented and published as
 `webcue` 0.1.1 and `wgpu-cue` 0.1.2 in the `wgpu-cue` repository. Inker, Pelt and
 Graphshell use the shared receiving boundary. Genet and Servo have finite
 headed and offscreen Metal receiving evidence. Turnstone's retained and
@@ -8,7 +8,11 @@ Servo/Metal product pool, main/lens presentation, mixed-engine cards and live
 Inspector now have bounded product receiving evidence through that boundary.
 Retained Genet/Reader and native Servo also have hardware Vulkan and native
 Wayland receiving evidence on the ThinkPad, including simultaneous frame
-directions on one device. Other concrete native browser bindings, physical IME,
+directions on one device. Physical IBus Typing Booster composition also has
+operator and native-event evidence in Turnstone's address field, retained Genet
+document, document lens and repaired Sky contributed field on the ThinkPad.
+The dated physical receiving cues below retain its two executable cohorts and
+evidence limits. Other concrete native browser bindings, physical CJK methods,
 human accessibility and physical device-loss qualification retain their own
 bounds. The Genet canvas-background defect exposed
 by positive scrolling is repaired, with a separate before/after source-raster
@@ -672,3 +676,39 @@ binds the exact source cohort and executable to those native controls, lens and
 mixed-card results. Physical IME, human AT, physical device loss, external
 semaphore transport, transparent native colour/alpha, X11/Xwayland and physical
 compositor correlation retain separate bounds.
+
+## Physical IME receiving cues (2026-10-24)
+
+- **A canonical composition type does not enable the OS input method.** The
+  ThinkPad exercise exposed missing host admission for retained document
+  editors and contributed panes. Sky's ordinary field dispatch existed, but
+  the shell omitted that field from IME enablement and candidate geometry.
+  Turnstone `16df175` now follows the focused editor and its actual window,
+  synchronizes admission and exposes contributed caret geometry. Sky also
+  needed legible field text, borders, caret and preedit styling for an operator
+  to observe edits.
+- **Physical evidence includes the operator's view of the OS.** The address
+  field, Genet document and document lens have positive physical typing,
+  preedit, candidate, commit, cancellation and focus-switch observations on
+  one executable. The repaired Sky field has the same seven positive checks
+  on a second executable, corroborated by 65 nonempty native preedit events
+  and three commits. The
+  [physical receipt](https://github.com/merely-made/turnstone/tree/main/docs/receipts/cue_ime_linux_20261024)
+  binds both binaries, source patches, native window IDs and settings
+  restoration. App captures cannot qualify OS popup pixels, and these results
+  do not constitute a full four-stage run on the repaired binary.
+- **A receiving claim retains its harness failures.** Both original scenarios
+  remain marked failed: an unsupported setup shortcut and a wheel step aimed
+  at the wrong pane kind preceded the physical exercises. The first collector
+  watched stderr while native diagnostics went to stdout; intact timestamps
+  and readiness markers recover those stage observations. Corrected collection
+  and a passing automated Sky setup check close those harness gaps without
+  relabelling the original outcomes or asking the operator to repeat successful
+  typing.
+- **Successful placement still needs a producer observable.** The Genet shared
+  adapter does not publish the neutral `TextInput` geometry event. The host can
+  use the retained editor it owns, and the operator observed candidate placement
+  in this configuration, but an interchangeable producer still needs to report
+  its editable state and caret geometry. This physical Latin Typing Booster
+  result does not upgrade Servo IME availability, qualify physical CJK methods,
+  establish human AT or qualify physical device loss.
