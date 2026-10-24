@@ -1,15 +1,16 @@
 # Web Surface Contract Assessment
 
 **Status (2026-10-23):** the neutral contract is implemented and published as
-`webcue` and `wgpu-cue` 0.1.1 in the `wgpu-cue` repository. Inker, Pelt and
+`webcue` 0.1.1 and `wgpu-cue` 0.1.2 in the `wgpu-cue` repository. Inker, Pelt and
 Graphshell use the shared receiving boundary. Genet and Servo have finite
 headed and offscreen Metal receiving evidence. Turnstone's retained and
 Servo/Metal product pool, main/lens presentation, mixed-engine cards and live
 Inspector now have bounded product receiving evidence through that boundary.
-Retained Genet/Reader also has hardware Vulkan and native Wayland receiving
-evidence on the ThinkPad. Linux native-frame import, other concrete native
-browser bindings, physical IME, human accessibility and physical device-loss
-qualification retain their own bounds. The Genet canvas-background defect exposed
+Retained Genet/Reader and native Servo also have hardware Vulkan and native
+Wayland receiving evidence on the ThinkPad, including simultaneous frame
+directions on one device. Other concrete native browser bindings, physical IME,
+human accessibility and physical device-loss qualification retain their own
+bounds. The Genet canvas-background defect exposed
 by positive scrolling is repaired, with a separate before/after source-raster
 gate on the ThinkPad. `mere-surface-api` remains the separate application
 discovery/settings contract.
@@ -564,7 +565,7 @@ users see.
   reaches its bound even though both producers present correctly. A wake/work
   signal would distinguish a quiet browser from work requiring another turn.
 - **Product adoption does not fill every platform binding.** Concrete
-  Weld/Scry shared-native adapters, Linux native-frame and fresh Windows receiving,
+  Weld/Scry shared-native adapters and fresh Windows receiving,
   native Servo IME/semantic exposure, physical candidate-window input, human AT,
   physical device loss and transparent native colour/alpha acceptance keep
   their own gaps and qualification bounds.
@@ -577,9 +578,9 @@ users see.
   This qualifies the host-device direction without implying Linux native-frame
   import or an X11/Xwayland run.
 - **Linux native frames need an adapter as well as lower import primitives.**
-  Published `wgpu-cue` 0.1.1 currently exposes the Metal importer, Turnstone uses
-  a refusing importer outside macOS, and its concrete Servo registration is
-  Windows/macOS-only. Graft's Vulkan/DMA-BUF support is a lower building block.
+  At the 0.1.1 receiving checkpoint, the published crate exposes the Metal
+  importer, Turnstone uses a refusing importer outside macOS, and its concrete
+  Servo registration is Windows/macOS-only. Graft's Vulkan/DMA-BUF support is a lower building block.
   Supplying the shared importer and a concrete producer binding would let the
   other frame direction earn the same product receiving evidence.
 - **A live Linux report is narrower than blanket engine support.** The native
@@ -623,3 +624,51 @@ and lifecycle receiving; physical IME and human AT remain unqualified.
   binds the before/after observations to their sources and executables. This
   closes the observed colour-fill defect without extending the separate native
   frame, physical IME, human AT or OS-compositor qualification bounds.
+
+
+## Completed Linux snapshots and shared Vulkan import (2026-10-23)
+
+- **A completed producer snapshot makes the no-wait boundary concrete.** Graft
+  0.6.1 exports its own top-left, single-plane linear DMA-BUF allocation from
+  the Servo pre-present hook. A zero-timeout fence poll keeps unfinished work
+  private to the producer. Only completed work crosses with no remaining sync
+  object; flushing GL alone does not earn that declaration. The GL fixture
+  repaints the source and destroys the producer before checking the imported
+  orientation, pixels and half alpha.
+- **One host device needs native import requirements at construction.** Genet
+  `2b5c0181` lets the host adopt explicitly provisioned wgpu handles. That keeps
+  retained rendering, primary/lens composition and native acquisition on one
+  device and queue, while preserving the refusal to silently replace a device
+  underneath registered native producers.
+- **An importer has a narrower promise than its envelope.** Published
+  `wgpu-cue` 0.1.2 adds the Vulkan importer over Graft 0.6.1; Webcue and
+  `grafting-frame` remain 0.1.1. It requires completed snapshots, declared
+  modifiers and matching shape/format/alpha. It refuses external semaphore
+  synchronization rather than interpreting an opaque Vulkan semaphore as a
+  Linux sync file. Twelve shared-contract/importer tests and nine Pelt
+  Linux/Vulkan receiving tests pass on the ThinkPad.
+- **A frame direction needs actual product pixels.** Turnstone `a2655c6e`
+  receives Servo native frames on the ThinkPad's RADV Renoir device in a native
+  GNOME Wayland session. Navigation using real page input, deletion, reload,
+  Back/Forward, 110% zoom, lens sizing, return/dock and close/reopen pass.
+  Seven native source rasters retain the fixture's red top, white centre and
+  blue bottom. A separate mixed-card run captures both native Servo and
+  retained Genet rasters at the same checkpoint, on the same device generation.
+- **A useful refusal can expose missing evidence plumbing.** The first full
+  native scenario passes its controls and shows the page in the lens, but the
+  receiving driver rejects the absent lens source-raster diagnostic. Wiring
+  that same asynchronous diagnostic into lens composition lets the repeated
+  run pass without weakening the driver. Matching captured surface IDs to live
+  direction reports also prevents cached entries from qualifying mixed frames.
+- **Correct frames do not establish a quiet browser.** The Linux mixed case's
+  two global idle waits reach their 240-frame bounds while both current source
+  rasters and the following controls pass. A producer work/wake signal would
+  separate a quiet browser from the host's bounded polling cost.
+
+The [canonical implementation record](https://github.com/merely-made/wgpu-graft/blob/main/design_docs/2026-10-23_linux_native_cue_plan.md)
+records the producer, importer and device-construction seams. The
+[Linux native product receipt](https://github.com/merely-made/turnstone/tree/main/docs/receipts/cue_native_linux_20261023)
+binds the exact source cohort and executable to those native controls, lens and
+mixed-card results. Physical IME, human AT, physical device loss, external
+semaphore transport, transparent native colour/alpha, X11/Xwayland and physical
+compositor correlation retain separate bounds.
