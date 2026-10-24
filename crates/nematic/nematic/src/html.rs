@@ -344,7 +344,7 @@ impl<'a> Converter<'a> {
         self.removed += attrs
             .iter()
             .filter(|attr| {
-                let name = attr.name.local.as_ref();
+                let name: &str = attr.name.local.as_ref();
                 name == "style"
                     || name.starts_with("on")
                     || matches!(name, "srcdoc" | "srcset" | "integrity" | "nonce")
@@ -364,7 +364,7 @@ fn attribute<'a>(dom: &'a StaticDocument, node: StaticNodeId, wanted: &str) -> O
     match dom.node(node).kind() {
         StaticNodeKind::Element { attrs, .. } => attrs
             .iter()
-            .find(|attr| attr.name.local.as_ref() == wanted)
+            .find(|attr| &*attr.name.local == wanted)
             .map(|attr| attr.value.as_ref()),
         _ => None,
     }
