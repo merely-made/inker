@@ -1,6 +1,6 @@
 [package]
 rust-version = "1.97.1"
-name = "mere-page-load"
+name = "mere-pageload"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

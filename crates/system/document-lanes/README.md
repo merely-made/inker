@@ -1,4 +1,4 @@
-# mere-document-lanes
+# mere-lanes
 
 Mere's document content lanes above Genet, split out of `genet-documents` on
 2026-09-02 under the platform boundary plan (mere
