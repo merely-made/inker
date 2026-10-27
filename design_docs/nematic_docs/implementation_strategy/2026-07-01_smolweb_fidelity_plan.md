@@ -16,6 +16,50 @@ started. WS3's bespoke rendering is superseded by WS4, one render path (§7,
 rulings S66 and S70 to S77), done on main 2026-10-06: R0 to R5 in `b4f14f2c`,
 R6 in `1d87808a`.
 
+## Fetch actor admission and joined shutdown (2026-10-26)
+
+**Status: in progress.** Work on current Mere main; Turnstone receiving and
+product configuration remain a separate lane. Reuse Armillary's actor harness,
+Tokio task scope and joined outcomes. Errand keeps wire/native deadlines and
+Mere's existing per-operation byte/time/Submit policy stays unchanged.
+
+The bounded companion returns a FetchActor with host-selected active and pending
+counts plus an independent queue-wait deadline. Defaults are 16 active slots,
+64 pending slots and 30 seconds in the pending queue; zero active disables I/O,
+zero pending sheds excess work. Reserve capacity before placing owned command
+payloads in the mailbox. CancelPage is an exact-ID control outside that mailbox.
+Queue waiting precedes the existing transport allowance. Both HTTP and smolweb
+share admission; streams, redirects and native timing keep their existing rules.
+
+Preserve the original spawn_fetcher* signatures and exhaustive command/update
+enums. Their Armillary command mailbox remains unbounded for source compatibility;
+share bounded task execution and joined cleanup, while documenting that strict
+pre-mailbox admission requires the companion. This is an explicit consumer
+migration boundary, not a claim that existing Turnstone ingress is bounded.
+Dropping either handle stays nonblocking. Explicit close-and-join fences the
+bounded handle, cancels/joins all task classes, then joins the Armillary worker.
+A stopped active write reports unknown delivery rather than implying safe retry.
+
+Done when real stalled native exchanges prove saturation/refusal before contact,
+finite queue waiting, exact-request cancellation/supersession, unrelated request
+continuation, one terminal result, permit release after task destruction, and
+joined cleanup for page, binary, favicon and explicit Submit. Cover invalid and
+zero policy, failure/panic reports, original actor APIs and independent features;
+run the existing fetch suite, scoped Clippy and bounded source/lock audits.
+Output-channel backpressure, aggregate retained-body memory and Turnstone
+adoption/native/headed qualification stay separate.
+
+Required receipts: compact source/lock hashes and focused native command/results,
+within a total 100 MB retained-byte cap across repositories. Use the existing
+C:/t/cargo-targets/mere target and build directory. No new Cargo home or isolated
+worktree is needed while main is clean; preserve concurrent work.
+
+**Findings (2026-10-26):** ActorHandle<FetchCommand> is embedded in Turnstone's
+shell and commands/updates are matched exhaustively. Armillary already provides
+ResidentTasks::close_and_join and ActorHandle::join at the current pin. Existing
+fetch code retains only page tasks; other classes detach their handles. These
+facts require a compatible companion rather than changing the public enums.
+
 > **Home refinement, 2026-08-03**: WS1's AST enrichment lands wherever the
 > grammar lives at the time, per the
 > smolweb home decision (`smolweb/design_docs/technical_architecture/2026-08-03_smolweb_home_decision.md`)
