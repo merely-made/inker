@@ -26,6 +26,7 @@ pub use accesskit::TreeId as SurfaceAccessibilityTreeId;
 pub use accesskit::TreeUpdate as SurfaceAccessibilityUpdate;
 
 pub use crate::WebFeatureStatus;
+use crate::presentation::PresentationDeclaration;
 use crate::routing::EngineRouteDecision;
 use crate::session_engine::{
     DocumentFindDirection, DocumentFindQuery, DocumentFindState, DocumentZoomState,
@@ -970,6 +971,14 @@ pub trait SurfaceEngine: Send + Sync {
     /// declare [`A11yCapability::Partial`], per the non-silent-degradation rule.
     fn a11y_capability(&self) -> A11yCapability {
         A11yCapability::Opaque
+    }
+
+    /// This engine's declaration (see [`crate::presentation`]). The default
+    /// is a surface that presents nothing by scheme, reachable by pin or
+    /// override; an engine that presents more, or keeps its id and
+    /// accessibility in the declaration, overrides it.
+    fn declaration(&self) -> PresentationDeclaration {
+        PresentationDeclaration::surface(self.engine_id()).a11y(self.a11y_capability())
     }
 }
 

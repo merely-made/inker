@@ -9,7 +9,10 @@
 
 use std::sync::Arc;
 
-use inker::{SurfaceEngine, SurfaceError, SurfaceProducer, SurfaceSpawnRequest};
+use inker::{
+    A11yCapability, PresentationDeclaration, SurfaceEngine, SurfaceError, SurfaceProducer,
+    SurfaceSpawnRequest,
+};
 
 use crate::producer::{GraftProducer, GraftSurface};
 
@@ -38,6 +41,7 @@ pub trait GraftProducerFactory: Send + Sync {
 
 /// `inker::SurfaceEngine` impl backed by wgpu-graft.
 pub struct GraftEngine {
+    declaration: PresentationDeclaration,
     factory: Arc<dyn GraftProducerFactory>,
 }
 
@@ -45,13 +49,26 @@ impl GraftEngine {
     /// Construct the engine. The host's `factory` knows how to build a concrete
     /// graft surface.
     pub fn new(factory: Arc<dyn GraftProducerFactory>) -> Self {
-        Self { factory }
+        Self {
+            declaration: PresentationDeclaration::surface(GRAFT_SERVO_ENGINE_ID),
+            factory,
+        }
     }
 }
 
 impl SurfaceEngine for GraftEngine {
     fn engine_id(&self) -> &str {
-        GRAFT_SERVO_ENGINE_ID
+        &self.declaration.id
+    }
+
+    fn a11y_capability(&self) -> A11yCapability {
+        self.declaration.reaches.a11y
+    }
+
+    /// Composited frames from the Servo embedding; opaque to assistive technology, and
+    /// presents no scheme or content type, so it is reached by pin or override.
+    fn declaration(&self) -> PresentationDeclaration {
+        self.declaration.clone()
     }
 
     // Accessibility remains Opaque by default. The optional GraftSurface
@@ -341,6 +358,16 @@ mod tests {
             tree_id,
             focus: NodeId(1),
         }
+    }
+
+    #[test]
+    fn declaration_names_the_engine_and_presents_nothing_by_default() {
+        let engine = GraftEngine::new(Arc::new(StubFactory));
+        let declaration = engine.declaration();
+        assert_eq!(declaration.id, GRAFT_SERVO_ENGINE_ID);
+        assert_eq!(engine.engine_id(), declaration.id);
+        assert_eq!(declaration.reaches.a11y, engine.a11y_capability());
+        assert!(declaration.presents_nothing());
     }
 
     #[test]

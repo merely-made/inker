@@ -8,6 +8,10 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::presentation::{
+    PresentationDeclaration, default_declarations, external_protocol_declaration,
+};
+
 mod ids;
 pub use ids::{NodeKey, RouteViewId};
 // The engine-id namespace and the genet rung ladder are engine facts; they
@@ -200,153 +204,38 @@ impl EngineRoutePolicy {
 
 impl Default for EngineRoutePolicy {
     fn default() -> Self {
+        Self::from_declarations(&default_declarations(), &external_protocol_declaration())
+    }
+}
+
+impl EngineRoutePolicy {
+    /// Rules from declarations: each presentation's schemes and content types
+    /// become one rule, and `fallback` takes what nothing presents.
+    pub fn from_declarations<'a>(
+        declarations: impl IntoIterator<Item = &'a PresentationDeclaration>,
+        fallback: &PresentationDeclaration,
+    ) -> Self {
         Self {
-            rules: vec![
-                EngineRouteRule::new(
-                    ["http", "https"],
-                    ENGINE_GENET_WEB,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["gemini", "spartan"],
-                    ENGINE_NEMATIC_GEMTEXT,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["gopher"],
-                    ENGINE_NEMATIC_GOPHER,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["finger"],
-                    ENGINE_NEMATIC_FINGER,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["scroll"],
-                    ENGINE_NEMATIC_SCROLL,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["misfin"],
-                    ENGINE_NEMATIC_MISFIN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["nex"],
-                    ENGINE_NEMATIC_NEX,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["guppy"],
-                    ENGINE_NEMATIC_GUPPY,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["titan"],
-                    ENGINE_NEMATIC_TITAN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
-                    ["file"],
-                    ENGINE_NEMATIC_FILE,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                // Content-type rules: when a fetcher learns the MIME type,
-                // these win over scheme rules so an HTTPS response of
-                // `text/markdown` re-routes to the markdown engine instead
-                // of staying on Genet.
-                EngineRouteRule::content_type(
-                    ["text/markdown", "text/x-markdown"],
-                    ENGINE_NEMATIC_MARKDOWN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["text/gemini"],
-                    ENGINE_NEMATIC_GEMTEXT,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["text/plain"],
-                    ENGINE_NEMATIC_TEXT,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    [
-                        "application/rss+xml",
-                        "application/atom+xml",
-                        "application/feed+xml",
-                    ],
-                    ENGINE_NEMATIC_FEED,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["text/x-knot", "application/x-knot"],
-                    // djot is the default knot grammar (knot design doc §10.5
-                    // Phase 5); the CommonMark `nematic.knot` engine stays
-                    // available by explicit pin for import/compat.
-                    ENGINE_NEMATIC_KNOT_DJOT,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                // HTML by content-type routes to genet regardless of scheme, so a
-                // local `file://` page or an HTTPS response that turns out to be HTML
-                // both land on the web engine. (Web-standard content → genet.)
-                EngineRouteRule::content_type(
-                    ["text/html", "application/xhtml+xml"],
-                    ENGINE_GENET_WEB,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                // Smolweb content-type refinements: a fetch that learns one of these
-                // routes to the matching nematic engine even when the scheme alone
-                // would not (e.g. an HTTPS endpoint serving a gophermap or a feed).
-                EngineRouteRule::content_type(
-                    ["application/gopher-menu"],
-                    ENGINE_NEMATIC_GOPHER,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["text/x-finger"],
-                    ENGINE_NEMATIC_FINGER,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["application/x-nex"],
-                    ENGINE_NEMATIC_NEX,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["application/x-guppy"],
-                    ENGINE_NEMATIC_GUPPY,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["application/x-titan"],
-                    ENGINE_NEMATIC_TITAN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::content_type(
-                    ["message/x-misfin"],
-                    ENGINE_NEMATIC_MISFIN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                // `application/feed+json` (JSON Feed) alongside the XML feed types above.
-                EngineRouteRule::content_type(
-                    ["application/feed+json"],
-                    ENGINE_NEMATIC_FEED,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-            ],
-            fallback: EngineRouteRule::new(
-                Vec::<&str>::new(),
-                ENGINE_EXTERNAL_PROTOCOL,
-                SurfaceContractMode::Headless,
-            ),
+            rules: declarations
+                .into_iter()
+                .map(EngineRouteRule::from_declaration)
+                .collect(),
+            fallback: EngineRouteRule::from_declaration(fallback),
             per_host_overrides: std::collections::HashMap::new(),
         }
     }
 }
 
 impl EngineRouteRule {
+    pub fn from_declaration(declaration: &PresentationDeclaration) -> Self {
+        Self {
+            schemes: declaration.presents.schemes.clone(),
+            content_types: declaration.presents.content_types.clone(),
+            engine_id: declaration.id.clone(),
+            mode: declaration.reaches.mode,
+        }
+    }
+
     pub fn new(
         schemes: impl IntoIterator<Item = impl Into<String>>,
         engine_id: impl Into<String>,

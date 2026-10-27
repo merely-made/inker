@@ -44,6 +44,10 @@ pub mod document;
 /// Engine trait and registry.
 pub mod engine;
 
+/// The declaration of a presentation: what it presents, how it reaches the
+/// screen, what it accepts back and which operations it exposes.
+pub mod presentation;
+
 /// Surface-engine traits and registry — parallel dispatch path for
 /// long-lived, frame-streaming engines (e.g. `scrying.web`).
 pub mod surface_engine;
@@ -87,6 +91,7 @@ pub use page_capture::{
     CssExtent, CssPoint, PageCaptureImageArtifact, PageCaptureOutput, PageCaptureRequest,
     PageCaptureRequestId, PageCaptureScope, PageCaptureViewportFacts,
 };
+pub use presentation::PresentationDeclaration;
 pub use routing::{
     EngineRouteDecision, EngineRoutePolicy, EngineRouteRequest, EngineRouteRule, SurfaceContract,
     SurfaceContractMode, SurfaceTargetId, WorkspaceRouteId,

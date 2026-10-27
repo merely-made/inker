@@ -48,6 +48,9 @@ serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 
+[dev-dependencies]
+toml = "0.8"
+
 # UUID 1.25 requires wasm callers of v4 to select both an RNG integration and
 # the JavaScript-backed getrandom implementation explicitly. Keep those
 # features target-local so native Inker consumers do not take a web backend.

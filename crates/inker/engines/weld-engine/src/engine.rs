@@ -9,7 +9,10 @@
 
 use std::sync::Arc;
 
-use inker::{SurfaceEngine, SurfaceError, SurfaceProducer, SurfaceSpawnRequest};
+use inker::{
+    A11yCapability, PresentationDeclaration, SurfaceEngine, SurfaceError, SurfaceProducer,
+    SurfaceSpawnRequest,
+};
 
 use crate::producer::{WeldProducer, WeldSurface};
 
@@ -37,6 +40,7 @@ pub trait WeldProducerFactory: Send + Sync {
 
 /// `inker::SurfaceEngine` impl backed by wgpu-weld (CEF / Chromium).
 pub struct WeldEngine {
+    declaration: PresentationDeclaration,
     factory: Arc<dyn WeldProducerFactory>,
 }
 
@@ -44,13 +48,26 @@ impl WeldEngine {
     /// Construct the engine. The host's `factory` knows how to build a concrete
     /// CEF surface.
     pub fn new(factory: Arc<dyn WeldProducerFactory>) -> Self {
-        Self { factory }
+        Self {
+            declaration: PresentationDeclaration::surface(WELD_CHROMIUM_ENGINE_ID),
+            factory,
+        }
     }
 }
 
 impl SurfaceEngine for WeldEngine {
     fn engine_id(&self) -> &str {
-        WELD_CHROMIUM_ENGINE_ID
+        &self.declaration.id
+    }
+
+    fn a11y_capability(&self) -> A11yCapability {
+        self.declaration.reaches.a11y
+    }
+
+    /// Composited frames imported from CEF; opaque to assistive technology, and
+    /// presents no scheme or content type, so it is reached by pin or override.
+    fn declaration(&self) -> PresentationDeclaration {
+        self.declaration.clone()
     }
 
     // a11y_capability defaults to Opaque: the CEF frame is an imported GPU
@@ -227,6 +244,16 @@ mod tests {
             caps.navigation,
             CapabilityStatus::Unsupported { .. }
         ));
+    }
+
+    #[test]
+    fn declaration_names_the_engine_and_presents_nothing_by_default() {
+        let engine = WeldEngine::new(Arc::new(StubFactory));
+        let declaration = engine.declaration();
+        assert_eq!(declaration.id, WELD_CHROMIUM_ENGINE_ID);
+        assert_eq!(engine.engine_id(), declaration.id);
+        assert_eq!(declaration.reaches.a11y, engine.a11y_capability());
+        assert!(declaration.presents_nothing());
     }
 
     #[test]

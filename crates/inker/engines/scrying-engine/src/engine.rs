@@ -9,7 +9,10 @@
 
 use std::sync::Arc;
 
-use inker::{SurfaceEngine, SurfaceError, SurfaceProducer, SurfaceSpawnRequest};
+use inker::{
+    A11yCapability, PresentationDeclaration, SurfaceEngine, SurfaceError, SurfaceProducer,
+    SurfaceSpawnRequest,
+};
 use scrying::WebSurfaceProducer;
 
 use crate::producer::ScryingProducer;
@@ -40,6 +43,7 @@ pub trait ProducerFactory: Send + Sync {
 
 /// `inker::SurfaceEngine` impl backed by scrying.
 pub struct ScryingTileEngine {
+    declaration: PresentationDeclaration,
     factory: Arc<dyn ProducerFactory>,
 }
 
@@ -47,13 +51,26 @@ impl ScryingTileEngine {
     /// Construct the engine. The host's `factory` knows how to build a
     /// platform producer.
     pub fn new(factory: Arc<dyn ProducerFactory>) -> Self {
-        Self { factory }
+        Self {
+            declaration: PresentationDeclaration::surface(SCRYING_WEB_ENGINE_ID),
+            factory,
+        }
     }
 }
 
 impl SurfaceEngine for ScryingTileEngine {
     fn engine_id(&self) -> &str {
-        SCRYING_WEB_ENGINE_ID
+        &self.declaration.id
+    }
+
+    fn a11y_capability(&self) -> A11yCapability {
+        self.declaration.reaches.a11y
+    }
+
+    /// Composited frames from the system WebView; opaque to assistive technology, and
+    /// presents no scheme or content type, so it is reached by pin or override.
+    fn declaration(&self) -> PresentationDeclaration {
+        self.declaration.clone()
     }
 
     #[tracing::instrument(level = "debug", skip(self, request), fields(url = %request.url))]
@@ -149,6 +166,16 @@ mod tests {
                 mode: SurfaceContractMode::CompositedTexture,
             },
         }
+    }
+
+    #[test]
+    fn declaration_names_the_engine_and_presents_nothing_by_default() {
+        let engine = ScryingTileEngine::new(Arc::new(StubFactory));
+        let declaration = engine.declaration();
+        assert_eq!(declaration.id, SCRYING_WEB_ENGINE_ID);
+        assert_eq!(engine.engine_id(), declaration.id);
+        assert_eq!(declaration.reaches.a11y, engine.a11y_capability());
+        assert!(declaration.presents_nothing());
     }
 
     #[test]
