@@ -60,6 +60,20 @@ fn default_policy_routes_finger_to_finger_engine() {
     assert_eq!(decision.engine_id, ENGINE_NEMATIC_FINGER);
 }
 
+#[test]
+fn misfin_address_has_no_scheme_route_but_its_content_type_keeps_the_reader() {
+    let policy = EngineRoutePolicy::default();
+
+    let by_scheme = policy.route(&request("misfin://alice@example.test"));
+    assert_eq!(by_scheme.engine_id, ENGINE_EXTERNAL_PROTOCOL);
+
+    let by_content_type = policy.route(&request_with_content_type(
+        "misfin://alice@example.test",
+        "message/x-misfin",
+    ));
+    assert_eq!(by_content_type.engine_id, ENGINE_NEMATIC_MISFIN);
+}
+
 // (Internal-page routing — mere's `graphshell://` and friends — is the host's
 // own rule, layered onto the policy app-side; its test lives with
 // `mere::routing`.)

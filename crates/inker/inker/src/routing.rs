@@ -228,11 +228,6 @@ impl Default for EngineRoutePolicy {
                     SurfaceContractMode::CompositedTexture,
                 ),
                 EngineRouteRule::new(
-                    ["misfin"],
-                    ENGINE_NEMATIC_MISFIN,
-                    SurfaceContractMode::CompositedTexture,
-                ),
-                EngineRouteRule::new(
                     ["nex"],
                     ENGINE_NEMATIC_NEX,
                     SurfaceContractMode::CompositedTexture,
