@@ -89,7 +89,6 @@ fn handwritten_policy() -> EngineRoutePolicy {
             scheme(&["gopher"], ENGINE_NEMATIC_GOPHER),
             scheme(&["finger"], ENGINE_NEMATIC_FINGER),
             scheme(&["scroll"], ENGINE_NEMATIC_SCROLL),
-            scheme(&["misfin"], ENGINE_NEMATIC_MISFIN),
             scheme(&["nex"], ENGINE_NEMATIC_NEX),
             scheme(&["guppy"], ENGINE_NEMATIC_GUPPY),
             scheme(&["titan"], ENGINE_NEMATIC_TITAN),
@@ -175,7 +174,7 @@ fn declared_and_handwritten_policies_route_every_request_alike() {
     let schemes = by_scheme
         .keys()
         .map(String::as_str)
-        .chain(["mailto", "ipfs"]);
+        .chain(["mailto", "ipfs", "misfin"]);
     let types = by_content_type
         .keys()
         .map(String::as_str)

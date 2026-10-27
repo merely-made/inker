@@ -34,9 +34,9 @@ pub fn default_declarations() -> Vec<PresentationDeclaration> {
             .schemes(["finger"])
             .content_types(["text/x-finger"]),
         reader(ENGINE_NEMATIC_SCROLL).schemes(["scroll"]),
-        reader(ENGINE_NEMATIC_MISFIN)
-            .schemes(["misfin"])
-            .content_types(["message/x-misfin"]),
+        // A misfin address names a correspondent, not a document (ruled
+        // 2026-10-26): only a body a host already holds routes to the reader.
+        reader(ENGINE_NEMATIC_MISFIN).content_types(["message/x-misfin"]),
         reader(ENGINE_NEMATIC_NEX)
             .schemes(["nex"])
             .content_types(["application/x-nex"]),
