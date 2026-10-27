@@ -43,6 +43,7 @@ mod reading_find;
 pub use typography::document_style_with_typography;
 
 mod reading_anchor;
+pub mod reading_lifecycle;
 
 /// Bounded prose from an already retained packet. No fetch or passage inference.
 pub fn reading_excerpt(document:&inker::EngineDocument)->Option<String> {

@@ -23,6 +23,7 @@ netfetch = ["dep:netfetcher", "dep:tokio", "dep:bytes"]
 smolweb = ["dep:errand", "dep:nematic", "nematic/html-fragment", "dep:tokio"]
 
 [dependencies]
+uuid.workspace = true
 eidetic = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 document-session-api = { workspace = true }
