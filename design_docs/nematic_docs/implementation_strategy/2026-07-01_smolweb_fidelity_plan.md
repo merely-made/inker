@@ -18,7 +18,7 @@ R6 in `1d87808a`.
 
 ## Fetch actor admission and joined shutdown (2026-10-26)
 
-**Status: in progress.** Work on current Mere main; Turnstone receiving and
+**Status (2026-10-27): qualified in Mere.** Turnstone receiving and
 product configuration remain a separate lane. Reuse Armillary's actor harness,
 Tokio task scope and joined outcomes. Errand keeps wire/native deadlines and
 Mere's existing per-operation byte/time/Submit policy stays unchanged.
@@ -59,6 +59,34 @@ shell and commands/updates are matched exhaustively. Armillary already provides
 ResidentTasks::close_and_join and ActorHandle::join at the current pin. Existing
 fetch code retains only page tasks; other classes detach their handles. These
 facts require a compatible companion rather than changing the public enums.
+
+**Progress (2026-10-27):** the shipping fetch implementation passes 66 tests with
+defaults and the same 66 with only actor/smolweb enabled, including 18 new actor
+controls. All 14 applicable actor-only controls pass without Errand; minimal and
+smolweb-without-actor graphs compile. Strict no-deps all-target Clippy and scoped
+rustfmt pass. Existing dependency/unused-patch notices retain their own scope.
+Native localhost HTTP/Gopher/Spartan fixtures cover saturation, no-contact
+refusal, independent queue and transport allowances, exact stream cancellation,
+same-ID supersession, nonblocking Drop, joined cleanup and task panic reporting.
+One existing HTTP deadline fixture now checks that its request read was nonempty.
+
+Reports distinguish jobs discarded before task creation from Armillary's joined
+task outcomes. Permits stay owned through request destruction. Existing transport
+helpers, request/update DTOs, client policy and root dependency cohort are
+unchanged; only the actor feature enables already-selected Armillary Tokio and
+Tokio macros. HTTP connection-pool ownership and aggregate output/body retention
+are not replaced by these operation-count limits. Cancellation remains
+cooperative; observed completed responses survive cleanup, and started writes
+without a receipt report unknown delivery without retry.
+
+Concurrent Canvas/custody work was committed independently while this source was
+prepared. Final qualification used the clean `Code/worktrees/mere-fetch-actor`
+checkout and stable Mere target, with no isolated Cargo home. Remove the clean
+worktree after verified publication and integration. Compact
+[qualification](../../../support/receipts/fetch-actor-lifecycle/qualification.json)
+and command/attempt records preserve exact source and binary identities.
+Turnstone's bounded-handle adoption and receiving qualification stay in their
+own subsequent lane; its existing SDK pin and browser/session code are untouched.
 
 > **Home refinement, 2026-08-03**: WS1's AST enrichment lands wherever the
 > grammar lives at the time, per the
