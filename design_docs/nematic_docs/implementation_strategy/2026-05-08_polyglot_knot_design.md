@@ -385,7 +385,7 @@ authored truth; HTML is a projection, not a round-trip format.
 
 The semantic variants this design puts in knot bodies (`FeedEntry`, `MetadataRow`,
 `Badge`, gemtext/gopher fences) are populated from the same errand parse ASTs the
-[smolweb fidelity plan](2026-07-01_smolweb_fidelity_plan.md)'s Workstream 1 enriches.
+[smolweb fidelity plan](../../archive_docs/2026-10-28/2026-07-01_smolweb_fidelity_plan.md)'s Workstream 1 enriches.
 As feed gains content-vs-summary and enclosure, and gopher keeps its raw item-type,
 a clip that lowers a capsule into a knot carries more of the source's meaning, not
 less. The protocol-faithfulness rule this design states is what that workstream

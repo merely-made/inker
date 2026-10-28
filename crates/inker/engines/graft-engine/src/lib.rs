@@ -33,7 +33,7 @@
 //!   `inker::SurfaceProducer`.
 //!
 //! See the engine-picker plan
-//! (`design_docs/inker_docs/implementation_strategy/2026-06-15_engine_picker_and_pluggability_plan.md`,
+//! (`design_docs/archive_docs/2026-10-28/2026-06-15_engine_picker_and_pluggability_plan.md`,
 //! Phase 5) for how this slots into the multi-engine multiplexer alongside
 //! `scrying-engine` and `weld-engine`, and for the feature-gating model.
 

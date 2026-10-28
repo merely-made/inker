@@ -4,7 +4,7 @@ Captured 2026-09-16 with stock NomadNet 1.4.2 serving and browsing the probe
 pages in this directory on an isolated Reticulum TCP loopback pair. This is a
 runtime/output capture, not a reading of NomadNet, RNS, or LXMF implementation
 source. It answers phase C1 of the
-[Micron navigation plan](../../../../../../../../design_docs/nematic_docs/implementation_strategy/2026-09-15_micron_navigation_plan.md).
+[Micron navigation plan](../../../../../../../../design_docs/archive_docs/2026-10-28/2026-09-15_micron_navigation_plan.md).
 
 ## Runtime and isolation
 
