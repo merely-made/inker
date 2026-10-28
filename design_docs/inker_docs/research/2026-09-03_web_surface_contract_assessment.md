@@ -766,8 +766,17 @@ compositor correlation retain separate bounds.
   resolution passes. These checks do not change the earlier physical receipt
   or establish human AT and physical CJK behavior. Turnstone's two-window
   geometry test, existing IME-admission test, nine navigation compatibility tests
-  and default-feature all-target compile check pass. A fresh ThinkPad Linux/Vulkan
-  rerun remains blocked on mesh SSH identity unlock.
+  and default-feature all-target compile check pass. The later
+  [ThinkPad geometry receiving](https://github.com/merely-made/turnstone/blob/main/docs/receipts/cue_geometry_linux_20261027/README.md)
+  passes on native Wayland / hardware RADV Renoir Vulkan after mesh SSH unlock.
+  Five focused tests and a native-window run bind shared observations to actual
+  Wayland cursor-rectangle messages for the primary and lens. Real page zoom
+  changes the caret height from 34 to 37.4 pixels; both windows receive matching
+  geometry. Native display scale 1 is exercised, while scale 2 remains a
+  programmatic fixture. Two rejected setup runs remain evidence. The scenario
+  runner gains window-scoped content clicks; the caret mapping and producer
+  publication code are unchanged. This does not repeat the physical keyboard or
+  candidate-popup exercise.
 - **Display masking still has its own index boundary.** Source inspection shows
   that native Genet shapes password display text as grapheme-counted bullets,
   while its caret queries use editing-value byte offsets. The shared publisher
