@@ -777,10 +777,42 @@ compositor correlation retain separate bounds.
   runner gains window-scoped content clicks; the caret mapping and producer
   publication code are unchanged. This does not repeat the physical keyboard or
   candidate-popup exercise.
-- **Display masking still has its own index boundary.** Source inspection shows
-  that native Genet shapes password display text as grapheme-counted bullets,
-  while its caret queries use editing-value byte offsets. The shared publisher
-  inherits that native projection boundary. A mapping between editing and
-  projected text would align password caret and selection geometry. This run
-  checks password classification and value exclusion; password offset-to-glyph
-  behavior has not been qualified.
+- **Display masking had its own index boundary.** The earlier native geometry
+  run checked password classification and value exclusion, while shaping counted
+  grapheme bullets and caret queries used editing-value bytes directly. The
+  later password projection repair below closes that mismatch; the earlier
+  frozen receipt retains its original source and qualification bounds.
+
+## Password projection and native receiving (2026-10-27)
+
+- **The native owner now understands projected indices.** Genet `a732a7d4` maps
+  source-byte carets and selections through the bullet string it actually shapes,
+  then maps pointer hits and returned text ranges back to source bytes. A caret
+  inside a grapheme uses the leading edge; a partial-grapheme selection covers
+  the touched bullet. Retained state stores numeric boundaries and masked text,
+  with no extra plaintext copy. Same-mask edits refresh those boundaries and a
+  control-type change removes the projection. The static and scripted engines,
+  shared producer, Pelt and Graphshell receive the fix at the owner boundary.
+- **Tests distinguish source offsets from actual glyph edges.** The original
+  implementation fails both new retained-layout regressions. The repaired suite
+  passes 359 tests with two ignored. ASCII, multibyte characters, combining
+  marks, emoji sequences and flags match separately shaped bullet references in
+  LTR and RTL, including inverse hits and selection geometry. Five focused
+  static/scripted geometry tests and two hardware Vulkan producer tests pass;
+  UTF-16 editing offsets survive composition while masked caret geometry stays
+  correct. Password values remain excluded from shared observations.
+- **The native host receives the repaired geometry.** Turnstone's
+  [password receiving receipt](https://github.com/merely-made/turnstone/blob/main/docs/receipts/cue_password_geometry_linux_20261027/README.md)
+  records three passing host tests and a native Wayland password-field run on
+  RADV Renoir / Vulkan. Both primary and document lens shared rectangles match
+  actual Wayland cursor-rectangle messages. Page zoom changes caret height from
+  33 to 36.3 pixels and the lens receives 36.3. Native display scale 1 is covered;
+  scale 2 remains a producer fixture. This removes the earlier password-offset
+  caveat, with no new physical IME, OS candidate-popup, CJK, human AT, X11,
+  native high-DPI or Servo IME claim. Earlier frozen receipts stay unchanged.
+- **Consumer adoption is a narrow lock update.** Turnstone and Mere root/web
+  change only Genet source revisions to `a732a7d4`. Locked root and wasm web
+  metadata pass and resolve that single Genet source. The receipt records an
+  unrelated existing root-lock split: `netrender_device` is locked at `d9d6e778`,
+  while metadata emits it with `netrender` at `66b2f72e`. Those records are
+  preserved; this pass does not claim a new Graphshell executable build.
