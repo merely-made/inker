@@ -388,6 +388,8 @@ impl ReaderDocumentSession {
     pub fn set_reading_preferences(&mut self, value: tabard::ReadingPreferences) -> Result<bool, String> {
         self.doc.set_reading_preferences(value)
     }
+    pub fn color_mode(&self) -> crate::ModeProfile { self.doc.color_mode() }
+    pub fn set_color_mode(&mut self, mode: crate::ModeProfile) -> bool { self.doc.set_color_mode(mode) }
     pub fn set_font_family(&mut self, family: &str) {
         self.doc.set_font_family(family);
     }

@@ -37,7 +37,7 @@ pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
 // palette (current Pelt and Mere) keep these paths; new engine-native callers
 // may configure [`DocumentStyleSheet`] directly through
 // [`SmolwebDocument::from_document`].
-pub use tabard::smolweb::{SmolwebPalette, SmolwebTheme};
+pub use tabard::smolweb::{ModeProfile, SmolwebPalette, SmolwebTheme};
 
 /// Host policy for promoting image-shaped gemtext links into inline images.
 ///
@@ -83,6 +83,10 @@ pub struct SmolwebDocument {
     find: crate::reading_find::ReadingFind,
     pending_reading: Option<tabard::ReadingAnchor>,
     background: [f32; 4],
+    /// The theme this appearance's colors came from, when it was built from
+    /// one, and the host mode they were derived under.
+    theme: Option<SmolwebTheme>,
+    color_mode: ModeProfile,
     images: HashMap<String, DecodedImage>,
     inline_media: SmolwebInlineMediaPolicy,
     layout: Option<LaidOutDocument>,
@@ -228,6 +232,7 @@ impl SmolwebDocument {
         let mut retained =
             Self::from_document_with_media_policy(document, style, background, policy);
         retained.source_content_type = input.content_type.clone();
+        retained.theme = Some(theme);
         retained
     }
 
@@ -250,7 +255,9 @@ impl SmolwebDocument {
     pub fn from_document_with_theme(document: EngineDocument, theme: SmolwebTheme) -> Self {
         let (style, background) =
             style_for_theme(&theme, &document.address, &document.content_type);
-        Self::from_document(document, style, background)
+        let mut retained = Self::from_document(document, style, background);
+        retained.theme = Some(theme);
+        retained
     }
 
     /// Retain a shared portable packet while keeping this appearance's layout,
@@ -261,12 +268,14 @@ impl SmolwebDocument {
     ) -> Self {
         let (style, background) =
             style_for_theme(&theme, &document.address, &document.content_type);
-        Self::from_shared_document(
+        let mut retained = Self::from_shared_document(
             document,
             style,
             background,
             SmolwebInlineMediaPolicy::default(),
-        )
+        );
+        retained.theme = Some(theme);
+        retained
     }
 
     fn from_document_with_media_policy(
@@ -308,6 +317,8 @@ impl SmolwebDocument {
             pending_reveal: None,
             layout_generation: 0,
             last_render_error: None,
+            theme: None,
+            color_mode: ModeProfile::LIGHT,
         }
     }
 
@@ -316,6 +327,32 @@ impl SmolwebDocument {
     /// are separate from this presentation policy.
     pub fn style_sheet(&self) -> &DocumentStyleSheet {
         &self.style
+    }
+
+    /// The host mode this appearance's theme colors were derived under.
+    pub fn color_mode(&self) -> ModeProfile {
+        self.color_mode
+    }
+
+    /// Re-derive a themed appearance's colors under the host's light, dark or
+    /// high-contrast mode. Fonts and reading preferences stay as they are; an
+    /// appearance built from an explicit style sheet keeps its colors.
+    pub fn set_color_mode(&mut self, mode: ModeProfile) -> bool {
+        if self.color_mode == mode {
+            return false;
+        }
+        self.color_mode = mode;
+        let Some(theme) = &self.theme else {
+            return false;
+        };
+        let (colors, background) = theme_colors(theme, &self.document.address, mode);
+        if self.style.colors == colors && self.background == background {
+            return false;
+        }
+        self.style.colors = colors;
+        self.background = background;
+        self.invalidate_layout();
+        true
     }
 
     /// Replace only style and invalidate measured geometry. Document identity,
@@ -339,6 +376,8 @@ impl SmolwebDocument {
             self.inline_media,
         );
         appearance.source_content_type = self.source_content_type.clone();
+        appearance.theme = self.theme.clone();
+        appearance.color_mode = self.color_mode;
         appearance.fonts = self.fonts.clone();
         appearance.generic_fonts = self.generic_fonts.clone();
         appearance.dictionaries = self.dictionaries.clone();
@@ -1301,13 +1340,6 @@ fn style_for_theme(
     url: &str,
     content_type: &str,
 ) -> (DocumentStyleSheet, [f32; 4]) {
-    let palette = SmolwebPalette::for_theme(theme, url);
-    let defaults = ColorVocabulary::default();
-    let background = parse_color(&palette.bg).unwrap_or([1.0, 1.0, 1.0, 1.0]);
-    let foreground = parse_color(&palette.fg).unwrap_or(defaults.body_text);
-    let link = parse_color(&palette.link).unwrap_or(defaults.link_text);
-    let quote = parse_color(&palette.quote).unwrap_or(defaults.badge_text);
-    let pre = parse_color(&palette.pre_bg).unwrap_or(defaults.placeholder_image);
     let mut style = DocumentStyleSheet::default();
     // These values are user-facing defaults rather than host chrome. Hosts
     // can still pass an explicit sheet through `from_document`.
@@ -1330,7 +1362,20 @@ fn style_for_theme(
     style.roles.code.size = document_canvas::SizeSpec::ScaleOfBody(0.85);
     style.roles.metadata.size = document_canvas::SizeSpec::ScaleOfBody(0.75);
     style.vertical_padding = 24.0;
-    style.colors = ColorVocabulary {
+    let (colors, background) = theme_colors(theme, url, ModeProfile::LIGHT);
+    style.colors = colors;
+    (style, background)
+}
+
+fn theme_colors(theme: &SmolwebTheme, url: &str, mode: ModeProfile) -> (ColorVocabulary, [f32; 4]) {
+    let palette = SmolwebPalette::for_mode(theme, url, mode);
+    let defaults = ColorVocabulary::default();
+    let background = parse_color(&palette.bg).unwrap_or([1.0, 1.0, 1.0, 1.0]);
+    let foreground = parse_color(&palette.fg).unwrap_or(defaults.body_text);
+    let link = parse_color(&palette.link).unwrap_or(defaults.link_text);
+    let quote = parse_color(&palette.quote).unwrap_or(defaults.badge_text);
+    let pre = parse_color(&palette.pre_bg).unwrap_or(defaults.placeholder_image);
+    let colors = ColorVocabulary {
         body_text: foreground,
         heading_text: foreground,
         link_text: link,
@@ -1340,7 +1385,7 @@ fn style_for_theme(
         placeholder_text: foreground,
         placeholder_image: pre,
     };
-    (style, background)
+    (colors, background)
 }
 
 fn parse_color(value: &str) -> Option<[f32; 4]> {
@@ -1818,6 +1863,50 @@ mod tests {
         assert_eq!(
             feed.document().provenance.source_kind.as_deref(),
             Some(nematic::ENGINE_FEED)
+        );
+    }
+
+    #[test]
+    fn a_site_themed_appearance_follows_the_host_mode_and_keeps_its_fonts() {
+        let url = "gemini://geminiprotocol.net/";
+        let mut doc = SmolwebDocument::parse(url, "# Gemini\n=> /docs Docs\n", SmolwebTheme::Site);
+        doc.set_font_family("Atkinson");
+        doc.set_reading_preferences(tabard::ReadingPreferences {
+            text_size: 24,
+            column_em: 28,
+        })
+        .unwrap();
+        let light = (doc.style_sheet().colors, doc.background);
+        assert!(!doc.set_color_mode(ModeProfile::LIGHT), "already light");
+        assert!(doc.set_color_mode(ModeProfile::DARK));
+        let (colors, background) = theme_colors(&SmolwebTheme::Site, url, ModeProfile::DARK);
+        assert_eq!(
+            (doc.style_sheet().colors, doc.background),
+            (colors, background)
+        );
+        assert_ne!(doc.background, light.1);
+        assert!(
+            background[..3].iter().all(|channel| *channel < 0.3),
+            "dark ground {background:?}"
+        );
+        assert!(doc.style_sheet().body_font_family.starts_with("Atkinson"));
+        assert_eq!(doc.reading_preferences().text_size, 24);
+        let twin = doc.new_appearance();
+        assert_eq!(
+            (twin.color_mode(), twin.background),
+            (ModeProfile::DARK, background)
+        );
+        assert!(doc.set_color_mode(ModeProfile::LIGHT));
+        assert_eq!((doc.style_sheet().colors, doc.background), light);
+
+        // An appearance built from an explicit style sheet keeps its colors.
+        let (style, background) = style_for_theme(&SmolwebTheme::Plain, url, "text/gemini");
+        let mut styled =
+            SmolwebDocument::from_document(doc.document().clone(), style.clone(), background);
+        assert!(!styled.set_color_mode(ModeProfile::DARK));
+        assert_eq!(
+            (styled.style_sheet().colors, styled.background),
+            (style.colors, background)
         );
     }
 

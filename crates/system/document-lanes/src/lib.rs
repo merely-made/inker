@@ -33,7 +33,8 @@ pub use session::SmolwebDocumentSession;
 #[cfg(feature = "smolweb")]
 pub use session::SmolwebSessionEngine;
 pub use smolweb::{
-    InPageNavigation, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette, SmolwebTheme,
+    InPageNavigation, ModeProfile, SmolwebDocument, SmolwebInlineMediaPolicy, SmolwebPalette,
+    SmolwebTheme,
 };
 #[cfg(feature = "retained-clips")]
 pub mod retained_clip;
