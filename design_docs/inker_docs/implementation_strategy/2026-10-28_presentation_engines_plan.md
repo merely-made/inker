@@ -205,6 +205,7 @@ Plan-only. A `wasm` tag (a named module, or an inline `wat` body) runs through a
 
 ## Findings
 
+- 2026-10-28: the root lock named `netrender_device` at `d9d6e778` although Cargo loaded the path member from its parent Netrender checkout at `66b2f72e`; `--locked` metadata alone did not reject the disagreement. Both device source trees are identical. Mere `db8983943` aligns the root record without a supplier update. The isolated web event-receiving repair passed a full build before upstream `8996e935a` supplied that edge with a newer cohort; that newer web lock is preserved.
 - 2026-06-15: routing decides by pinned engine, then content type, then per-host override, then scheme, then fallback; `route_filtered(is_available)` walks past an absent or deactivated engine. Routing is two-altitude: a host knows the scheme and pin at navigation time and learns the content type only after the fetch, so both passes must consult one policy. From: `archive_docs/2026-10-28/2026-06-15_engine_picker_and_pluggability_plan.md:57, 200`
 - 2026-10-06: surviving routing code is consumed by Pelt (`ports/pelt/core/src/workspace.rs`), `crates/fleece/src/clip.rs`, the `mere::routing` facade (`crates/mere/src/routing.rs`) and Turnstone. The Graft and Weld engines are `crates/inker/engines/graft-engine/src/engine.rs` and `weld-engine/src/engine.rs`. From: `archive_docs/2026-10-28/2026-06-15_engine_picker_and_pluggability_plan.md:161-170, 250-256`
 - 2026-10-06: Weld native lowercase input needs the character code in CHAR's `windows_key_code`; virtual A (65) inserts uppercase A even when the supplied text is lowercase a. From: `archive_docs/2026-10-28/2026-06-15_engine_picker_and_pluggability_plan.md:191-196`
@@ -214,6 +215,7 @@ Plan-only. A `wasm` tag (a named module, or an inline `wat` body) runs through a
 
 ## Progress
 
+- 2026-10-28: root device lock precision is published in `db8983943`. Original native Graphshell library/viewer and full default web builds passed; the newer published dependency cohort remains unqualified because guarded cache admission refused its refresh before Cargo. The [bounded receipt](../../../support/receipts/netrender-lock-20261028/receipt.json) preserves source/lock identities, artifacts, rejected attempts and the intervening guarded cleanup.
 - 2026-10-28: cut from the engine picker, flip carrier, shared surface receiving and polyglot block resolver plans; nothing new landed.
 
 ## Received from the backlog holder, 2026-10-28

@@ -816,3 +816,31 @@ compositor correlation retain separate bounds.
   unrelated existing root-lock split: `netrender_device` is locked at `d9d6e778`,
   while metadata emits it with `netrender` at `66b2f72e`. Those records are
   preserved; this pass does not claim a new Graphshell executable build.
+
+## Netrender device source identity (2026-10-28)
+
+- **The root lock now names the loaded device workspace.** At the start of
+  this pass, main recorded `netrender_device` at `d9d6e778` while Cargo loaded it from its parent
+  Netrender checkout at `66b2f72e`. The device source trees are identical. Mere
+  `db8983943` aligns that one root record with the already-selected parent and
+  preserves the intervening published dependency update. Cargo's metadata package
+  ID omits the precise Git revision here; its reported source or the actual
+  checkout head is needed to catch the disagreement. The earlier password
+  receipt retains the discrepancy it actually observed.
+- **The standalone receiving repair was superseded upstream.** The isolated
+  Graphshell web candidate needed Cambium's `genet-events` edge and package
+  record at its existing `a732a7d4` cohort. Its full web build passed. Upstream
+  `8996e935a` subsequently supplied that edge with a newer web supplier cohort;
+  the candidate lock was preserved as evidence and not published over it. This
+  fix changes only the root device source record, with no supplier revision
+  chosen for the web consumer.
+- **A green build belongs to its source snapshot.** The original native library,
+  native viewer and full default web builds passed. Later upstream changes are
+  kept separate from those results. The
+  [qualification receipt](../../../support/receipts/netrender-lock-20261028/receipt.json)
+  binds source heads, lock hashes, exact source audits, frozen artifacts and any
+  storage admission or capacity refusal on the published-cohort refresh. Fresh
+  validation of `db8983943` remains blocked before Cargo by compiler-cache
+  capacity reserved by active lanes; the older passes do not qualify the newer
+  dependency cohort. Guarded cleanup removed eligible idle intermediates between
+  attempts, with the limits and 20 GiB build reservation preserved.
