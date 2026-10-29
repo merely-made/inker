@@ -215,7 +215,7 @@ Plan-only. A `wasm` tag (a named module, or an inline `wat` body) runs through a
 
 ## Progress
 
-- 2026-10-28: root device lock precision is published in `db8983943`. Original native Graphshell library/viewer and full default web builds passed; the newer published dependency cohort remains unqualified because guarded cache admission refused its refresh before Cargo. The [bounded receipt](../../../support/receipts/netrender-lock-20261028/receipt.json) preserves source/lock identities, artifacts, rejected attempts and the intervening guarded cleanup.
+- 2026-10-28: root device lock precision is published in `db8983943`; its queued native library/viewer build passed with 721 source-aware identities, while the full default web build failed in `spareval 0.2.7` on mixed Digest trait versions. Mere `4559b860a` takes latest stable `spareval 0.2.9`, its seven exact companions and a coherent SHA-2 edge in both locks. Native query/test and full web compile-only checks pass; full tests/linking remain queued behind the storage guard. The existing web `genet-taffy` source-record split is preserved separately, with identical source trees. The [bounded receipt](../../../support/receipts/netrender-lock-20261028/receipt.json) binds each source snapshot and result.
 - 2026-10-28: cut from the engine picker, flip carrier, shared surface receiving and polyglot block resolver plans; nothing new landed.
 
 ## Received from the backlog holder, 2026-10-28

@@ -834,13 +834,30 @@ compositor correlation retain separate bounds.
   the candidate lock was preserved as evidence and not published over it. This
   fix changes only the root device source record, with no supplier revision
   chosen for the web consumer.
-- **A green build belongs to its source snapshot.** The original native library,
-  native viewer and full default web builds passed. Later upstream changes are
-  kept separate from those results. The
+- **A green build belongs to its source snapshot.** The initial native library,
+  viewer and full default web builds passed on their older snapshot. The queued
+  refresh of `db8983943` subsequently built the native library/viewer and matched
+  all 721 compiled package identities to the root lock. Its full default web
+  build reached Cargo and failed in `spareval 0.2.7`: MD5/SHA-1 used `digest 0.11`
+  while SHA-2 used `digest 0.10`. The
   [qualification receipt](../../../support/receipts/netrender-lock-20261028/receipt.json)
-  binds source heads, lock hashes, exact source audits, frozen artifacts and any
-  storage admission or capacity refusal on the published-cohort refresh. Fresh
-  validation of `db8983943` remains blocked before Cargo by compiler-cache
-  capacity reserved by active lanes; the older passes do not qualify the newer
-  dependency cohort. Guarded cleanup removed eligible idle intermediates between
-  attempts, with the limits and 20 GiB build reservation preserved.
+  retains those passes, the compiler failure, frozen native artifact and earlier
+  guard refusals without treating the older web pass as newer-cohort evidence.
+- **The evaluator and its exact companions form one receiving set.** Mere
+  `4559b860a` raises the evaluator minimum to the latest stable `spareval 0.2.9`
+  and updates eight registry records in both locks. Existing dependency choices
+  stay fixed except the evaluator's SHA-2 edge, which joins MD5/SHA-1 on `0.11`.
+  All package records outside that set remain unchanged. A query regression
+  checks the known MD5, SHA-1, SHA-256, SHA-384 and SHA-512 digests of `abc`.
+- **Compile-only evidence leaves execution and linking open.** The native query
+  library/tests and full default web product pass compile-only checks.
+  The hash regression has compiled but has not executed. The 20 GiB full test
+  launch was refused before Cargo because it would exceed the current 400 GiB
+  compiler-cache budget. Full tests and web linking stay queued against the
+  frozen release-update commit under the same guard. No native UI, browser
+  runtime, physical IME, GPU pixel or human accessibility claim is added.
+- **A web source record still names another identical tree.** Locked web metadata
+  loads `genet-taffy 0.14.0` from the parent Genet checkout at `36526e0`, while its
+  existing lock record names `a732a7d4`. The Taffy source trees are identical at
+  those revisions. This pre-existing record is preserved separately from the
+  evaluator update; compile success alone does not close that identity gap.
