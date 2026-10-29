@@ -896,3 +896,29 @@ compositor correlation retain separate bounds.
   hashes, lock-preservation proof and the upstream/package evidence are in the
   [receiving receipt](../../../support/receipts/genet-taffy-0151-20261028/receipt.json).
   This closes the old fork source-record gap on the new receiving snapshot.
+
+
+## Linux geometry receiving on the rebased Taffy fork (2026-10-29)
+
+- **The rebased owner reaches hardware Vulkan.** Turnstone `299d6ff` and SDK
+  `c314b7e` use Genet `565458ea3ab` and registry `genet-taffy 0.16.0`, based on
+  upstream Taffy 0.15.1. The ThinkPad verifies all 52 fork source files against
+  the published package, with no lock/source disagreement. The two native SDK
+  geometry cases and the three focused host geometry, IME-admission and
+  pending-frame tests pass on AMD Radeon Graphics / RADV Renoir / Vulkan.
+- **Both field types keep their geometry through native receiving.** Fresh
+  ordinary and password scenarios pass primary-window editing, 110% page zoom
+  and explicit lens-content focus. Every distinct shared caret rectangle
+  matches a native Wayland request on the correct window surface within one
+  logical pixel; swapping the window identities fails the checker. Ordinary
+  caret height changes from 34 to 37.4, password height from 33 to 36.3, and
+  both lenses retain the zoomed height. All source captures are nonblank and
+  identify hardware Vulkan at native display scale 1.
+- **The rerun preserves the other acceptance boundaries.** Every nonselected
+  dependency record and the earlier physical IME, ordinary geometry and
+  password receipt trees remain unchanged. This is synthetic geometry
+  receiving, with no new physical IME, candidate-popup, CJK, human AT,
+  native high-DPI, X11 or Servo IME claim. The canonical evidence is
+  `turnstone/docs/receipts/cue_taffy_geometry_linux_20261029/receipt.json`;
+  its manifests bind the frozen executable, source cohorts, native protocol,
+  source rasters and original evidence hashes.
