@@ -849,15 +849,50 @@ compositor correlation retain separate bounds.
   stay fixed except the evaluator's SHA-2 edge, which joins MD5/SHA-1 on `0.11`.
   All package records outside that set remain unchanged. A query regression
   checks the known MD5, SHA-1, SHA-256, SHA-384 and SHA-512 digests of `abc`.
-- **Compile-only evidence leaves execution and linking open.** The native query
-  library/tests and full default web product pass compile-only checks.
-  The hash regression has compiled but has not executed. The 20 GiB full test
-  launch was refused before Cargo because it would exceed the current 400 GiB
-  compiler-cache budget. Full tests and web linking stay queued against the
-  frozen release-update commit under the same guard. No native UI, browser
-  runtime, physical IME, GPU pixel or human accessibility claim is added.
-- **A web source record still names another identical tree.** Locked web metadata
-  loads `genet-taffy 0.14.0` from the parent Genet checkout at `36526e0`, while its
+- **Executed tests and linking close the evaluator build gap.** The queued
+  validation of `4559b860a` completed: all 105 native query tests passed,
+  including the five hash-function results, and the full default web product
+  linked. The frozen Wasm artifact and source audit are retained with the
+  [qualification receipt](../../../support/receipts/netrender-lock-20261028/receipt.json).
+  The audit matches 553 of 554 compiled package identities; its one existing
+  Taffy source-record disagreement remains a distinct issue. This is build
+  and test evidence for that snapshot, with no new native UI, browser runtime,
+  physical IME, GPU pixel or human accessibility claim.
+- **The evaluator snapshot retains its earlier source disagreement.** Locked web metadata
+  for `4559b860a` loads `genet-taffy 0.14.0` from the parent Genet checkout at `36526e0`, while its
   existing lock record names `a732a7d4`. The Taffy source trees are identical at
   those revisions. This pre-existing record is preserved separately from the
   evaluator update; compile success alone does not close that identity gap.
+  The receiving upgrade below replaces both old fork identities.
+
+## Genet Taffy upstream base and consumer identity (2026-10-28)
+
+- **The fork now carries the current upstream release.** Genet `565458ea3ab`
+  rebases the current fork, including its unreleased changes, from upstream
+  Taffy 0.13.0 onto 0.15.1. Published `genet-taffy 0.16.0` contains that result.
+  A fork's own latest published version did not establish that its upstream
+  base was current. The retained float, containment, order, static-position
+  and automatic-minimum seams now sit on the new upstream algorithms and API.
+- **One registry package removes the fork's parent-checkout ambiguity.** Mere
+  `590097f6a` adopts the new Genet cohort in both locks and removes the redundant
+  Taffy Git patches. Buckram and Livery select the published fork directly.
+  All nonselected package records, including the evaluator's repaired hash
+  dependencies, remain unchanged. Locked metadata checks actual checkout
+  heads and matches all 1,611 root and 725 web package identities to their locks.
+- **The migration keeps regressions visible.** The refreshed complete delta
+  reproduces all 52 source files byte for byte against pristine 0.15.1. The
+  fork and its extracted package each pass 196 unit tests and five doctests;
+  Buckram, Genet-Livery and Livery pass 1,220 tests with 12 existing ignored
+  tests. Retained red/green evidence covers the wrapped-column automatic
+  minimum and explicit content-basis ratio. Livery's stale `align-content`
+  initial value is corrected to `normal`; a positioned-grid regression and
+  explicit `stretch` control distinguish margin collapse from intentional
+  independent formatting contexts. These results are source and native test
+  evidence, with no new physical IME, human accessibility or Linux/Vulkan claim.
+- **The receiving products link with the published fork.** The native
+  Graphshell library/viewer and full default Wasm web product build at
+  `590097f6a`. All 721 native and 554 web compiled package identities match
+  their respective locks, including the registry fork. Frozen artifacts,
+  hashes, lock-preservation proof and the upstream/package evidence are in the
+  [receiving receipt](../../../support/receipts/genet-taffy-0151-20261028/receipt.json).
+  This closes the old fork source-record gap on the new receiving snapshot.
