@@ -113,24 +113,28 @@ pub async fn read_store(
     sealer: Option<&dyn eidetic::seal::PayloadSealer>,
     id: ManifestId,
     policy: ClipLimits,
-) -> Result<ClipView, String> {
+) -> eidetic::Result<ClipView> {
     let package =
         fleece::portable_clip::export_selected_clip(store, sealer, id, &["body".into()], policy)
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
     if package.clip.parts.len() != 1 {
-        return Err("This clip needs a receiving adapter for its additional parts".into());
+        return Err(eidetic::Error::new(
+            "This clip needs a receiving adapter for its additional parts",
+        ));
     }
     let part = &package.clip.parts[0];
     let bytes = package
         .payloads
         .into_iter()
         .find(|p| p.id == part.manifest)
-        .ok_or("Retained clip body is missing")?
+        .ok_or_else(|| eidetic::Error::new("Retained clip body is missing"))?
         .bytes;
     let body = match part.media_type.as_str() {
         "text/plain" | "text/plain;charset=utf-8" | "text/plain; charset=utf-8" => {
-            ClipBody::Text(String::from_utf8(bytes).map_err(|_| "Clip text is not UTF-8")?)
+            ClipBody::Text(
+                String::from_utf8(bytes)
+                    .map_err(|_| eidetic::Error::new("Clip text is not UTF-8"))?,
+            )
         },
         "audio/wav" | "audio/x-wav"
             if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WAVE") =>
@@ -138,10 +142,10 @@ pub async fn read_store(
             ClipBody::Voice(bytes)
         },
         _ => {
-            return Err(format!(
+            return Err(eidetic::Error::new(format!(
                 "This host cannot present clip media {}",
                 part.media_type
-            ));
+            )));
         },
     };
     Ok(ClipView {

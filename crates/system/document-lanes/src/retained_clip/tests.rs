@@ -4,7 +4,68 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 use super::*;
+use async_trait::async_trait;
 use inker::SessionEngine;
+
+#[test]
+fn retained_clip_read_keeps_storage_refusal_display() {
+    struct UnsupportedStore;
+    type StoreResult<T> = std::result::Result<T, muniment::error::StoreError>;
+
+    #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+    #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+    impl eidetic::Backend for UnsupportedStore {
+        async fn get(&self, _key: &str) -> StoreResult<Option<Vec<u8>>> {
+            Err(muniment::error::StoreError::Backend("disk failed".into()))
+        }
+        async fn put(&self, _key: &str, _bytes: &[u8]) -> StoreResult<()> {
+            unreachable!("read does not write")
+        }
+        async fn delete(&self, _key: &str) -> StoreResult<()> {
+            unreachable!("read does not delete")
+        }
+        async fn list(&self, _prefix: &str) -> StoreResult<Vec<String>> {
+            unreachable!("read does not list")
+        }
+        async fn scan(&self, _start: &str, _end: &str) -> StoreResult<Vec<String>> {
+            unreachable!("read does not scan")
+        }
+        async fn apply(&self, _ops: &[eidetic::WriteOp]) -> StoreResult<()> {
+            unreachable!("read does not apply writes")
+        }
+    }
+
+    pollster::block_on(async {
+        let mut store = UnsupportedStore;
+        let error = read_store(
+            &mut store,
+            None,
+            ManifestId::of_blob(b"retained-id"),
+            limits(),
+        )
+        .await
+        .err()
+        .expect("storage refusal");
+        assert_eq!(error.message, "backend: disk failed");
+    });
+}
+
+#[test]
+fn retained_clip_semantic_missing_error_keeps_its_message() {
+    pollster::block_on(async {
+        let mut store = eidetic::MemoryBackend::new();
+        let error = read_store(
+            &mut store,
+            None,
+            ManifestId::of_blob(b"missing-retained-id"),
+            limits(),
+        )
+        .await
+        .err()
+        .expect("missing clip");
+        assert_eq!(error.message, "retained clip missing");
+    });
+}
 
 fn limits() -> ClipLimits {
     ClipLimits {
