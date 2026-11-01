@@ -275,7 +275,7 @@ on it. Do not create a second, subtly different raw-handle vocabulary in Mere.
 - Focused tests passed for Inker, Graft/Scry/Weld adapters, and Pelt core at
   this checkpoint. Graft subsequently published its wgpu-free `grafting-frame`
   0.1.0 custody package, recorded in
-  `wgpu-graft/design_docs/2026-09-03_wgpu_triplet_release_plan.md`. Producer
+  `wgpu-graft/design_docs/archive_docs/2026-11-01/2026-09-03_wgpu_triplet_release_plan.md`. Producer
   adoption and full importer conversion remain open, along with browser-control
   extraction and a combined demo with real Graft and Weld factories.
 - 2026-10-05: **B0 source audit and bounded capability correction.**
