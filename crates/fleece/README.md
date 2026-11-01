@@ -59,7 +59,8 @@ Redshank recording references do not imply retained recording bytes or exact see
 Validated writes can leave immutable objects on a storage failure; the helpers
 do not claim an atomic application transaction.
 
-See the [development plan](../../design_docs/eidetic_docs/implementation_strategy/2026-10-11_eidetic_development_plan.md)
+See the [development plan](https://github.com/merely-made/eidetic/blob/main/design_docs/archive_docs/2026-11-01/2026-10-11_eidetic_development_plan.md) (archived; open work continues in the
+[memory gates plan](https://github.com/merely-made/eidetic/blob/main/design_docs/eidetic_docs/implementation_strategy/2026-11-01_memory_gates_plan.md))
 and the owner-generated [transfer fixtures](tests/fixtures/portable_clip/README.md).
 
 Robots matching includes agent groups, allow/disallow precedence, wildcards,
