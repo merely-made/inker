@@ -4,7 +4,7 @@
 
 **For:** Deciding which engine presents a piece of content and what survives a change of engine. It holds the picker's unbuilt phases, the surface-engine tier (Scry, Weld, Graft), the flip between a document engine and a surface engine, the shared receiving surface through which hosts take controls and frames from either tier, and the unified resolver that would make knot blocks polyglot. The rulings that opened it: Mark's 2026-06-15 activation decision (a global default plus a per-session override), the compatibility-view charter's split (picking is inker, carrying state is the flip), and the 2026-10-22 decision that `wgpu-cue` owns neutral receiving while browser-specific host extensions stay explicit.
 Not here:
-- Turnstone's concrete Servo consumer, its pixel qualification and the complete Turnstone product UI migration: `turnstone/design_docs/2026-08-25_browser_surface_implementation_plan.md`, in the Turnstone repository.
+- Turnstone's concrete Servo consumer, its pixel qualification and the complete Turnstone product UI migration: `turnstone/design_docs/2026-11-02_browser_surface_implementation_plan.md`, in the Turnstone repository.
 - The native session store's durable, partitioned and script-integration cookie follow-ons and its flip-back SESSION import: the ranged fetch plan (`2026-09-20_ranged_fetch_plan.md`) receives the session store's open items. The import cannot start before F4 here.
 - Wasmtime currency under the resolver's wasm seam (B3 sits on wasmtime 45): the workspace hygiene plan's dependency currency lanes.
 

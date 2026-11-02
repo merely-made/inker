@@ -315,7 +315,7 @@ on it. Do not create a second, subtly different raw-handle vocabulary in Mere.
 - Adopt the direct Weld adapter in a real host with matching package identity,
   owned import, exact instance config, and host-specific limitations. Turnstone's
   consumer work is tracked in
-  `turnstone/design_docs/2026-08-03_user_agent_taxonomy_plan.md`.
+  `turnstone/design_docs/2026-11-02_user_agent_taxonomy_plan.md`.
 - Prove a real Servo composite host and native event order; Graft's current
   host seam still polls navigation and messages separately.
 - Require fresh two-engine external-consumer proof before browser-control
@@ -919,6 +919,6 @@ compositor correlation retain separate bounds.
   password receipt trees remain unchanged. This is synthetic geometry
   receiving, with no new physical IME, candidate-popup, CJK, human AT,
   native high-DPI, X11 or Servo IME claim. The canonical evidence is
-  `turnstone/docs/receipts/cue_taffy_geometry_linux_20261029/receipt.json`;
+  `Code/testing/turnstone/receipts/cue_taffy_geometry_linux_20261029/receipt.json`;
   its manifests bind the frozen executable, source cohorts, native protocol,
   source rasters and original evidence hashes.
