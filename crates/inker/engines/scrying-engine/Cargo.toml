@@ -32,3 +32,6 @@ scrying = { version = "0.7.1", default-features = false, features = [
 dpi.workspace = true
 tracing.workspace = true
 wgpu.workspace = true
+
+[lints]
+workspace = true

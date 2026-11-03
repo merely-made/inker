@@ -52,3 +52,6 @@ paint_list_render = { workspace = true, optional = true }
 serde_json = { workspace = true }
 # Fold-aware layout tests lower the committed Micron probe pages.
 nematic = { workspace = true }
+
+[lints]
+workspace = true

@@ -34,3 +34,6 @@ accesskit.workspace = true
 # `cargo` invocation in the mere workspace resolve + fetch the Servo git tree —
 # the exact build cost the per-engine gating exists to avoid. The grafting deps
 # join the graph only when the Servo lane is actually built (see GraftSurface).
+
+[lints]
+workspace = true

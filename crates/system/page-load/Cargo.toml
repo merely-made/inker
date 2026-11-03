@@ -11,3 +11,6 @@ description = "Mere's fetch vocabulary and the sans-IO page load: one document's
 [lib]
 name = "page_load"
 path = "src/lib.rs"
+
+[lints]
+workspace = true

@@ -38,3 +38,6 @@ pulldown-cmark = { version = "0.13", default-features = false }
 # DjotKnotEngine.
 inker = { workspace = true, optional = true }
 nematic = { workspace = true, optional = true }
+
+[lints]
+workspace = true

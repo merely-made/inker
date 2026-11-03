@@ -30,3 +30,6 @@ dpi.workspace = true
 # Welding remains opt-in: ordinary Mere resolution stays free of CEF. The
 # adapter feature names one reviewed 0.15 contract exactly; concrete runtime,
 # profile, producer construction, and import-cache policy remain with the host.
+
+[lints]
+workspace = true
