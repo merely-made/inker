@@ -17,6 +17,7 @@ default = []
 wire = ["fleece-extract/wire"]
 # A page's links from its HTML (`page_links`); wasm-safe.
 page-links = ["dep:genet-static-dom", "dep:url"]
+article = ["dep:genet-static-dom"]
 crawl = ["page-links", "dep:armillary", "dep:fetch", "dep:tokio", "dep:tracing"]
 crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]

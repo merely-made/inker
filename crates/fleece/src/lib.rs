@@ -10,6 +10,11 @@
 
 pub use fleece_extract::*;
 
+#[cfg(feature = "article")]
+mod article;
+#[cfg(feature = "article")]
+pub use article::article_from_html;
+
 #[cfg(feature = "clip")]
 pub mod clip;
 #[cfg(all(feature = "crawl", not(target_arch = "wasm32")))]
