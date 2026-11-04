@@ -840,7 +840,7 @@ compositor correlation retain separate bounds.
   all 721 compiled package identities to the root lock. Its full default web
   build reached Cargo and failed in `spareval 0.2.7`: MD5/SHA-1 used `digest 0.11`
   while SHA-2 used `digest 0.10`. The
-  [qualification receipt](../../../support/receipts/netrender-lock-20261028/receipt.json)
+  [qualification receipt](../../../../../testing/mere/support/receipts/netrender-lock-20261028/receipt.json)
   retains those passes, the compiler failure, frozen native artifact and earlier
   guard refusals without treating the older web pass as newer-cohort evidence.
 - **The evaluator and its exact companions form one receiving set.** Mere
@@ -853,7 +853,7 @@ compositor correlation retain separate bounds.
   validation of `4559b860a` completed: all 105 native query tests passed,
   including the five hash-function results, and the full default web product
   linked. The frozen Wasm artifact and source audit are retained with the
-  [qualification receipt](../../../support/receipts/netrender-lock-20261028/receipt.json).
+  [qualification receipt](../../../../../testing/mere/support/receipts/netrender-lock-20261028/receipt.json).
   The audit matches 553 of 554 compiled package identities; its one existing
   Taffy source-record disagreement remains a distinct issue. This is build
   and test evidence for that snapshot, with no new native UI, browser runtime,
@@ -894,7 +894,7 @@ compositor correlation retain separate bounds.
   `590097f6a`. All 721 native and 554 web compiled package identities match
   their respective locks, including the registry fork. Frozen artifacts,
   hashes, lock-preservation proof and the upstream/package evidence are in the
-  [receiving receipt](../../../support/receipts/genet-taffy-0151-20261028/receipt.json).
+  [receiving receipt](../../../../../testing/mere/support/receipts/genet-taffy-0151-20261028/receipt.json).
   This closes the old fork source-record gap on the new receiving snapshot.
 
 
