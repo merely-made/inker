@@ -221,58 +221,6 @@ pub fn fragment_from_text(
     }
 }
 
-pub fn attach_cropped_visual(
-    fragment: &mut ClipFragment,
-    snapshot_png: &[u8],
-    surface_size: (u32, u32),
-) -> bool {
-    let Some(rect) = fragment.rect.as_ref() else {
-        return false;
-    };
-    if rect.width <= 1.0 || rect.height <= 1.0 || snapshot_png.is_empty() {
-        return false;
-    }
-    let Ok(image) = image::load_from_memory(snapshot_png) else {
-        return false;
-    };
-    let rgba = image.to_rgba8();
-    let (image_w, image_h) = rgba.dimensions();
-    if image_w == 0 || image_h == 0 {
-        return false;
-    }
-    let scale_x = image_w as f32 / surface_size.0.max(1) as f32;
-    let scale_y = image_h as f32 / surface_size.1.max(1) as f32;
-    let x = scaled_start(rect.x, scale_x, image_w);
-    let y = scaled_start(rect.y, scale_y, image_h);
-    let width = scaled_len(rect.width, scale_x, image_w - x);
-    let height = scaled_len(rect.height, scale_y, image_h - y);
-    if width == 0 || height == 0 {
-        return false;
-    }
-
-    const CLIP_VISUAL_MAX: u32 = 1024;
-    let cropped = image::imageops::crop_imm(&rgba, x, y, width, height).to_image();
-    let cropped = if width > CLIP_VISUAL_MAX || height > CLIP_VISUAL_MAX {
-        image::DynamicImage::ImageRgba8(cropped)
-            .thumbnail(CLIP_VISUAL_MAX, CLIP_VISUAL_MAX)
-            .to_rgba8()
-    } else {
-        cropped
-    };
-    let (width, height) = cropped.dimensions();
-    let Some(png_bytes) = encode_png_rgba(cropped.as_raw(), width, height) else {
-        return false;
-    };
-    let data_uri = format!("data:image/png;base64,{}", encode_base64(&png_bytes));
-    fragment.visual = Some(ClipVisual {
-        png_bytes,
-        width,
-        height,
-        data_uri,
-    });
-    true
-}
-
 pub fn clip_title(fragment: &ClipFragment) -> String {
     let base = fragment
         .title
@@ -337,64 +285,6 @@ fn document_text(content_type: Option<&str>, body: &str) -> String {
     body.to_string()
 }
 
-fn scaled_start(value: f32, scale: f32, limit: u32) -> u32 {
-    if limit == 0 {
-        return 0;
-    }
-    (value.max(0.0) * scale)
-        .floor()
-        .clamp(0.0, (limit - 1) as f32) as u32
-}
-
-fn scaled_len(value: f32, scale: f32, limit: u32) -> u32 {
-    if limit == 0 {
-        return 0;
-    }
-    (value.max(1.0) * scale).ceil().clamp(1.0, limit as f32) as u32
-}
-
-fn encode_png_rgba(rgba: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
-    if width == 0 || height == 0 || rgba.len() < (width as usize) * (height as usize) * 4 {
-        return None;
-    }
-    let mut png = Vec::new();
-    image::codecs::png::PngEncoder::new(&mut png)
-        .write_image(rgba, width, height, image::ExtendedColorType::Rgba8)
-        .ok()?;
-    Some(png)
-}
-
-fn encode_base64(data: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
-    let mut chunks = data.chunks_exact(3);
-    for chunk in &mut chunks {
-        let bits = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | chunk[2] as u32;
-        out.push(ALPHABET[((bits >> 18) & 0x3f) as usize] as char);
-        out.push(ALPHABET[((bits >> 12) & 0x3f) as usize] as char);
-        out.push(ALPHABET[((bits >> 6) & 0x3f) as usize] as char);
-        out.push(ALPHABET[(bits & 0x3f) as usize] as char);
-    }
-    let rem = chunks.remainder();
-    if !rem.is_empty() {
-        let bits = match rem {
-            [a] => (*a as u32) << 16,
-            [a, b] => ((*a as u32) << 16) | ((*b as u32) << 8),
-            _ => unreachable!(),
-        };
-        out.push(ALPHABET[((bits >> 18) & 0x3f) as usize] as char);
-        out.push(ALPHABET[((bits >> 12) & 0x3f) as usize] as char);
-        if rem.len() == 2 {
-            out.push(ALPHABET[((bits >> 6) & 0x3f) as usize] as char);
-            out.push('=');
-        } else {
-            out.push('=');
-            out.push('=');
-        }
-    }
-    out
-}
-
 /// Semantic blocks of the clip, including its optional visual.
 /// The receiving authoring or graph adapter chooses the destination format.
 pub fn fragment_blocks(fragment: &ClipFragment) -> Vec<Block> {
@@ -445,16 +335,6 @@ pub fn fragment_blocks(fragment: &ClipFragment) -> Vec<Block> {
         });
     }
     blocks
-}
-
-fn visual_block(fragment: &ClipFragment, visual: &ClipVisual) -> Block {
-    Block::Image {
-        url: visual.data_uri.clone(),
-        alt: fragment
-            .title
-            .clone()
-            .unwrap_or_else(|| "Clipped page fragment".to_string()),
-    }
 }
 
 fn blocks_text(blocks: &[Block]) -> String {
@@ -672,170 +552,14 @@ fn first_nonempty(values: impl IntoIterator<Item = Option<String>>) -> Option<St
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "clip/tests.rs"]
+mod tests;
 
-    #[test]
-    fn parses_webview2_quoted_json_result() {
-        let payload = serde_json::json!({
-            "ok": true,
-            "title": "Chosen section",
-            "text": "  First line\n\nSecond line  ",
-            "selector": "main > article",
-            "links": ["https://example.test/a"]
-        })
-        .to_string();
-        let raw = serde_json::to_string(&payload).expect("quoted result");
-        let clip = parse_web_clip(&raw, "https://example.test").expect("clip");
-        assert_eq!(clip.title.as_deref(), Some("Chosen section"));
-        assert_eq!(clip.text, "First line\nSecond line");
-        assert_eq!(clip.links, vec!["https://example.test/a"]);
-    }
+#[path = "clip/visual.rs"]
+mod visual;
 
-    #[test]
-    fn web_clip_script_uses_cursor_coordinates() {
-        let script = web_clip_script(12, 34);
-        assert!(script.contains("const rawX = 12;"));
-        assert!(script.contains("const rawY = 34;"));
-        assert!(script.contains("document.elementFromPoint"));
-    }
+pub use visual::attach_cropped_visual;
 
-    #[test]
-    fn markdown_fallback_preserves_blocks_and_links() {
-        let mut registry = EngineRegistry::new();
-        for engine in nematic::engines() {
-            registry.register(engine);
-        }
-        let clip = fragment_from_body(
-            "https://example.test/note.md",
-            None,
-            Some("text/markdown"),
-            "# Heading\n\nA [reference](https://example.test/ref).",
-            &registry,
-            &EngineRoutePolicy::default(),
-        );
+use visual::encode_png_rgba;
 
-        let blocks = clip.blocks.as_ref().expect("parsed blocks");
-        assert!(matches!(blocks.first(), Some(Block::Heading { .. })));
-        assert_eq!(clip.links, vec!["https://example.test/ref"]);
-        assert!(clip.text.contains("Heading"));
-        assert!(clip.text.contains("reference"));
-    }
-
-    #[test]
-    fn micron_clip_preserves_text_and_links_inside_source_presentation() {
-        let mut registry = EngineRegistry::new();
-        for engine in nematic::engines() {
-            registry.register(engine);
-        }
-        // The host explicitly admits Micron for this native node address.
-        let mut policy = EngineRoutePolicy::default();
-        policy.fallback.engine_id = nematic::micron::ENGINE_MICRON.into();
-        let clip = fragment_from_body(
-            "0123456789abcdef0123456789abcdef:/page/index.mu",
-            None,
-            Some("text/x-micron"),
-            "`c`Ff00`_`[Reference`:/page/ref.mu]\n",
-            &registry,
-            &policy,
-        );
-        assert_eq!(clip.text, "Reference");
-        assert_eq!(
-            clip.links,
-            vec!["0123456789abcdef0123456789abcdef:/page/ref.mu"]
-        );
-        assert!(
-            clip.blocks
-                .as_ref()
-                .unwrap()
-                .iter()
-                .any(|block| { matches!(block, Block::Presented { .. }) })
-        );
-    }
-
-    #[test]
-    fn html_fallback_extracts_main_text_through_fleece() {
-        let clip = fragment_from_body(
-            "https://example.test/article",
-            Some("Fallback title".to_string()),
-            Some("text/html; charset=utf-8"),
-            r#"<nav>Site chrome</nav><main><h1>Article heading</h1><p>The retained article paragraph.</p></main><footer>Footer chrome</footer>"#,
-            &EngineRegistry::new(),
-            &EngineRoutePolicy::default(),
-        );
-
-        assert!(clip.blocks.is_none());
-        assert!(clip.text.contains("Article heading"));
-        assert!(clip.text.contains("The retained article paragraph."));
-        assert!(!clip.text.contains("Site chrome"));
-        assert!(!clip.text.contains("Footer chrome"));
-    }
-
-    #[test]
-    fn micron_in_page_link_clips_as_label_text_not_a_link() {
-        let mut registry = EngineRegistry::new();
-        for engine in nematic::engines() {
-            registry.register(engine);
-        }
-        let mut policy = EngineRoutePolicy::default();
-        policy.fallback.engine_id = nematic::micron::ENGINE_MICRON.into();
-        let clip = fragment_from_body(
-            "0123456789abcdef0123456789abcdef:/page/index.mu",
-            None,
-            Some("text/x-micron"),
-            "`[Reference`:/page/ref.mu] `[Setup notes`#setup]\n>Setup\n",
-            &registry,
-            &policy,
-        );
-        assert!(clip.text.contains("Setup notes"), "{}", clip.text);
-        assert_eq!(
-            clip.links,
-            vec!["0123456789abcdef0123456789abcdef:/page/ref.mu"]
-        );
-        assert!(!clip.links.iter().any(|link| link.contains("#setup")));
-    }
-
-    #[test]
-    fn submission_target_is_not_imported_as_a_navigation_link() {
-        let blocks = vec![Block::Paragraph {
-            spans: vec![InlineSpan::Submit {
-                target: "spartan://example.test/write".to_string(),
-                spans: vec![InlineSpan::Link {
-                    url: "gemini://example.test/help".to_string(),
-                    title: None,
-                    spans: vec![InlineSpan::Text("help".to_string())],
-                    predicate: None,
-                }],
-            }],
-        }];
-
-        assert_eq!(block_links(&blocks), vec!["gemini://example.test/help"]);
-    }
-
-    #[test]
-    fn cropped_visual_uses_element_rect() {
-        let rgba = vec![255u8; 4 * 4 * 4];
-        let png = encode_png_rgba(&rgba, 4, 4).expect("png");
-        let mut clip = ClipFragment {
-            source_url: "https://example.test/post".to_string(),
-            title: Some("Visual".to_string()),
-            text: "A useful paragraph.".to_string(),
-            html: None,
-            selector: None,
-            links: Vec::new(),
-            rect: Some(ClipRect {
-                x: 1.0,
-                y: 1.0,
-                width: 2.0,
-                height: 2.0,
-            }),
-            visual: None,
-            blocks: None,
-        };
-
-        assert!(attach_cropped_visual(&mut clip, &png, (4, 4)));
-        let visual = clip.visual.as_ref().expect("visual");
-        assert_eq!((visual.width, visual.height), (2, 2));
-        assert!(visual.data_uri.starts_with("data:image/png;base64,"));
-    }
-}
+use visual::visual_block;
