@@ -25,6 +25,8 @@ pub mod eidetic_bridge;
 pub mod page_links;
 #[cfg(feature = "portable-clip")]
 pub mod portable_clip;
+#[cfg(feature = "retained-traversal")]
+pub mod retained_traversal;
 #[cfg(feature = "structured-data")]
 pub mod structured_data;
 pub mod traversal;

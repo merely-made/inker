@@ -39,6 +39,12 @@ requires neither graph contributions nor graph IDs.
 projects supplied source evidence. Durable identity, storage and session write
 authority remain with their respective Mere owners.
 
+`retained-traversal` (wasm-safe) walks sources a host already retains toward a
+stated goal, using Eidetic's model-free goal assessor. A host-supplied provider
+reads retained text and links and never fetches; the run adds request and byte
+budgets, refuses version mismatches, and returns a serializable receipt citing
+each source version and the reason behind every selection.
+
 `portable-clip` adds the first Knot/Redshank intake and selected-copy draft.
 Eidetic owns its typed records and built-in schema definitions. Fleece retains
 caller-supplied bytes, preserves native source selectors and evidence, and

@@ -24,10 +24,13 @@ clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serd
 eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]
 portable-clip = ["dep:eidetic", "dep:serde", "dep:serde_json"]
 structured-data = ["dep:linked-data"]
+# Goal-directed traversal over host-retained sources (`retained_traversal`); wasm-safe, never fetches.
+retained-traversal = ["dep:eidetic", "dep:eidetic-search", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 fleece-extract.workspace = true
 eidetic = { workspace = true, optional = true }
+eidetic-search = { workspace = true, optional = true }
 genet-host-api = { workspace = true, optional = true }
 genet-static-dom = { workspace = true, optional = true }
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
