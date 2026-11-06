@@ -25,6 +25,22 @@ pub fn article_from_html(content_type: Option<&str>, html: &str) -> Option<Artic
     extract_article(&document)
 }
 
+/// The title and visible body text of supplied HTML or XHTML, without
+/// fetching or storing it: what a native "keep page text" records. Declared
+/// HTML only, parsed through Genet's static DOM; script and style are not
+/// text. The caller bounds the result.
+pub fn page_text_from_html(
+    content_type: Option<&str>,
+    html: &str,
+) -> Option<(Option<String>, String)> {
+    let document = match html_syntax(content_type)? {
+        HtmlSyntax::Html => genet_static_dom::StaticDocument::parse(html),
+        HtmlSyntax::Xhtml => genet_static_dom::StaticDocument::parse_xml(html),
+    };
+    let title = crate::extract_title(&document).filter(|title| !title.trim().is_empty());
+    Some((title, crate::extract_text(&document)))
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum HtmlSyntax {
     Html,
@@ -61,6 +77,20 @@ mod tests {
         assert!(!article.blocks.is_empty());
 
         assert!(article_from_html(Some("text/html"), "<nav><a href='/'>Home</a></nav>").is_none());
+    }
+
+    #[test]
+    fn supplied_html_page_text_is_the_visible_body_without_script_or_style() {
+        let (title, text) = page_text_from_html(
+            Some("text/html; charset=utf-8"),
+            "<!doctype html><title>Field notes</title><style>.x{color:red}</style>\
+             <body><p>Visible lighthouse prose.</p><script>var hidden = 1;</script></body>",
+        )
+        .expect("declared HTML yields text");
+        assert_eq!(title.as_deref(), Some("Field notes"));
+        assert!(text.contains("Visible lighthouse prose."));
+        assert!(!text.contains("hidden") && !text.contains("color:red"), "{text}");
+        assert!(page_text_from_html(Some("application/json"), "{}").is_none());
     }
 
     #[test]

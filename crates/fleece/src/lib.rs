@@ -13,7 +13,7 @@ pub use fleece_extract::*;
 #[cfg(feature = "article")]
 mod article;
 #[cfg(feature = "article")]
-pub use article::article_from_html;
+pub use article::{article_from_html, page_text_from_html};
 
 #[cfg(feature = "clip")]
 pub mod clip;
