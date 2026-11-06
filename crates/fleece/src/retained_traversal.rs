@@ -52,9 +52,13 @@ use crate::traversal::{
 };
 use eidetic::models::recall::{RecallSourceId, RecallSourceKind, RetainedSourceText};
 use eidetic_search::goal::{CandidateLabel, GoalAssessor, GoalRecord, GoalSettings, GoalVerdict};
+use eidetic_search::goal_model::ModelGoalRecord;
 use serde::{Deserialize, Serialize};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+
+mod goal;
+pub use goal::{RetainedGoal, SelectionTrace};
 
 /// A link out of a retained source, as the host already holds it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,6 +171,11 @@ impl From<TraversalStop> for RetainedStop {
 pub struct RetainedTraversalReport {
     pub traversal: TraversalReport<RetainedSourceText, RetainedFailure>,
     pub goal: GoalRecord,
+    /// The model record, when a model driver ran beside S1 (`goal` is then
+    /// S1's record, unchanged).
+    pub model: Option<ModelGoalRecord>,
+    /// Each selection's offered candidates and the one taken, in lookup order.
+    pub selections: Vec<SelectionTrace>,
     pub stop: RetainedStop,
     pub requests: usize,
     pub bytes: usize,
@@ -214,6 +223,9 @@ pub struct RetainedTraversalReceipt {
     pub failures: Vec<FailureReceipt>,
     pub omissions: OmissionCounts,
     pub goal: GoalRecord,
+    /// Present when a model ran beside S1; absent from the S1-only receipt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<ModelGoalRecord>,
 }
 
 impl RetainedTraversalReport {
@@ -261,6 +273,7 @@ impl RetainedTraversalReport {
                 duplicates: omissions.duplicates,
             },
             goal: self.goal.clone(),
+            model: self.model.clone(),
         }
     }
 }
@@ -318,9 +331,10 @@ fn decision_of(verdict: GoalVerdict) -> GoalDecision {
 }
 
 /// Mutable state of one run, shared by the traversal's four seams.
-struct Run<'a, P> {
+struct Run<'a, P, G> {
     provider: RefCell<&'a mut P>,
-    assessor: RefCell<GoalAssessor>,
+    assessor: RefCell<G>,
+    trace: RefCell<Vec<SelectionTrace>>,
     labels: RefCell<HashMap<ContentRef, String>>,
     limits: RetainedLimits,
     max_text_chars: usize,
@@ -331,7 +345,7 @@ struct Run<'a, P> {
     cause: Cell<Option<RetainedStop>>,
 }
 
-impl<P: RetainedProvider> Run<'_, P> {
+impl<P: RetainedProvider, G: RetainedGoal> Run<'_, P, G> {
     fn observe(
         &self,
         reference: &ContentRef,
@@ -396,7 +410,12 @@ impl<P: RetainedProvider> Run<'_, P> {
                 label: labels.get(&candidate.reference).cloned(),
             })
             .collect();
-        self.assessor.borrow_mut().select(&labelled)
+        let chosen = self.assessor.borrow_mut().select(&labelled)?;
+        self.trace.borrow_mut().push(SelectionTrace {
+            candidates: labelled.into_iter().map(|c| c.source).collect(),
+            chosen,
+        });
+        Some(chosen)
     }
 
     fn assess(&self, observation: &ContentObservation<RetainedSourceText>) -> GoalDecision {
@@ -449,11 +468,29 @@ pub fn run_retained_traversal(
     settings: GoalSettings,
     policy: TraversalPolicy,
     limits: RetainedLimits,
-    mut cancelled: impl FnMut() -> bool,
+    cancelled: impl FnMut() -> bool,
 ) -> Result<RetainedTraversalReport, String> {
+    let assessor = GoalAssessor::new(goal, settings)?;
+    Ok(run_retained_traversal_with(provider, seeds, goal, assessor, policy, limits, cancelled).0)
+}
+
+/// [`run_retained_traversal`] with the caller's goal driver, for example a
+/// `ModelGoalAssessor` built over the same goal. The same bounded walk runs;
+/// the driver comes back so a model can be reused. `goal` is the text the
+/// traversal reports as its query; build the driver from the same text.
+pub fn run_retained_traversal_with<G: RetainedGoal>(
+    provider: &mut impl RetainedProvider,
+    seeds: impl IntoIterator<Item = RetainedSeed>,
+    goal: &str,
+    assessor: G,
+    policy: TraversalPolicy,
+    limits: RetainedLimits,
+    mut cancelled: impl FnMut() -> bool,
+) -> (RetainedTraversalReport, G) {
     let run = Run {
-        max_text_chars: settings.max_text_chars,
-        assessor: RefCell::new(GoalAssessor::new(goal, settings)?),
+        max_text_chars: assessor.max_text_chars(),
+        assessor: RefCell::new(assessor),
+        trace: RefCell::new(Vec::new()),
         provider: RefCell::new(provider),
         labels: RefCell::new(HashMap::new()),
         limits,
@@ -481,14 +518,19 @@ pub fn run_retained_traversal(
         TraversalStop::Cancelled => run.cause.get().unwrap_or(RetainedStop::Cancelled),
         other => other.into(),
     };
-    let goal = run.assessor.borrow().record();
-    Ok(RetainedTraversalReport {
+    let (requests, bytes) = (run.requests.get(), run.bytes.get());
+    let selections = run.trace.into_inner();
+    let assessor = run.assessor.into_inner();
+    let report = RetainedTraversalReport {
         traversal,
-        goal,
+        goal: assessor.record(),
+        model: assessor.model_record(),
+        selections,
         stop,
-        requests: run.requests.get(),
-        bytes: run.bytes.get(),
-    })
+        requests,
+        bytes,
+    };
+    (report, assessor)
 }
 
 #[cfg(test)]

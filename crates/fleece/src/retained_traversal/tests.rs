@@ -392,3 +392,110 @@ fn identity_mapping_round_trips_and_keeps_awkward_strings_distinct() {
     );
     assert_eq!(recall_source(&ContentRef::new("page", "x")), None);
 }
+
+mod model_driver {
+    use super::*;
+    use eidetic::models::embedding::{
+        EmbeddingComponentV1, EmbeddingCorpusV1, EmbeddingEnvelopeV1, EmbeddingMetric,
+        EmbeddingSpaceV1,
+    };
+    use eidetic_search::goal_model::{
+        EmbedRole, GoalEmbedder, ModelGoalAssessor, ModelGoalSettings, SelectionWinner,
+    };
+    use std::collections::BTreeMap;
+
+    /// "borrow" and "ownership" share an axis though they share no token.
+    struct Stub;
+    impl GoalEmbedder for Stub {
+        fn envelope(&self) -> EmbeddingEnvelopeV1 {
+            let part = EmbeddingComponentV1 {
+                name: "stub".into(),
+                revision: "1".into(),
+                parameters: BTreeMap::new(),
+                artifacts: BTreeMap::new(),
+            };
+            EmbeddingEnvelopeV1 {
+                version: 1,
+                space: EmbeddingSpaceV1 {
+                    producer: part.clone(),
+                    tokenizer: part.clone(),
+                    preprocessing: part,
+                    pooling: "sum".into(),
+                    query_prefix: String::new(),
+                    document_prefix: String::new(),
+                    normalization: "none".into(),
+                    dimensions: 3,
+                    metric: EmbeddingMetric::Cosine,
+                },
+                corpus: EmbeddingCorpusV1 { chunker: "unset".into(), sources: Vec::new() },
+            }
+        }
+        fn embed(&mut self, texts: &[&str], _: EmbedRole) -> Result<Vec<Vec<f32>>, String> {
+            Ok(texts
+                .iter()
+                .map(|t| {
+                    let t = t.to_lowercase();
+                    let n = |words: &[&str]| words.iter().filter(|w| t.contains(*w)).count() as f32;
+                    vec![n(&["borrow", "ownership", "lifetime"]), n(&["pasta", "boil"]), 0.01]
+                })
+                .collect())
+        }
+    }
+
+    fn paraphrase_site() -> Held {
+        Held::default()
+            .with("a", "v1", "memory notes", vec![link("o", Some("ownership and lifetimes")), link("cooking", Some("pasta"))])
+            .with("o", "v1", "ownership and lifetime rules", Vec::new())
+            .with("cooking", "v1", "boil water", Vec::new())
+    }
+
+    fn model_run(held: &mut Held) -> (RetainedTraversalReport, ModelGoalAssessor<Stub>) {
+        let mut chosen = ModelGoalSettings::default();
+        chosen.match_similarity_milli = 500;
+        let driver = ModelGoalAssessor::new("borrow checker", settings(9), chosen, Stub).unwrap();
+        run_retained_traversal_with(
+            held,
+            vec![seed("a")],
+            "borrow checker",
+            driver,
+            TraversalPolicy::default(),
+            RetainedLimits::default(),
+            || false,
+        )
+    }
+
+    #[test]
+    fn the_model_drives_the_same_walk_and_its_record_lands_in_the_receipt() {
+        let (mut plain, mut modelled) = (paraphrase_site(), paraphrase_site());
+        let s1 = run(&mut plain, vec![seed("a")], settings(9), TraversalPolicy::default(), RetainedLimits::default());
+        assert_eq!(s1.goal.matched, 0, "no shared token: S1 finds nothing");
+        assert!(s1.model.is_none() && s1.receipt().model.is_none());
+
+        let (report, _) = model_run(&mut modelled);
+        // The model chose the paraphrase link over the older pasta one, and
+        // the trace keeps what was offered, which S1's record does not.
+        assert_eq!(modelled.lookups, vec![id("a"), id("o"), id("cooking")]);
+        let second = &report.selections[1];
+        assert_eq!(second.candidates.len(), 2);
+        assert_eq!(second.candidates[second.chosen], id("o"));
+        let record = report.model.as_ref().expect("model record");
+        assert_eq!(record.selections[1].winner, SelectionWinner::Model);
+        assert_eq!(report.goal, record.s1, "S1's record is carried unchanged");
+        // Only the paraphrase matched, so the traversal's verdicts are the model's.
+        assert_eq!(record.matched, 1);
+        let verdicts: Vec<_> = report.receipt().visits.iter().map(|v| v.verdict).collect();
+        assert_eq!(verdicts, vec![GoalVerdict::Continue, GoalVerdict::Match, GoalVerdict::Continue]);
+        let json = serde_json::to_string(&report.receipt()).unwrap();
+        let back: RetainedTraversalReceipt = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.model.as_ref(), Some(record));
+    }
+
+    #[test]
+    fn a_receipt_without_a_model_field_still_reads() {
+        let mut held = site();
+        let report = run(&mut held, vec![seed("a")], settings(1), TraversalPolicy::default(), RetainedLimits::default());
+        let json = serde_json::to_string(&report.receipt()).unwrap();
+        assert!(!json.contains("\"model\""), "an S1-only receipt is byte-compatible");
+        assert!(serde_json::from_str::<RetainedTraversalReceipt>(&json).is_ok());
+    }
+}
