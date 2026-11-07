@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //! Text location resolution over the exact laid-out text, without a second parser.
 use document_canvas::text::SearchableText;
-use tabard::ReadingAnchor;
+use crate::ReadingAnchor;
 
 fn revision(texts: &[SearchableText]) -> u64 {
     // A deterministic change detector, not a security digest. Include boundaries.

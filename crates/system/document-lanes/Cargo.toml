@@ -34,7 +34,8 @@ genet-static-dom = { workspace = true }
 fleece = { workspace = true }
 netrender = { workspace = true }
 document-canvas = { workspace = true, features = ["netrender"] }
-tabard = { workspace = true }
+# The smolweb palette derivation, from Graphshell's contract root (engine split D19).
+tinct = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
 # The smolweb lane decodes whatever a capsule serves, so this keeps genet's
 # full codec set rather than mere's png-only ingest pin.
 image = { version = "0.25", default-features = false, features = ["rayon", "bmp", "gif", "ico", "jpeg", "png", "webp"] }

@@ -133,7 +133,7 @@ fn restyling_reflows_without_replacing_source_or_session_state() {
         "hosts which did not opt into reading controls retain explicit styles"
     );
     let mut other = doc.new_appearance();
-    let mut preferences = tabard::ReadingPreferences::default();
+    let mut preferences = crate::ReadingPreferences::default();
     preferences.step_text(true);
     doc.set_reading_preferences(preferences).unwrap();
     doc.frame(300, 200);

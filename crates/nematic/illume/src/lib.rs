@@ -23,12 +23,16 @@ pub mod entity;
 pub mod highlight;
 pub mod injection;
 pub mod pack;
+#[cfg(feature = "markdown")]
+pub mod reuse;
 pub mod tree;
 
 pub use entity::entities;
 pub use highlight::{Span, SyntaxKind, highlight, highlight_djot};
 pub use injection::{InjectionLexer, InjectionRegistry};
 pub use pack::default_pack;
+#[cfg(feature = "markdown")]
+pub use reuse::{MarkdownLexer, full_pack};
 pub use tree::{
     Fold, NodeKind, OutlineItem, TreeNode, container_tree, expand_selection, folds, outline,
 };

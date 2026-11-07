@@ -15,7 +15,7 @@
 
 /// The crawler's user-agent token, matched against `User-agent:` groups. The same
 /// `merebot` token rides the descriptive UA sent on crawl fetches
-/// ([`fetch::CRAWLER_USER_AGENT`](fetch::CRAWLER_USER_AGENT)).
+/// (`mere-fetch`'s `CRAWLER_USER_AGENT`).
 pub const CRAWLER_UA: &str = "merebot";
 
 /// Parsed robots.txt rules for one host: the `Allow` / `Disallow` path rules from the

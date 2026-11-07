@@ -5,10 +5,10 @@
 use super::*;
 
 impl ReaderDocumentSession {
-    pub fn reading_anchor(&self) -> Option<tabard::ReadingAnchor> {
+    pub fn reading_anchor(&self) -> Option<crate::ReadingAnchor> {
         self.doc.reading_anchor()
     }
-    pub fn restore_reading_anchor(&mut self, anchor: tabard::ReadingAnchor) {
+    pub fn restore_reading_anchor(&mut self, anchor: crate::ReadingAnchor) {
         self.doc.restore_reading_anchor(anchor);
         self.bump_accessibility_revision();
     }
@@ -60,12 +60,12 @@ impl ReaderDocumentSession {
         self.doc.scroll_y()
     }
 
-    pub fn reading_preferences(&self) -> tabard::ReadingPreferences {
+    pub fn reading_preferences(&self) -> crate::ReadingPreferences {
         self.doc.reading_preferences()
     }
     pub fn set_reading_preferences(
         &mut self,
-        value: tabard::ReadingPreferences,
+        value: crate::ReadingPreferences,
     ) -> Result<bool, String> {
         self.doc.set_reading_preferences(value)
     }

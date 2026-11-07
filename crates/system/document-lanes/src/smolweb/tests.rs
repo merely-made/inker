@@ -349,7 +349,7 @@ fn a_site_themed_appearance_follows_the_host_mode_and_keeps_its_fonts() {
     let url = "gemini://geminiprotocol.net/";
     let mut doc = SmolwebDocument::parse(url, "# Gemini\n=> /docs Docs\n", SmolwebTheme::Site);
     doc.set_font_family("Atkinson");
-    doc.set_reading_preferences(tabard::ReadingPreferences {
+    doc.set_reading_preferences(crate::ReadingPreferences {
         text_size: 24,
         column_em: 28,
     })

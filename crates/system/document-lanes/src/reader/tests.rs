@@ -50,7 +50,7 @@ fn reading_preferences_and_find_reflow_one_appearance_without_changing_its_sourc
         first.scroll_y() > 0.0,
         "the session reveals the offscreen occurrence"
     );
-    let mut value = tabard::ReadingPreferences::default();
+    let mut value = crate::ReadingPreferences::default();
     value.step_text(true);
     value.step_column(false);
     first.set_reading_preferences(value).unwrap();

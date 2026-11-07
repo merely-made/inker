@@ -26,12 +26,14 @@ Cancelled/timed-out operations cannot report their unfinished body's exact byte
 count. Their summary marks `received_bytes_complete = false`, making the reported
 bytes an explicit lower bound; their supplied cap remains bounded by the total
 allowance remaining at admission, and acquisition stops immediately.
-Mere's ready-made `crawl::fetch_crawler_request` bridges its single-hop transport
-to this seam, preserving absent-file statuses and partial-byte errors.
+Mere's ready-made single-hop transport lives with the host: `mere-fetch`'s
+`fleece-crawl` feature supplies `fetch::fleece_crawl::fetch_crawler_request`,
+preserving absent-file statuses and partial-byte errors.
 
-The optional `crawl-graph` adapter binds generic gathered contributions to a
-destination GraphId. It filters superseded run receipts before routing output.
-The owning application/session authorizes graph mutations. Gathering itself
+`crawl::session::CrawlSession<D, T>` binds each run's gathered content to a
+caller-owned destination. It filters superseded run receipts before routing
+output. The host chooses the destination and content types (for Mere, a graph id
+and a graph contribution) and authorizes the mutations. Gathering itself
 requires neither graph contributions nor graph IDs.
 
 `clip` supplies portable capture over caller-owned document/engine inputs.

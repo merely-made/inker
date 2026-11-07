@@ -29,7 +29,7 @@ fn passage_survives_type_width_and_cold_appearance() {
     let _ = doc.frame(700, 300);
     doc.scroll_to(1500.);
     let anchor = doc.reading_anchor().expect("a laid-out passage");
-    doc.set_reading_preferences(tabard::ReadingPreferences {
+    doc.set_reading_preferences(crate::ReadingPreferences {
         text_size: 24,
         column_em: 28,
     })

@@ -18,8 +18,7 @@ wire = ["fleece-extract/wire"]
 # A page's links from its HTML (`page_links`); wasm-safe.
 page-links = ["dep:genet-static-dom", "dep:url"]
 article = ["dep:genet-static-dom"]
-crawl = ["page-links", "dep:armillary", "dep:fetch", "dep:tokio", "dep:tracing"]
-crawl-graph = ["crawl", "dep:incipit", "dep:linked-data"]
+crawl = ["page-links", "dep:armillary", "dep:page-load", "dep:tokio", "dep:tracing"]
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
 eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]
 portable-clip = ["dep:eidetic", "dep:serde", "dep:serde_json"]
@@ -34,7 +33,6 @@ eidetic-search = { workspace = true, optional = true }
 genet-host-api = { workspace = true, optional = true }
 genet-static-dom = { workspace = true, optional = true }
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
-incipit = { workspace = true, optional = true }
 inker = { workspace = true, optional = true }
 linked-data = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
@@ -44,7 +42,7 @@ url = { version = "2.5", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 armillary = { workspace = true, optional = true }
-fetch = { package = "mere-fetch", path = "../system/fetch", version = "0.0.1", optional = true, default-features = false }
+page-load = { workspace = true, optional = true }
 tokio = { version = "1", features = ["rt", "time"], optional = true }
 
 [dev-dependencies]

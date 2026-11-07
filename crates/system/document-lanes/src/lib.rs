@@ -39,6 +39,8 @@ pub use smolweb::{
 #[cfg(feature = "retained-clips")]
 pub mod retained_clip;
 
+pub mod reading_style;
+pub use reading_style::{ReaderFontStyle, ReaderRole, ReaderStyles, ReadingAnchor, ReadingPreferences};
 pub mod typography;
 mod reading_find;
 pub use typography::document_style_with_typography;

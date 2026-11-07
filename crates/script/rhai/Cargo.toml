@@ -36,11 +36,6 @@ libm = { workspace = true }
 hest = { workspace = true }
 serde_json = { workspace = true }
 
-[dev-dependencies]
-# The rule runner tests resolve a real rule set (SE92); the library itself links
-# neither scenograph nor its types.
-scenograph = { workspace = true, features = ["scripts"] }
-
 [features]
 # Builds the wasm32 determinism example (tests/wasm_maths_bits.mjs); off by default
 # so a plain `cargo test` does not build a cdylib.

@@ -33,11 +33,11 @@ use netrender::Scene;
 mod a11y;
 pub(crate) use a11y::NodeIds as AccessibilityNodeIds;
 
-// The smolweb palette and theme are tabard's. Hosts on the compatibility
-// palette (current Pelt and Mere) keep these paths; new engine-native callers
-// may configure [`DocumentStyleSheet`] directly through
+// The smolweb palette and theme are the lanes' own (engine split D16, D19);
+// engine-native callers may configure [`DocumentStyleSheet`] directly through
 // [`SmolwebDocument::from_document`].
-pub use tabard::smolweb::{ModeProfile, SmolwebPalette, SmolwebTheme};
+mod palette;
+pub use palette::{ModeProfile, SmolwebPalette, SmolwebTheme};
 
 /// Host policy for promoting image-shaped gemtext links into inline images.
 ///
@@ -79,9 +79,9 @@ pub struct SmolwebDocument {
     /// Supplied response MIME, distinct from the lowerer's canonical output type.
     source_content_type: Option<String>,
     style: DocumentStyleSheet,
-    reading: Option<tabard::ReadingPreferences>,
+    reading: Option<crate::ReadingPreferences>,
     find: crate::reading_find::ReadingFind,
-    pending_reading: Option<tabard::ReadingAnchor>,
+    pending_reading: Option<crate::ReadingAnchor>,
     background: [f32; 4],
     /// The theme this appearance's colors came from, when it was built from
     /// one, and the host mode they were derived under.

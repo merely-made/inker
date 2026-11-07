@@ -71,7 +71,7 @@ impl SmolwebDocument {
         appearance
     }
 
-    pub fn reading_anchor(&self) -> Option<tabard::ReadingAnchor> {
+    pub fn reading_anchor(&self) -> Option<crate::ReadingAnchor> {
         let layout = self.layout.as_ref()?;
         crate::reading_anchor::capture(
             &self.document.address,
@@ -82,7 +82,7 @@ impl SmolwebDocument {
     }
 
     /// Applied once after layout. A stale quote never jumps to unrelated text.
-    pub fn restore_reading_anchor(&mut self, anchor: tabard::ReadingAnchor) {
+    pub fn restore_reading_anchor(&mut self, anchor: crate::ReadingAnchor) {
         self.pending_reading = Some(anchor);
         self.invalidate_layout();
     }
@@ -93,13 +93,13 @@ impl SmolwebDocument {
         }
     }
 
-    pub fn reading_preferences(&self) -> tabard::ReadingPreferences {
+    pub fn reading_preferences(&self) -> crate::ReadingPreferences {
         self.reading.unwrap_or_default()
     }
 
     pub fn set_reading_preferences(
         &mut self,
-        value: tabard::ReadingPreferences,
+        value: crate::ReadingPreferences,
     ) -> Result<bool, String> {
         value.validate()?;
         if Some(value) == self.reading {

@@ -24,6 +24,12 @@ jotdown = "0.10"
 # DFA lexer generator for the curated injection pack — the fastest pure-Rust token
 # lexer, wasm-clean, no C. Each pack language is a small token enum.
 logos = "0.16"
+# Reuse-lexers over a parser applications already ship (feature `markdown`),
+# moved from knot-editor-host under the engine split plan, D17.
+pulldown-cmark = { version = "0.13", default-features = false, optional = true }
+
+[features]
+markdown = ["dep:pulldown-cmark"]
 
 [lints]
 workspace = true

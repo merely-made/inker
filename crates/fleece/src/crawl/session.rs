@@ -4,34 +4,32 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-//! Optional graph destination binding. Gathering produces contributions; the
-//! owning session decides when and with what authority to apply them.
+//! Destination binding for a gathering run. Gathering produces content of a
+//! caller-owned type `T`; the session tags each run's output with a caller-owned
+//! destination `D`. A host binds its own pair (Mere's was a graph id and a graph
+//! contribution) and decides when and with what authority to apply them.
 
 use super::*;
-use incipit::GraphId;
-use linked_data::GraphContribution;
 
-pub type CrawlProcess = super::CrawlProcess<GraphContribution>;
-
-pub struct CrawlSession {
+pub struct CrawlSession<D, T> {
     handle: ActorHandle<CrawlCommand>,
-    rx: Receiver<CrawlEvent<GraphContribution>>,
+    rx: Receiver<CrawlEvent<T>>,
     cancel: Arc<AtomicBool>,
     run_id: u64,
-    graph_id: Option<GraphId>,
+    destination: Option<D>,
     progress: CrawlProgress,
     default_policy: CrawlPolicy,
 }
 
-impl CrawlSession {
-    pub fn new(wake: Wake, fetch: CrawlFetch, process_page: CrawlProcess) -> Self {
+impl<D: Copy, T: Send + 'static> CrawlSession<D, T> {
+    pub fn new(wake: Wake, fetch: CrawlFetch, process_page: CrawlProcess<T>) -> Self {
         let (handle, rx) = spawn_crawl(wake, fetch, process_page);
         Self {
             handle,
             rx,
             cancel: Arc::new(AtomicBool::new(false)),
             run_id: 0,
-            graph_id: None,
+            destination: None,
             progress: CrawlProgress::default(),
             default_policy: CrawlPolicy::default(),
         }
@@ -68,11 +66,11 @@ impl CrawlSession {
         self.default_policy.max_pages = pages;
     }
 
-    pub fn start(&mut self, seed: &str, policy: CrawlPolicy, graph_id: GraphId) {
+    pub fn start(&mut self, seed: &str, policy: CrawlPolicy, destination: D) {
         self.stop();
         self.cancel = Arc::new(AtomicBool::new(false));
         self.run_id = self.run_id.wrapping_add(1);
-        self.graph_id = Some(graph_id);
+        self.destination = Some(destination);
         self.progress = CrawlProgress {
             running: true,
             ..CrawlProgress::default()
@@ -89,13 +87,13 @@ impl CrawlSession {
         self.cancel.store(true, Ordering::Relaxed);
     }
 
-    pub fn drain(&mut self) -> Vec<(GraphId, GraphContribution)> {
+    pub fn drain(&mut self) -> Vec<(D, T)> {
         let mut applied = Vec::new();
         while let Ok(event) = self.rx.try_recv() {
             fold_event(
                 event,
                 self.run_id,
-                self.graph_id,
+                self.destination,
                 &mut self.progress,
                 &mut applied,
             );
@@ -108,39 +106,35 @@ impl CrawlSession {
     }
 }
 
-impl Drop for CrawlSession {
+impl<D, T> Drop for CrawlSession<D, T> {
     fn drop(&mut self) {
-        self.stop();
+        self.cancel.store(true, Ordering::Relaxed);
     }
 }
 
-/// Ignore superseded runs before looking at graph destination or progress.
-pub fn fold_event(
-    event: CrawlEvent<GraphContribution>,
+/// Ignore superseded runs before looking at the destination or progress.
+pub fn fold_event<D: Copy, T>(
+    event: CrawlEvent<T>,
     active_run: u64,
-    graph_id: Option<GraphId>,
+    destination: Option<D>,
     progress: &mut CrawlProgress,
-    applied: &mut Vec<(GraphId, GraphContribution)>,
+    applied: &mut Vec<(D, T)>,
 ) {
     if event.run_id == active_run {
-        fold_update(event.update, graph_id, progress, applied);
+        fold_update(event.update, destination, progress, applied);
     }
 }
 
-pub fn fold_update(
-    update: CrawlUpdate<GraphContribution>,
-    graph_id: Option<GraphId>,
+pub fn fold_update<D: Copy, T>(
+    update: CrawlUpdate<T>,
+    destination: Option<D>,
     progress: &mut CrawlProgress,
-    applied: &mut Vec<(GraphId, GraphContribution)>,
+    applied: &mut Vec<(D, T)>,
 ) {
     match update {
         CrawlUpdate::Content { content } => {
-            if let Some(graph_id) = graph_id {
-                applied.extend(
-                    content
-                        .into_iter()
-                        .map(|contribution| (graph_id, contribution)),
-                );
+            if let Some(destination) = destination {
+                applied.extend(content.into_iter().map(|item| (destination, item)));
             }
         },
         CrawlUpdate::Progress { fetched, last_url } => {
@@ -162,18 +156,18 @@ mod tests {
 
     #[test]
     fn contributions_bind_to_supplied_destination_and_old_run_is_ignored() {
-        let graph_id = GraphId::nil();
+        let destination = 7_u32;
         let mut progress = CrawlProgress::default();
         let mut applied = Vec::new();
         fold_event(
             CrawlEvent {
                 run_id: 1,
                 update: CrawlUpdate::Content {
-                    content: vec![GraphContribution::default()],
+                    content: vec!["contribution"],
                 },
             },
             2,
-            Some(graph_id),
+            Some(destination),
             &mut progress,
             &mut applied,
         );
@@ -182,16 +176,16 @@ mod tests {
             CrawlEvent {
                 run_id: 2,
                 update: CrawlUpdate::Content {
-                    content: vec![GraphContribution::default()],
+                    content: vec!["contribution"],
                 },
             },
             2,
-            Some(graph_id),
+            Some(destination),
             &mut progress,
             &mut applied,
         );
         assert_eq!(applied.len(), 1);
-        assert_eq!(applied[0].0, graph_id);
+        assert_eq!(applied[0].0, destination);
         fold_event(
             CrawlEvent {
                 run_id: 1,
@@ -200,7 +194,7 @@ mod tests {
                 },
             },
             2,
-            Some(graph_id),
+            Some(destination),
             &mut progress,
             &mut applied,
         );
@@ -213,7 +207,7 @@ mod tests {
                     ..CrawlSummary::default()
                 },
             },
-            Some(graph_id),
+            Some(destination),
             &mut progress,
             &mut applied,
         );

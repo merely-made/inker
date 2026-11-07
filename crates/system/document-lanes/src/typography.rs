@@ -6,11 +6,12 @@
 
 //! Application typography projected onto the existing portable document styles.
 use document_canvas::{DocumentStyleSheet, FontChoice, SizeSpec};
-use tabard::{FontRole, Typography};
+use crate::reading_style::{ReaderRole as FontRole, ReaderStyles as Typography};
 
 /// Start from the consumer's own baseline on every application/reset. Untouched
 /// roles and properties retain their normal hierarchy, weights and wrapping.
-/// Font discovery, fallback and measurement remain the canvas text engine's job.
+/// Font discovery and measurement remain the canvas text engine's job; family
+/// lists arrive already resolved by the host, fallback included.
 pub fn document_style_with_typography(
     baseline: &DocumentStyleSheet,
     typography: &Typography,
@@ -18,7 +19,7 @@ pub fn document_style_with_typography(
     typography.validate()?;
     let mut style = baseline.clone();
     if let Some(p) = typography.0.get(&FontRole::Reading) {
-        if let Some(f) = p.css_family(FontRole::Reading) {
+        if let Some(f) = p.family.clone() {
             style.roles.body.family = FontChoice::Explicit(f);
         }
         if let Some(size) = p.size_px {
@@ -27,7 +28,7 @@ pub fn document_style_with_typography(
         style.roles.body.line_height_ratio = p.line_height.or(style.roles.body.line_height_ratio);
     }
     if let Some(p) = typography.0.get(&FontRole::Heading) {
-        if let Some(f) = p.css_family(FontRole::Heading) {
+        if let Some(f) = p.family.clone() {
             style.roles.heading.family = FontChoice::Explicit(f);
         }
         if let Some(size) = p.size_px {
@@ -43,7 +44,7 @@ pub fn document_style_with_typography(
             p.line_height.or(style.roles.heading.line_height_ratio);
     }
     if let Some(p) = typography.0.get(&FontRole::Code) {
-        if let Some(f) = p.css_family(FontRole::Code) {
+        if let Some(f) = p.family.clone() {
             style.roles.code.family = FontChoice::Explicit(f);
         }
         if let Some(size) = p.size_px {
@@ -53,7 +54,7 @@ pub fn document_style_with_typography(
     }
     if let Some(p) = typography.0.get(&FontRole::Label) {
         for role in [&mut style.roles.metadata, &mut style.roles.badge] {
-            if let Some(f) = p.css_family(FontRole::Label) {
+            if let Some(f) = p.family.clone() {
                 role.family = FontChoice::Explicit(f);
             }
             if let Some(size) = p.size_px {
@@ -91,11 +92,11 @@ fn scaled_document_style(baseline: &DocumentStyleSheet, scale: f32) -> DocumentS
 /// custody and baseline roles survive. Lengths stay logical: the host lays the
 /// document out at its layout size and rasterizes at the window's scale.
 pub fn document_style_for_reading(
-    baseline: &DocumentStyleSheet, preferences: tabard::ReadingPreferences,
+    baseline: &DocumentStyleSheet, preferences: crate::ReadingPreferences,
 ) -> DocumentStyleSheet {
     let ratio = f32::from(preferences.text_size) / 18.0;
     let scaled = scaled_document_style(baseline, ratio);
-    let mut style = document_style_with_typography(&scaled, &preferences.typography())
+    let mut style = document_style_with_typography(&scaled, &preferences.styles())
         .expect("validated projection reading preferences");
     // Gutters do not grow with text size; line length does.
     style.horizontal_padding = baseline.horizontal_padding;
@@ -108,7 +109,7 @@ pub fn document_style_for_reading(
 mod tests {
     use super::*;
     use document_canvas::BlockRole;
-    use tabard::ThemeFontStyle;
+    use crate::reading_style::ReaderFontStyle as ThemeFontStyle;
     #[test]
     fn code_can_explicitly_choose_a_generic_ui_face_without_being_forced_to_monospace() {
         let baseline = DocumentStyleSheet::default();
@@ -181,7 +182,7 @@ mod tests {
             .set(
                 FontRole::Code,
                 ThemeFontStyle {
-                    family: Some("Menlo".into()),
+                    family: Some("\"Menlo\", monospace".into()),
                     size_px: Some(18.0),
                     ..Default::default()
                 },

@@ -79,52 +79,6 @@ fn failed_page_response_bytes_reduce_subsequent_request_allowance() {
 }
 
 #[test]
-fn single_hop_adapter_preserves_absence_failure_status_and_partial_byte_evidence() {
-    let response = |status| fetch::crawler::CrawlerResponse {
-        status,
-        content_type: Some("text/plain".into()),
-        content_disposition: Some("inline".into()),
-        bytes: b"body".to_vec(),
-    };
-    let success = lower_crawler_result(Ok(response(200))).unwrap();
-    assert_eq!(success.body, "body");
-    assert_eq!(success.bytes, b"body");
-    assert_eq!(success.content_type.as_deref(), Some("text/plain"));
-    assert_eq!(success.content_disposition.as_deref(), Some("inline"));
-    for status in [404, 410] {
-        assert_eq!(
-            lower_crawler_result(Ok(response(status))),
-            Err(CrawlFetchError::NotFound { received_bytes: 4 })
-        );
-    }
-    for status in [302, 401, 403, 500] {
-        assert!(matches!(
-            lower_crawler_result(Ok(response(status))),
-            Err(CrawlFetchError::Failed {
-                received_bytes: 4,
-                ..
-            })
-        ));
-    }
-    assert_eq!(
-        lower_crawler_result(Err(fetch::crawler::CrawlerFetchError::ResponseLimit {
-            max_bytes: 5,
-            received_bytes: 7,
-        })),
-        Err(CrawlFetchError::ResponseLimit { received_bytes: 7 })
-    );
-    assert_eq!(
-        lower_crawler_result(Err(fetch::crawler::CrawlerFetchError::Network {
-            message: "reset".into(),
-            received_bytes: 3,
-        }))
-        .unwrap_err()
-        .received_bytes(),
-        3
-    );
-}
-
-#[test]
 fn ready_failed_fetch_preserves_complete_bytes_and_terminal_cancellation() {
     for cancel_kind in [CrawlRequestKind::Robots, CrawlRequestKind::Page] {
         let cancelled = Cell::new(false);

@@ -20,7 +20,7 @@ use std::task::Poll;
 use std::time::{Duration, Instant};
 
 use armillary::{ActorHandle, Emitter, Wake, spawn};
-use fetch::Fetched;
+use page_load::Fetched;
 use tokio::runtime::Builder;
 
 mod frontier;
@@ -29,8 +29,7 @@ use frontier::{host_of, is_http, origin_of, path_of, robots_url, sitemap_url};
 mod robots;
 pub use robots::CRAWLER_UA;
 use robots::RobotsRules;
-#[cfg(feature = "crawl-graph")]
-pub mod graph;
+pub mod session;
 mod sitemap;
 
 /// Harvest links from an already supplied HTML response. Extraction returns raw
@@ -122,47 +121,8 @@ impl CrawlFetchError {
 pub type CrawlFetchFuture = Pin<Box<dyn Future<Output = Result<Fetched, CrawlFetchError>> + Send>>;
 pub type CrawlFetch = Arc<dyn Fn(CrawlRequest) -> CrawlFetchFuture + Send + Sync>;
 
-/// Mere's concrete single-hop HTTP adapter for the supplied request seam. It
-/// reads within the response cap without ambient browser cookies, redirects or
-/// retries. Hosts with their own transports can supply their own adapter.
-pub async fn fetch_crawler_request(request: CrawlRequest) -> Result<Fetched, CrawlFetchError> {
-    let result = fetch::crawler::fetch_crawler_capped(&request.url, request.max_bytes).await;
-    lower_crawler_result(result)
-}
-
-fn lower_crawler_result(
-    result: Result<fetch::crawler::CrawlerResponse, fetch::crawler::CrawlerFetchError>,
-) -> Result<Fetched, CrawlFetchError> {
-    let response = result.map_err(|error| match &error {
-        fetch::crawler::CrawlerFetchError::ResponseLimit { received_bytes, .. } => {
-            CrawlFetchError::ResponseLimit {
-                received_bytes: *received_bytes,
-            }
-        },
-        _ => CrawlFetchError::Failed {
-            received_bytes: error.received_bytes(),
-            message: error.to_string(),
-        },
-    })?;
-    match response.status {
-        200..=299 => Ok(Fetched {
-            content_type: response.content_type,
-            content_disposition: response.content_disposition,
-            body: String::from_utf8_lossy(&response.bytes).into_owned(),
-            bytes: response.bytes,
-        }),
-        404 | 410 => Err(CrawlFetchError::NotFound {
-            received_bytes: response.bytes.len(),
-        }),
-        status => Err(CrawlFetchError::Failed {
-            message: format!("HTTP {status}"),
-            received_bytes: response.bytes.len(),
-        }),
-    }
-}
-
 /// A supplied response processor can emit any caller-owned gathered-content
-/// type. Graph IDs and graph mutation authority live in the optional adapter.
+/// type. Destination IDs and mutation authority stay with the host that binds them.
 pub type CrawlProcess<T> = Arc<dyn Fn(&mut Frontier, &str, u32, &Fetched) -> Vec<T> + Send + Sync>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
