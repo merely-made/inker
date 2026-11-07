@@ -8,9 +8,7 @@ use super::*;
 
 #[test]
 fn generic_font_batch_refuses_before_mutating_existing_context() {
-    let bytes =
-        include_bytes!("../../../../cambium/examples/genet_web_smoke/assets/Roboto-Regular.ttf")
-            .to_vec();
+    let bytes = include_bytes!("../../tests/assets/Roboto-Regular.ttf").to_vec();
     let mut env = LayoutEnvironment::new();
     env.font_cx.collection =
         parley::fontique::Collection::new(parley::fontique::CollectionOptions {

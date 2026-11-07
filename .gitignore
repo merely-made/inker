@@ -1,0 +1,4 @@
+# Cargo build artifacts (`.cargo/config.toml` puts the build dir under it too).
+target/
+**/.cargo/local/
+**/.cargo/config.local.toml

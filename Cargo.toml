@@ -1,0 +1,137 @@
+# Inker: engine selection, readers, the document canvas, smolweb rendering and
+# lexing. Split from Mere with history (engine split plan, P1); see README.md.
+[workspace]
+resolver = "2"
+members = [
+    "crates/inker/inker",
+    "crates/inker/document-canvas",
+    "crates/inker/knot-editor-host",
+    "crates/inker/engines/graft-engine",
+    "crates/inker/engines/scrying-engine",
+    "crates/inker/engines/weld-engine",
+    "crates/nematic/nematic",
+    "crates/nematic/illume",
+    "crates/system/document-lanes",
+    "crates/system/page-load",
+    "crates/fleece",
+    "crates/script/rhai",
+]
+
+[workspace.package]
+rust-version = "1.97.1"
+version = "0.0.1"
+edition = "2024"
+license = "MPL-2.0"
+authors = ["Mark AB (markik)"]
+repository = "https://github.com/merely-made/inker"
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+missing_safety_doc = "warn"
+undocumented_unsafe_blocks = "warn"
+too_many_lines = "warn"
+
+[workspace.dependencies]
+accesskit = "0.25.1"
+armillary = { version = "0.1.1", git = "https://github.com/merely-made/armillary.git", branch = "main" }
+cambium = { version = "0.6.1", git = "https://github.com/merely-made/mere.git", branch = "main" }
+document-canvas = { version = "0.1.0", path = "crates/inker/document-canvas" }
+document-session-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
+dpi = "0.1.2"
+eidetic = { version = "0.0.3", default-features = false, git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+eidetic-search = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+errand = { version = "0.4.0", git = "https://github.com/merely-made/errand.git", branch = "main" }
+fleece = { package = "mere-fleece", path = "crates/fleece", version = "0.0.1" }
+fleece-extract = { package = "fleece", version = "0.5.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
+genet-host-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
+genet-scripted-dom = { version = "=0.1.2", git = "https://github.com/merely-made/genet.git", branch = "main" }
+genet-static-dom = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
+hest = { version = "0.2.1", git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+illume = { version = "0.0.3", path = "crates/nematic/illume" }
+inker = { version = "0.1.1", path = "crates/inker/inker" }
+layout-dom-api = { version = "=0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
+libm = { version = "0.2", default-features = false }
+linked-data = { package = "mere-rdf", version = "0.0.1", git = "https://github.com/merely-made/mere.git", branch = "main" }
+muniment = { version = "0.2.1", git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+nematic = { version = "0.1.1", path = "crates/nematic/nematic", default-features = false }
+netfetcher = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
+netrender = { version = "=0.1.2", git = "https://github.com/merely-made/netrender.git", branch = "main" }
+page-load = { package = "mere-pageload", version = "0.0.1", path = "crates/system/page-load" }
+paint_list_api = { version = "=0.1.2", git = "https://github.com/merely-made/netrender.git", branch = "main" }
+paint_list_render = { version = "=0.1.2", git = "https://github.com/merely-made/netrender.git", branch = "main" }
+parley = { package = "genet-parley", version = "0.10.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
+script-engine-api = { version = "0.1.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+transport = { package = "mere-transport", version = "0.0.2", git = "https://github.com/merely-made/murm.git", branch = "main" }
+uuid = { version = "1", features = ["serde", "v4"] }
+webcue = "=0.1.2"
+welding-0-15 = { package = "welding", version = "0.15.0", default-features = false, features = ["wgpu-30"] }
+wgpu = "30.0.1"
+
+[patch.crates-io]
+sceno = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+scenotime = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+graphshell-endpoint = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+chirograph = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+hest = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+script-wire = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+script-witgen = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+peer-facts = { version = "0.0.1", git = "https://github.com/merely-made/armillary.git", branch = "main" }
+ostiary = { version = "0.0.1", git = "https://github.com/merely-made/armillary.git", branch = "main" }
+document-session-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
+chartulary = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+commons-spine = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
+eidetic = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+errand = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+esp = { git = "https://github.com/merely-made/distillery.git", branch = "main" }
+finger-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+gemini-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+gemot = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
+gopher-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+guppy-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+luggage = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+mere-proofs = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+mien = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
+misfin = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+mooting = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
+nex-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+scroll-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+servitor = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+spartan-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
+stickleback = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+netrender_device = { git = "https://github.com/merely-made/netrender.git", branch = "main" }
+muniment = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+netrender-vello = { git = "https://github.com/mark-ik/vello", rev = "dfb9b53b315561887761deff319afed08cc33ff0" }
+netrender-vello-encoding = { git = "https://github.com/mark-ik/vello", rev = "dfb9b53b315561887761deff319afed08cc33ff0" }
+netrender-vello-shaders = { git = "https://github.com/mark-ik/vello", rev = "dfb9b53b315561887761deff319afed08cc33ff0" }
+layout-dom-api = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "=0.1.1" }
+genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "=0.1.2" }
+
+# The Mere packages Inker still names (cambium, mere-rdf) name Inker packages
+# from mere.git in turn; this table serves those from this tree, so each Inker
+# package resolves from one source.
+[patch."https://github.com/merely-made/mere.git"]
+document-canvas = { path = "crates/inker/document-canvas" }
+graft-engine = { path = "crates/inker/engines/graft-engine" }
+illume = { path = "crates/nematic/illume" }
+inker = { path = "crates/inker/inker" }
+knot-editor-host = { path = "crates/inker/knot-editor-host" }
+mere-fleece = { path = "crates/fleece" }
+mere-lanes = { path = "crates/system/document-lanes" }
+mere-pageload = { path = "crates/system/page-load" }
+nematic = { path = "crates/nematic/nematic" }
+script-rhai = { path = "crates/script/rhai" }
+scrying-engine = { path = "crates/inker/engines/scrying-engine" }
+weld-engine = { path = "crates/inker/engines/weld-engine" }
+
+[patch."https://github.com/merely-made/retinue.git"]
+mere-transport = { git = "https://github.com/merely-made/murm.git", branch = "main" }
+murm-webrtc = { git = "https://github.com/merely-made/murm.git", branch = "main" }
+retinue = { git = "https://github.com/merely-made/murm.git", branch = "main" }
