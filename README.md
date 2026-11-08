@@ -20,13 +20,15 @@ carries the adapters that drive them.
 | `crates/inker/engines/scrying-engine` | `scrying-engine` | Surface engine over the scrying system webview (WebView2, WKWebView, WebKitGTK) |
 | `crates/inker/engines/graft-engine` | `graft-engine` | Surface engine over the wgpu-graft Servo embedding |
 | `crates/inker/engines/weld-engine` | `weld-engine` | Surface engine over the wgpu-weld CEF embedding |
-| `crates/inker/knot-editor-host` | `knot-editor-host` | Retiring: the Knot editor moves to Knot's `knot-document` (D17) |
 | `crates/nematic/nematic` | `nematic` | The smolweb rendering engine |
 | `crates/nematic/illume` | `illume` | Wasm-safe lexer and highlighter (djot, injected languages, Markdown reuse-lexer) |
 | `crates/system/document-lanes` | `mere-lanes` | The reader and smolweb sessions, their reading types and palette, and the remote fetcher |
 | `crates/system/page-load` | `mere-pageload` | The fetch vocabulary and the sans-IO page load |
 | `crates/fleece` | `mere-fleece` | Bounded traversal, clipping and capture over supplied documents |
 | `crates/script/rhai` | `script-rhai` | The Rhai block evaluator and its command batches |
+
+`knot-editor-host` retired 2026-11-07 under Mere's engine split plan D17; the
+editor lives in Knot's `knot-document`, the lexers in `illume`.
 
 The moved packages keep their names. Design documents are under
 `design_docs/inker_docs/`, `design_docs/nematic_docs/` and
@@ -42,11 +44,10 @@ Mere's engine split plan
 phase P1, decisions D16, D17, D19, D21). History from before a path arrived at
 its Mere location is in Mere's and genet's own histories.
 
-Two edges into Mere remain while the split finishes: `knot-editor-host` names
-`cambium` (until Knot takes the editor) and `mere-fleece`'s optional
-`structured-data` feature names `mere-rdf` (the plan's F3). Both come from
-`mere.git`; the root manifest's `[patch."https://github.com/merely-made/mere.git"]`
-table serves the Inker packages those name back from this tree. `mere-lanes`
+One edge into Mere remains while the split finishes: `mere-fleece`'s optional
+`structured-data` feature names `mere-rdf` (the plan's F3), from `mere.git`;
+the root manifest's `[patch."https://github.com/merely-made/mere.git"]`
+table serves the Inker packages it names back from this tree. `mere-lanes`
 takes `tinct` and `script-rhai` takes `hest` from Graphshell's contract root,
 which D19 allows.
 

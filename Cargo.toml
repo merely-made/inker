@@ -5,7 +5,6 @@ resolver = "2"
 members = [
     "crates/inker/inker",
     "crates/inker/document-canvas",
-    "crates/inker/knot-editor-host",
     "crates/inker/engines/graft-engine",
     "crates/inker/engines/scrying-engine",
     "crates/inker/engines/weld-engine",
@@ -114,7 +113,7 @@ netrender-vello-shaders = { git = "https://github.com/mark-ik/vello", rev = "dfb
 layout-dom-api = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "=0.1.1" }
 genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "=0.1.2" }
 
-# The Mere packages Inker still names (cambium, mere-rdf) name Inker packages
+# The Mere package Inker still names (mere-rdf) names Inker packages
 # from mere.git in turn; this table serves those from this tree, so each Inker
 # package resolves from one source.
 [patch."https://github.com/merely-made/mere.git"]
@@ -122,7 +121,6 @@ document-canvas = { path = "crates/inker/document-canvas" }
 graft-engine = { path = "crates/inker/engines/graft-engine" }
 illume = { path = "crates/nematic/illume" }
 inker = { path = "crates/inker/inker" }
-knot-editor-host = { path = "crates/inker/knot-editor-host" }
 mere-fleece = { path = "crates/fleece" }
 mere-lanes = { path = "crates/system/document-lanes" }
 mere-pageload = { path = "crates/system/page-load" }

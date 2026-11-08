@@ -182,12 +182,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
-name = "anymore"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a38750a2a9617d9f1a1428b408fb909f7256a2766c59b0b07993170959731bb"
-
-[[package]]
 name = "app_units"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -455,11 +449,6 @@ dependencies = [
  "gloo-timers",
  "tokio",
 ]
-
-[[package]]
-name = "backstep"
-version = "0.1.0"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
 
 [[package]]
 name = "bao-tree"
@@ -740,31 +729,6 @@ name = "byteview"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6236364b88b9b6d0bc181ba374cf1ab55ba3ef97a1cb6f8cddad48a273767fb5"
-
-[[package]]
-name = "cambium"
-version = "0.6.1"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "backstep",
- "chartulary",
- "genet-events",
- "genet-scripted-dom",
- "genet-text",
- "hest",
- "layout-dom-api",
- "mere-surface-api",
- "meristem",
- "sceno",
- "sceno-backdrops",
- "scenograph",
- "scenomise",
- "serde",
- "serde_json",
- "sprigging",
- "tracing",
- "workbench",
-]
 
 [[package]]
 name = "cbor-core"
@@ -2106,15 +2070,6 @@ checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
 dependencies = [
  "typenum",
  "version_check",
-]
-
-[[package]]
-name = "genet-events"
-version = "0.0.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#2aac23e809f977f3a0712340a33ee188f93e84b4"
-dependencies = [
- "genet-scripted-dom",
- "layout-dom-api",
 ]
 
 [[package]]
@@ -3743,16 +3698,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
-name = "knot-editor-host"
-version = "0.1.1"
-dependencies = [
- "cambium",
- "illume",
- "inker",
- "nematic",
-]
-
-[[package]]
 name = "kurbo"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4044,14 +3989,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mere-curation"
-version = "0.1.1"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "mere-fjall"
 version = "2.11.2"
 source = "git+https://github.com/merely-made/eidetic.git?branch=main#71188bb66d15bdd3618db12f148bc42e5cbef284"
@@ -4206,14 +4143,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mere-surface-api"
-version = "0.1.1"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "workbench",
-]
-
-[[package]]
 name = "mere-transport"
 version = "0.0.2"
 source = "git+https://github.com/merely-made/murm.git?branch=main#525d948bb1eb88db6e01115edc75644130906163"
@@ -4232,15 +4161,6 @@ dependencies = [
  "tokio",
  "tracing",
  "zeroize",
-]
-
-[[package]]
-name = "meristem"
-version = "0.2.0"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "anymore",
- "tracing",
 ]
 
 [[package]]
@@ -4748,7 +4668,7 @@ version = "0.1.2"
 source = "git+https://github.com/merely-made/netrender.git?branch=main#ad4be200e997faf680cbc516c2427db222e7d3b6"
 dependencies = [
  "log",
- "netrender-vello 0.11.0 (git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46)",
+ "netrender-vello",
  "netrender_device",
  "skrifa",
  "tracing",
@@ -4764,7 +4684,7 @@ dependencies = [
  "bytemuck",
  "futures-intrusive",
  "log",
- "netrender-vello-encoding 0.11.0 (git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46)",
+ "netrender-vello-encoding",
  "netrender-vello-shaders",
  "peniko",
  "png",
@@ -4775,36 +4695,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "netrender-vello"
-version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
-dependencies = [
- "bytemuck",
- "log",
- "netrender-vello-encoding 0.11.0 (git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0)",
- "peniko",
- "png",
- "skrifa",
- "static_assertions",
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "netrender-vello-encoding"
 version = "0.11.0"
 source = "git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46#7784613985d58823bb27b6274916009299cbee46"
-dependencies = [
- "bytemuck",
- "guillotiere",
- "peniko",
- "skrifa",
- "smallvec",
-]
-
-[[package]]
-name = "netrender-vello-encoding"
-version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
 dependencies = [
  "bytemuck",
  "guillotiere",
@@ -4821,7 +4714,7 @@ dependencies = [
  "bytemuck",
  "log",
  "naga",
- "netrender-vello-encoding 0.11.0 (git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46)",
+ "netrender-vello-encoding",
  "thiserror 2.0.21",
 ]
 
@@ -7177,49 +7070,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sceno"
-version = "0.0.7"
-source = "git+https://github.com/merely-made/graphshell.git?branch=main#d80316db1115077a76d62aff8ca156852ed7924d"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "sceno-backdrops"
-version = "0.0.1"
-source = "git+https://github.com/merely-made/graphshell.git?branch=main#d80316db1115077a76d62aff8ca156852ed7924d"
-dependencies = [
- "sceno",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "scenograph"
-version = "0.0.6"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "mere-curation",
- "sceno",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "scenomise"
-version = "0.0.7"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "libm",
- "sceno",
- "sceno-backdrops",
- "scenograph",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "schannel"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7720,16 +7570,6 @@ checksum = "1d9efca8738c78ee9484207732f728b1ef517bbb1833d6fc0879ca898a522f6f"
 dependencies = [
  "base64ct",
  "der",
-]
-
-[[package]]
-name = "sprigging"
-version = "0.3.0"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-dependencies = [
- "accesskit",
- "netrender-vello 0.11.0 (git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0)",
- "paint_list_api",
 ]
 
 [[package]]
@@ -9387,11 +9227,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "workbench"
-version = "0.1.1"
-source = "git+https://github.com/merely-made/mere.git?branch=main#9e790a152b369c1c0bf3a69c0185dd6c7bf8074c"
-
-[[package]]
 name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9736,6 +9571,16 @@ version = "0.1.0"
 source = "git+https://github.com/merely-made/gemot.git?branch=main#9a5c7d4050232a5a0de7537b3c9cf2a7d9f33931"
 
 [[patch.unused]]
+name = "netrender-vello"
+version = "0.11.0"
+source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
+
+[[patch.unused]]
+name = "netrender-vello-encoding"
+version = "0.11.0"
+source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
+
+[[patch.unused]]
 name = "netrender-vello-shaders"
 version = "0.11.0"
 source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
@@ -9749,6 +9594,11 @@ source = "git+https://github.com/merely-made/armillary.git?branch=main#c27d3bfeb
 name = "peer-facts"
 version = "0.0.1"
 source = "git+https://github.com/merely-made/armillary.git?branch=main#c27d3bfeb96faf750c0cb6be9dc167815a3083be"
+
+[[patch.unused]]
+name = "sceno"
+version = "0.0.7"
+source = "git+https://github.com/merely-made/graphshell.git?branch=main#d80316db1115077a76d62aff8ca156852ed7924d"
 
 [[patch.unused]]
 name = "scenotime"
