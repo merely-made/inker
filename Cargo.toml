@@ -41,7 +41,7 @@ armillary = { version = "0.1.1", git = "https://github.com/merely-made/armillary
 document-canvas = { version = "0.1.0", path = "crates/inker/document-canvas" }
 document-session-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
 dpi = "0.1.2"
-eidetic = { version = "0.0.3", default-features = false, git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+eidetic = { version = "0.0.3", default-features = false, features = ["product"], git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 eidetic-search = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 errand = { version = "0.4.0", git = "https://github.com/merely-made/errand.git", branch = "main" }
 fleece = { package = "mere-fleece", path = "crates/fleece", version = "0.0.1" }
