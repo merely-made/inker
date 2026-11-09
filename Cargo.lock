@@ -1519,7 +1519,7 @@ dependencies = [
 [[package]]
 name = "document-session-api"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "serde",
 ]
@@ -1647,7 +1647,7 @@ dependencies = [
 [[package]]
 name = "engine-observables-api"
 version = "0.2.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "genet-paint-types",
  "serde",
@@ -1854,7 +1854,7 @@ dependencies = [
 [[package]]
 name = "fleece"
 version = "0.5.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "layout-dom-api",
  "serde",
@@ -2096,7 +2096,7 @@ dependencies = [
 [[package]]
 name = "genet-fontique"
 version = "0.10.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "hashbrown 0.17.1",
  "linebender_resource_handle",
@@ -2117,7 +2117,7 @@ dependencies = [
 [[package]]
 name = "genet-host-api"
 version = "0.2.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "serde",
 ]
@@ -2125,7 +2125,7 @@ dependencies = [
 [[package]]
 name = "genet-paint-types"
 version = "0.2.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "app_units",
  "euclid",
@@ -2135,7 +2135,7 @@ dependencies = [
 [[package]]
 name = "genet-parley"
 version = "0.10.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "genet-fontique",
  "harfrust",
@@ -2156,7 +2156,7 @@ dependencies = [
 [[package]]
 name = "genet-scripted-dom"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "encoding_rs",
  "engine-observables-api",
@@ -2173,7 +2173,7 @@ dependencies = [
 [[package]]
 name = "genet-static-dom"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "html5ever",
  "layout-dom-api",
@@ -2183,7 +2183,7 @@ dependencies = [
 [[package]]
 name = "genet-text"
 version = "0.1.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -2191,7 +2191,7 @@ dependencies = [
 [[package]]
 name = "genet-wire"
 version = "0.1.0"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "bytes",
  "futures-util",
@@ -3184,7 +3184,7 @@ dependencies = [
 [[package]]
 name = "inker"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/inker.git?branch=main#968a33e483c6e86856148526f50d69831318d6ae"
+source = "git+https://github.com/merely-made/inker.git?branch=main#09369925ace5f23b8ba2ed55b08fe4a00730c2d5"
 dependencies = [
  "accesskit",
  "document-session-api",
@@ -3774,7 +3774,7 @@ dependencies = [
 [[package]]
 name = "layout-dom-api"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "markup5ever",
  "serde",
@@ -4097,7 +4097,7 @@ dependencies = [
 [[package]]
 name = "mere-kernel"
 version = "0.0.3"
-source = "git+https://github.com/merely-made/mere.git?branch=main#28877bffdf15e5207ea0c4f0126b318908fe9552"
+source = "git+https://github.com/merely-made/mere.git?branch=main#2cdb1aa6cf0ba3427f74ee75daa7332cc417ebca"
 dependencies = [
  "accesskit",
  "chartulary",
@@ -4191,7 +4191,7 @@ dependencies = [
 [[package]]
 name = "mere-rdf"
 version = "0.0.1"
-source = "git+https://github.com/merely-made/mere.git?branch=main#28877bffdf15e5207ea0c4f0126b318908fe9552"
+source = "git+https://github.com/merely-made/mere.git?branch=main#2cdb1aa6cf0ba3427f74ee75daa7332cc417ebca"
 dependencies = [
  "getrandom 0.3.4",
  "inker 0.1.1 (git+https://github.com/merely-made/inker.git?branch=main)",
@@ -4628,7 +4628,7 @@ dependencies = [
 [[package]]
 name = "netfetcher"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "async-compression",
  "base64 0.22.1",
@@ -4729,7 +4729,7 @@ dependencies = [
 [[package]]
 name = "netrender"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/netrender.git?branch=main#ad4be200e997faf680cbc516c2427db222e7d3b6"
+source = "git+https://github.com/merely-made/netrender.git?branch=main#c948ce2930b738b8a9ce00639413f03d3e10e02b"
 dependencies = [
  "log",
  "netrender-vello",
@@ -4743,7 +4743,7 @@ dependencies = [
 [[package]]
 name = "netrender-vello"
 version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46#7784613985d58823bb27b6274916009299cbee46"
+source = "git+https://github.com/mark-ik/vello?branch=mark-ik%2Fall-vellos#7784613985d58823bb27b6274916009299cbee46"
 dependencies = [
  "bytemuck",
  "futures-intrusive",
@@ -4761,7 +4761,7 @@ dependencies = [
 [[package]]
 name = "netrender-vello-encoding"
 version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46#7784613985d58823bb27b6274916009299cbee46"
+source = "git+https://github.com/mark-ik/vello?branch=mark-ik%2Fall-vellos#7784613985d58823bb27b6274916009299cbee46"
 dependencies = [
  "bytemuck",
  "guillotiere",
@@ -4773,7 +4773,7 @@ dependencies = [
 [[package]]
 name = "netrender-vello-shaders"
 version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=7784613985d58823bb27b6274916009299cbee46#7784613985d58823bb27b6274916009299cbee46"
+source = "git+https://github.com/mark-ik/vello?branch=mark-ik%2Fall-vellos#7784613985d58823bb27b6274916009299cbee46"
 dependencies = [
  "bytemuck",
  "log",
@@ -4785,7 +4785,7 @@ dependencies = [
 [[package]]
 name = "netrender_device"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/netrender.git?branch=main#ad4be200e997faf680cbc516c2427db222e7d3b6"
+source = "git+https://github.com/merely-made/netrender.git?branch=main#c948ce2930b738b8a9ce00639413f03d3e10e02b"
 dependencies = [
  "log",
  "pollster 1.0.1",
@@ -5617,7 +5617,7 @@ dependencies = [
 [[package]]
 name = "paint_list_api"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/netrender.git?branch=main#ad4be200e997faf680cbc516c2427db222e7d3b6"
+source = "git+https://github.com/merely-made/netrender.git?branch=main#c948ce2930b738b8a9ce00639413f03d3e10e02b"
 dependencies = [
  "euclid",
  "serde",
@@ -5626,7 +5626,7 @@ dependencies = [
 [[package]]
 name = "paint_list_render"
 version = "0.1.2"
-source = "git+https://github.com/merely-made/netrender.git?branch=main#ad4be200e997faf680cbc516c2427db222e7d3b6"
+source = "git+https://github.com/merely-made/netrender.git?branch=main#c948ce2930b738b8a9ce00639413f03d3e10e02b"
 dependencies = [
  "log",
  "netrender",
@@ -6794,7 +6794,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 [[package]]
 name = "regress"
 version = "0.11.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 dependencies = [
  "hashbrown 0.16.1",
  "memchr",
@@ -7110,7 +7110,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "script-engine-api"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/genet.git?branch=main#fdf27d5365b0d6d15938a2f82477fbf64a560b10"
+source = "git+https://github.com/merely-made/genet.git?branch=main#78f454efe83d510852e80b4467affe5bca95347f"
 
 [[package]]
 name = "script-rhai"
@@ -9657,21 +9657,6 @@ source = "git+https://github.com/merely-made/gemot.git?branch=main#9a5c7d4050232
 name = "mooting"
 version = "0.1.0"
 source = "git+https://github.com/merely-made/gemot.git?branch=main#9a5c7d4050232a5a0de7537b3c9cf2a7d9f33931"
-
-[[patch.unused]]
-name = "netrender-vello"
-version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
-
-[[patch.unused]]
-name = "netrender-vello-encoding"
-version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
-
-[[patch.unused]]
-name = "netrender-vello-shaders"
-version = "0.11.0"
-source = "git+https://github.com/mark-ik/vello?rev=dfb9b53b315561887761deff319afed08cc33ff0#dfb9b53b315561887761deff319afed08cc33ff0"
 
 [[patch.unused]]
 name = "ostiary"
