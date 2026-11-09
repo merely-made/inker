@@ -15,6 +15,8 @@
 
 use std::{path::PathBuf, sync::Arc};
 
+// The package is `grafting-servo`; its library keeps the historical name.
+use servo_wgpu_interop_adapter as grafting_servo;
 use grafting_servo::{
     ServoCursor, ServoEvent, ServoFactory, ServoFramePayload, ServoKeyEvent, ServoModifiers,
     ServoMouseButton, ServoMouseEvent, ServoMouseKind, ServoProducerError, ServoSurface,
