@@ -1088,7 +1088,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1943,7 +1943,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2623,7 +2623,7 @@ dependencies = [
 [[package]]
 name = "grafting"
 version = "0.6.2"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#3eaa4f6e1943c391f3803ccd9c30a4d94ed22f23"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
 dependencies = [
  "ash",
  "dpi",
@@ -2650,7 +2650,7 @@ dependencies = [
 [[package]]
 name = "grafting-frame"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#3eaa4f6e1943c391f3803ccd9c30a4d94ed22f23"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
 dependencies = [
  "objc2 0.6.5",
  "objc2-core-foundation",
@@ -2662,7 +2662,7 @@ dependencies = [
 [[package]]
 name = "grafting-servo"
 version = "0.1.0"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#3eaa4f6e1943c391f3803ccd9c30a4d94ed22f23"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
 dependencies = [
  "dpi",
  "euclid",
@@ -5983,7 +5983,7 @@ dependencies = [
  "oxiri",
  "oxrdf",
  "ryu-js",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -5994,8 +5994,8 @@ checksum = "08037a3c3cf580d065caec6a864cf97f51be219862d95c691a48c7543406d675"
 dependencies = [
  "oxilangtag",
  "oxiri",
- "rand 0.9.5",
- "thiserror 1.0.69",
+ "rand 0.8.8",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -6008,7 +6008,7 @@ dependencies = [
  "oxilangtag",
  "oxiri",
  "oxrdf",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -6982,7 +6982,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7575,7 +7575,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7634,7 +7634,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8497,7 +8497,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.6",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -9723,7 +9723,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

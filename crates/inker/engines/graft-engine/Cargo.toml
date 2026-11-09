@@ -27,9 +27,6 @@ default = []
 # makes Cargo lock (and fetch) the Servo git tree for every workspace
 # invocation, which is the cost this gating exists to avoid.
 servo = ["dep:grafting-servo", "dep:wgpu", "dep:accesskit", "dep:serde_json"]
-# Windows ANGLE/EGL instead of WGL; forwarded to Servo through grafting-servo.
-# Same host-side rule as `servo`: also enable `grafting-servo/no-wgl` there.
-no-wgl = ["servo"]
 
 [dependencies]
 inker.workspace = true
