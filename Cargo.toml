@@ -73,34 +73,19 @@ welding-0-15 = { package = "welding", version = "0.15.0", git = "https://github.
 wgpu = "30.0.1"
 
 [patch.crates-io]
-sceno = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-scenotime = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-graphshell-endpoint = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-chirograph = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
 hest = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-script-wire = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-script-witgen = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
-peer-facts = { version = "0.0.1", git = "https://github.com/merely-made/armillary.git", branch = "main" }
-ostiary = { version = "0.0.1", git = "https://github.com/merely-made/armillary.git", branch = "main" }
 document-session-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
 chartulary = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
-commons-spine = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
 eidetic = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 errand = { git = "https://github.com/merely-made/errand.git", branch = "main" }
-esp = { git = "https://github.com/merely-made/distillery.git", branch = "main" }
 finger-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
 gemini-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
-gemot = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
 gopher-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
 guppy-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
-luggage = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 mere-proofs = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
-mien = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
 misfin = { git = "https://github.com/merely-made/errand.git", branch = "main" }
-mooting = { git = "https://github.com/merely-made/gemot.git", branch = "main" }
 nex-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
 scroll-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
-servitor = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 spartan-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
 stickleback = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 netrender_device = { git = "https://github.com/merely-made/netrender.git", branch = "main" }
@@ -113,5 +98,3 @@ genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch 
 
 [patch."https://github.com/merely-made/retinue.git"]
 mere-transport = { git = "https://github.com/merely-made/murm.git", branch = "main" }
-murm-webrtc = { git = "https://github.com/merely-made/murm.git", branch = "main" }
-retinue = { git = "https://github.com/merely-made/murm.git", branch = "main" }
