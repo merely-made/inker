@@ -2623,7 +2623,7 @@ dependencies = [
 [[package]]
 name = "grafting"
 version = "0.6.2"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#319236fa893718b1f62291a09d65673689ad2b95"
 dependencies = [
  "ash",
  "dpi",
@@ -2650,7 +2650,7 @@ dependencies = [
 [[package]]
 name = "grafting-frame"
 version = "0.1.1"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#319236fa893718b1f62291a09d65673689ad2b95"
 dependencies = [
  "objc2 0.6.5",
  "objc2-core-foundation",
@@ -2662,7 +2662,7 @@ dependencies = [
 [[package]]
 name = "grafting-servo"
 version = "0.1.0"
-source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#6af6735216ef70ffc877856bb63e90d13886089d"
+source = "git+https://github.com/merely-made/wgpu-graft.git?branch=main#319236fa893718b1f62291a09d65673689ad2b95"
 dependencies = [
  "dpi",
  "euclid",

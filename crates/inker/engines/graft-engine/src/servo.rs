@@ -136,6 +136,14 @@ fn map_event(event: ServoEvent) -> WebSurfaceEvent {
         ServoEvent::NavigationFailed { url, reason } => {
             WebSurfaceEvent::Navigation(NavigationEvent::Failed { url, reason })
         },
+        // inker has no stopped-load observation; report the interrupted load
+        // as a failure so hosts do not wait on a Finished that will not come.
+        ServoEvent::NavigationStopped { url } => WebSurfaceEvent::Navigation(
+            NavigationEvent::Failed {
+                url,
+                reason: "load stopped".into(),
+            },
+        ),
     }
 }
 
