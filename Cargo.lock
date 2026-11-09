@@ -8590,8 +8590,7 @@ dependencies = [
 [[package]]
 name = "webcue"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "181de3a231029c69052f73e75fcc0de9af17c5ea4d18354e4f38f35a2ed4b6b2"
+source = "git+https://github.com/merely-made/wgpu-cue.git?branch=main#96ee0c892456a933c51932f0d984d55d2d22e09f"
 dependencies = [
  "accesskit",
  "document-session-api",
