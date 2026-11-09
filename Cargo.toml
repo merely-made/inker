@@ -70,7 +70,7 @@ tracing = "0.1"
 transport = { package = "mere-transport", version = "0.0.2", git = "https://github.com/merely-made/murm.git", branch = "main" }
 uuid = { version = "1", features = ["serde", "v4"] }
 webcue = { git = "https://github.com/merely-made/wgpu-cue.git", branch = "main" }
-welding-0-15 = { package = "welding", version = "0.15.0", default-features = false, features = ["wgpu-30"] }
+welding-0-15 = { package = "welding", version = "0.15.0", git = "https://github.com/merely-made/wgpu-weld.git", branch = "main", default-features = false, features = ["wgpu-30"] }
 wgpu = "30.0.1"
 
 [patch.crates-io]
