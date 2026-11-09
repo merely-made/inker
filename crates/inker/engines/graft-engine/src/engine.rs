@@ -28,11 +28,11 @@ pub const GRAFT_SERVO_ENGINE_ID: &str = "graft.servo";
 /// Host-supplied factory that builds a concrete [`GraftSurface`] for a resolved
 /// [`SurfaceSpawnRequest`].
 ///
-/// The engine can't build the surface itself: it needs the host's wgpu device,
-/// an embedded `servo::Servo` instance + `WebView`, and the
-/// `ServoWgpuInteropAdapter` bound to that device — none of which this crate
-/// depends on. The host implements this trait once (behind its `engine-graft`
-/// feature) and hands an `Arc` of it to [`GraftEngine::new`].
+/// The engine can't build the surface itself: it needs the host's wgpu device
+/// and a process-scoped Servo root. With the `servo` feature,
+/// `servo::ServoGraftFactory` implements this over wgpu-graft's producer;
+/// other producers implement it themselves. The factory is handed to
+/// [`GraftEngine::new`] as an `Arc`.
 pub trait GraftProducerFactory: Send + Sync {
     /// Build a fresh graft surface for this request, or a
     /// [`SurfaceError::SpawnFailed`] describing why.

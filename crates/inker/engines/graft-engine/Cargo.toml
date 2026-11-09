@@ -17,23 +17,33 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = []
+# The concrete Servo producer, adapted from wgpu-graft's `grafting-servo`
+# library the way scrying-engine adapts `scrying`. Off by default so ordinary
+# inker/mere builds never compile Servo. The host that enables this must also
+# enable `grafting-servo/servo` on its own dependency row: that feature is
+# deliberately NOT forwarded from here, because a member crate that forwards it
+# makes Cargo lock (and fetch) the Servo git tree for every workspace
+# invocation, which is the cost this gating exists to avoid.
+servo = ["dep:grafting-servo", "dep:wgpu", "dep:accesskit", "dep:serde_json"]
+# Windows ANGLE/EGL instead of WGL; forwarded to Servo through grafting-servo.
+# Same host-side rule as `servo`: also enable `grafting-servo/no-wgl` there.
+no-wgl = ["servo"]
+
 [dependencies]
 inker.workspace = true
 tracing.workspace = true
+accesskit = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+# Servo itself is never named here: the library re-exports it (`servo`) and
+# keeps its revision in wgpu-graft's manifests. The wgpu row is explicit so an
+# imported texture comes from the same major as the host device.
+grafting-servo = { git = "https://github.com/merely-made/wgpu-graft.git", branch = "main", default-features = false, features = ["wgpu-30"], optional = true }
 
 [dev-dependencies]
 accesskit.workspace = true
-
-# NOTE: deliberately NO `grafting` / `servo-wgpu-interop-adapter` / `servo`
-# dependency. Unlike scrying (which exposes one `WebSurfaceProducer` library
-# trait this crate could adapt), graft's "producer" is a *composite* — a `Servo`
-# instance + `WebView` + `ServoWgpuInteropAdapter` — with no single library type
-# to wrap. So this crate defines the `GraftSurface` host-seam instead and the
-# host (meerkat, behind its `engine-graft` feature) implements it over the live
-# grafting API. Depending on Servo here, even optionally, would make *every*
-# `cargo` invocation in the mere workspace resolve + fetch the Servo git tree —
-# the exact build cost the per-engine gating exists to avoid. The grafting deps
-# join the graph only when the Servo lane is actually built (see GraftSurface).
 
 [lints]
 workspace = true

@@ -36,11 +36,9 @@ pub struct GraftFrame {
     pub resource_epoch: u64,
 }
 
-/// The host-implemented graft composite: a `servo::Servo` instance + `WebView` +
-/// `servo_wgpu_interop_adapter::ServoWgpuInteropAdapter`. This crate cannot
-/// fabricate any of those (it does not depend on Servo), so it defines the seam
-/// and the host wires it. The live grafting/Servo calls each method maps to,
-/// when the Servo lane is built:
+/// The graft surface seam: one Servo-style view the engine drives. The
+/// concrete implementation (`servo::ServoGraftSurface`, behind the `servo`
+/// feature) adapts wgpu-graft's producer; the live calls each method maps to:
 ///
 /// - [`resize`](GraftSurface::resize) → `WebView::resize`, which owns the
 ///   rendering-context resize as well as the document viewport update.

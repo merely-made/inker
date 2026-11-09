@@ -12,16 +12,24 @@
 //! into a host `wgpu` texture (Vulkan external memory on Linux, IOSurface/Metal
 //! on macOS, ANGLE-D3D11 -> DX12 shared texture on Windows).
 //!
-//! ## Why a host-seam instead of wrapping a library producer
+//! ## The seam and the Servo producer
 //!
-//! [`scrying-engine`](../scrying-engine) adapts one library trait
-//! (`scrying::WebSurfaceProducer`). graft has no equivalent single type: a graft
-//! "producer" is a composite of a `servo::Servo` instance, a `servo::WebView`,
-//! and `servo_wgpu_interop_adapter::ServoWgpuInteropAdapter`. So this crate
-//! defines the [`GraftSurface`] host-seam and the host implements it over those
-//! live types. That keeps this crate dependency-light (inker only): pulling
-//! Servo in here would make every `cargo` command in the mere workspace resolve
-//! the Servo git tree, defeating the per-engine build gating.
+//! [`GraftSurface`] is the engine's host seam: a surface the engine drives,
+//! built per spawn by a [`GraftProducerFactory`]. The concrete Servo producer
+//! lives in wgpu-graft's `grafting-servo` library (process root, `WebView`,
+//! delegate, input/cursor/navigation/accessibility translation, frame import),
+//! the way scrying's producer lives in `scrying`. With the `servo` feature,
+//! the [`servo`] module adapts it onto this seam (`ServoGraftFactory`), so a
+//! host writes no Servo code; it supplies a `ServoProducerConfig` and its wgpu
+//! device. Without the feature this crate depends on inker only, and the seam
+//! remains for tests and other producers.
+//!
+//! The feature is not forwarded to `grafting-servo/servo` on purpose: a member
+//! crate forwarding it would make every `cargo` invocation in the inker/mere
+//! workspaces lock and fetch the Servo git tree (whose exact pins also cannot
+//! coexist with this workspace's lock). The host enables
+//! `grafting-servo/servo` on its own row; the Servo revision stays in
+//! wgpu-graft.
 //!
 //! ## Shape (mirrors scrying-engine)
 //!
@@ -41,6 +49,8 @@
 
 pub mod engine;
 pub mod producer;
+#[cfg(feature = "servo")]
+pub mod servo;
 
 pub use engine::{GRAFT_SERVO_ENGINE_ID, GraftEngine, GraftProducerFactory};
 pub use producer::{GraftFrame, GraftProducer, GraftSurface};
