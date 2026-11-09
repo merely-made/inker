@@ -37,9 +37,8 @@ and a graph contribution) and authorizes the mutations. Gathering itself
 requires neither graph contributions nor graph IDs.
 
 `clip` supplies portable capture over caller-owned document/engine inputs.
-`eidetic-bridge` assembles retained content and provenance; `structured-data`
-projects supplied source evidence. Durable identity, storage and session write
-authority remain with their respective Mere owners.
+`eidetic-bridge` assembles retained content and provenance. Durable identity,
+storage and session write authority remain with their respective Mere owners.
 
 `retained-traversal` (wasm-safe) walks sources a host already retains toward a
 stated goal, using Eidetic's model-free goal assessor. A host-supplied provider

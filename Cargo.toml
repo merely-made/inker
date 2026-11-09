@@ -54,7 +54,6 @@ illume = { version = "0.0.3", path = "crates/nematic/illume" }
 inker = { version = "0.1.1", path = "crates/inker/inker" }
 layout-dom-api = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
 libm = { version = "0.2", default-features = false }
-linked-data = { package = "mere-rdf", version = "0.0.1", git = "https://github.com/merely-made/mere.git", branch = "main" }
 muniment = { version = "0.2.1", git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 nematic = { version = "0.1.1", path = "crates/nematic/nematic", default-features = false }
 netfetcher = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
@@ -111,22 +110,6 @@ netrender-vello-encoding = { git = "https://github.com/mark-ik/vello", branch = 
 netrender-vello-shaders = { git = "https://github.com/mark-ik/vello", branch = "mark-ik/all-vellos" }
 layout-dom-api = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "0.1.1" }
 genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "0.1.2" }
-
-# The Mere package Inker still names (mere-rdf) names Inker packages
-# from mere.git in turn; this table serves those from this tree, so each Inker
-# package resolves from one source.
-[patch."https://github.com/merely-made/mere.git"]
-document-canvas = { path = "crates/inker/document-canvas" }
-graft-engine = { path = "crates/inker/engines/graft-engine" }
-illume = { path = "crates/nematic/illume" }
-inker = { path = "crates/inker/inker" }
-mere-fleece = { path = "crates/fleece" }
-mere-lanes = { path = "crates/system/document-lanes" }
-mere-pageload = { path = "crates/system/page-load" }
-nematic = { path = "crates/nematic/nematic" }
-script-rhai = { path = "crates/script/rhai" }
-scrying-engine = { path = "crates/inker/engines/scrying-engine" }
-weld-engine = { path = "crates/inker/engines/weld-engine" }
 
 [patch."https://github.com/merely-made/retinue.git"]
 mere-transport = { git = "https://github.com/merely-made/murm.git", branch = "main" }

@@ -44,10 +44,8 @@ Mere's engine split plan
 phase P1, decisions D16, D17, D19, D21). History from before a path arrived at
 its Mere location is in Mere's and genet's own histories.
 
-One edge into Mere remains while the split finishes: `mere-fleece`'s optional
-`structured-data` feature names `mere-rdf` (the plan's F3), from `mere.git`;
-the root manifest's `[patch."https://github.com/merely-made/mere.git"]`
-table serves the Inker packages it names back from this tree. `mere-lanes`
+Inker names nothing from `mere.git` (the plan's F3, ruled D34: the `structured-data`
+feature of `mere-fleece` retired). `mere-lanes`
 takes `tinct` and `script-rhai` takes `hest` from Graphshell's contract root,
 which D19 allows.
 

@@ -14,9 +14,8 @@
 //! navigation links, with no `rel`, are not statements and are excluded.)
 //!
 //! Resolving each `rel` against the host's relation vocabulary and asserting
-//! graph edges is the host's job, deliberately outside this crate: mere's
-//! `linked-data` crate carries `apply_link_statements` (statements-over-schema
-//! ingest), consuming this walk's output. That keeps inker kernel-free and the
+//! graph edges is the host's job, deliberately outside this crate: a
+//! host's ingest consumes this walk's output. That keeps inker kernel-free and the
 //! statement *vocabulary* portable to any host.
 
 use crate::{Block, EngineDocument, InlineSpan};

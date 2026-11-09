@@ -22,7 +22,6 @@ crawl = ["page-links", "dep:armillary", "dep:page-load", "dep:tokio", "dep:traci
 clip = ["dep:genet-static-dom", "dep:image", "dep:inker", "dep:serde", "dep:serde_json", "dep:url"]
 eidetic-bridge = ["wire", "dep:eidetic", "dep:genet-host-api", "dep:serde", "dep:serde_json", "dep:url"]
 portable-clip = ["dep:eidetic", "dep:serde", "dep:serde_json"]
-structured-data = ["dep:linked-data"]
 # Goal-directed traversal over host-retained sources (`retained_traversal`); wasm-safe, never fetches.
 retained-traversal = ["dep:eidetic", "dep:eidetic-search", "dep:serde", "dep:serde_json"]
 
@@ -34,7 +33,6 @@ genet-host-api = { workspace = true, optional = true }
 genet-static-dom = { workspace = true, optional = true }
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 inker = { workspace = true, optional = true }
-linked-data = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
