@@ -4,7 +4,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-use inker::{Block, BlockProvenanceMap, DocumentProvenance, DocumentTrustState, EngineDocument};
+use inker::{Block, BlockProvenanceMap, DocumentProvenance, DocumentTrustState};
 
 /// Build a knot file (frontmatter + body) from a sequence of blocks plus
 /// the source's [`DocumentProvenance`] and trust state.

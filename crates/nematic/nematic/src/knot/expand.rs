@@ -16,10 +16,7 @@
 
 use std::mem;
 
-use inker::{
-    Block, BlockProvenanceMap, DocumentProvenance, DocumentTrustState, Engine, EngineInput,
-    InlineSpan,
-};
+use inker::{Block, Engine, EngineInput, InlineSpan};
 
 use crate::{GemtextEngine, GopherEngine, NexEngine};
 
