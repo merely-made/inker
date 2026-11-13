@@ -3,7 +3,3 @@ ceiling = 600
 [[exception]]
 path = "crates/inker/engines/scrying-engine/src/translation.rs"
 reason = "over the ceiling before the no-lock rollout; split pending"
-
-[[exception]]
-path = "crates/inker/engines/weld-engine/src/welding_0_15.rs"
-reason = "over the ceiling before the no-lock rollout; split pending"
