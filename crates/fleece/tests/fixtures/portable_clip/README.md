@@ -5,7 +5,7 @@ whole saved state. `knot.json` comes from Knot Editor's
 `crates/knot-composition/examples/selected_export.rs`; `redshank.json` comes from
 Woodshed's `ports/redshank/model/examples/selected_export.rs`.
 
-From each repository, run its example with `--locked --offline` and the stable
+From each repository, run its example with `--offline` and the stable
 repository Cargo target. Redshank's manifest is `ports/redshank/Cargo.toml`.
 Save the stdout JSON here as UTF-8. The examples use fixed domain identities so
 the fixtures are reproducible. Producer tests separately validate their exports.
@@ -45,8 +45,8 @@ All fixtures are authored for this repository under MPL-2.0.
 Run the native checks from Mere:
 
 ```powershell
-cargo test -p mere-fleece --features portable-clip --lib --test portable_clip --locked --offline --target-dir C:/t/cargo-targets/mere
-cargo check -p mere-fleece --features portable-clip --target wasm32-unknown-unknown --lib --locked --offline --target-dir C:/t/cargo-targets/mere
+cargo test -p mere-fleece --features portable-clip --lib --test portable_clip --offline --target-dir C:/t/cargo-targets/mere
+cargo check -p mere-fleece --features portable-clip --target wasm32-unknown-unknown --lib --offline --target-dir C:/t/cargo-targets/mere
 ```
 
 The native command passes 7 traversal and 6 transfer/schema tests. The second

@@ -43,7 +43,7 @@ const run = (command, args, env = {}) =>
 run(
   "cargo",
   [
-    "build", "--locked", "--offline", "-j1",
+    "build", "--offline", "-j1",
     "-p", "script-rhai", "--example", "maths_bits", "--features", "wasm-check",
     "--target", "wasm32-unknown-unknown",
   ],
