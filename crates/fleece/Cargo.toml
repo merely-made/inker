@@ -49,7 +49,7 @@ nematic.workspace = true
 oxjsonld = "0.2"
 oxrdf = "0.3"
 genet-static-dom.workspace = true
-pollster = "0.4"
+pollster = "1"
 tempfile = "3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
