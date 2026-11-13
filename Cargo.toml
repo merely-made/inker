@@ -75,7 +75,8 @@ wgpu = "30.0.1"
 [patch.crates-io]
 hest = { git = "https://github.com/merely-made/graphshell.git", branch = "main" }
 document-session-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
-chartulary = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+hodograph = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+portolan = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 eidetic = { git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 errand = { git = "https://github.com/merely-made/errand.git", branch = "main" }
 finger-protocol = { git = "https://github.com/merely-made/errand.git", branch = "main" }
