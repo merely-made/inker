@@ -9,9 +9,5 @@ path = "crates/inker/engines/weld-engine/src/welding_0_15.rs"
 reason = "over the ceiling before the no-lock rollout; split pending"
 
 [[exception]]
-path = "crates/inker/inker/src/document/render.rs"
-reason = "over the ceiling before the no-lock rollout; split pending"
-
-[[exception]]
 path = "crates/inker/inker/src/surface_engine.rs"
 reason = "over the ceiling before the no-lock rollout; split pending"
