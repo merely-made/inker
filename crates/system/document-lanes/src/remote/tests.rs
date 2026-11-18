@@ -4,7 +4,9 @@
 
 use std::time::{Duration, Instant};
 
-use genet_host_api::{ResourceFetchPolicy, ResourceFetcher, ResourceRequest};
+use genet_host_api::{
+    DocumentFetchKind, DocumentFetchResult, ResourceFetchPolicy, ResourceFetcher, ResourceRequest,
+};
 
 use super::HttpResourceHost;
 use crate::RemoteFetcher;
@@ -51,6 +53,74 @@ fn http_not_found_is_none() {
         "a 404 is a failed load, not a document"
     );
     mock.assert();
+}
+
+#[test]
+fn document_fetch_preserves_top_headers_and_treats_iframes_as_nested() {
+    let mut server = mockito::Server::new();
+    let parent = server
+        .mock("GET", "/parent")
+        .with_status(200)
+        .with_header("referrer-policy", "origin")
+        .with_header("set-cookie", "seen=1; Path=/; SameSite=Lax")
+        .with_body("<iframe src='/frame'></iframe>")
+        .create();
+    let frame = server
+        .mock("GET", "/frame")
+        .match_header("referer", "http://other.test/")
+        .match_header("cookie", mockito::Matcher::Missing)
+        .match_header("origin", mockito::Matcher::Missing)
+        .with_status(200)
+        .with_body("child")
+        .create();
+    let missing = server.mock("GET", "/missing").with_status(404).create();
+    let fetcher = RemoteFetcher::new(ResourceFetchPolicy::default());
+    let DocumentFetchResult::Response(top) = fetcher.fetch_document(
+        &ResourceRequest::plain_get(format!("{}/parent", server.url())),
+        DocumentFetchKind::TopLevel,
+    ) else {
+        panic!("the native HTTP fetcher must supply the top document response");
+    };
+    assert!(top.headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("referrer-policy") && value == "origin"
+    }));
+    let mut request = ResourceRequest::plain_get(format!("{}/frame", server.url()));
+    let frame_url = url::Url::parse(&request.url).expect("loopback iframe URL");
+    assert_eq!(
+        fetcher
+            .http
+            .context
+            .cookies
+            .cookies_for(&frame_url, netfetcher::SameSiteContext::same_site()),
+        ["seen=1"]
+    );
+    request.mode = "navigate".into();
+    request.credentials = "include".into();
+    request.referrer = "http://other.test/a".into();
+    request.referrer_policy = "origin".into();
+    let DocumentFetchResult::Response(child) =
+        fetcher.fetch_document(&request, DocumentFetchKind::Iframe)
+    else {
+        panic!("the native HTTP fetcher must supply the iframe response");
+    };
+    assert_eq!(child.bytes, b"child");
+    assert!(matches!(
+        fetcher.fetch_document(
+            &ResourceRequest::plain_get(format!("{}/missing", server.url())),
+            DocumentFetchKind::TopLevel,
+        ),
+        DocumentFetchResult::Failed
+    ));
+    assert!(matches!(
+        fetcher.fetch_document(
+            &ResourceRequest::plain_get("file:///local.html"),
+            DocumentFetchKind::TopLevel,
+        ),
+        DocumentFetchResult::Unsupported
+    ));
+    parent.assert();
+    frame.assert();
+    missing.assert();
 }
 
 #[test]

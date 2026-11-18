@@ -27,7 +27,8 @@ use bytes::BytesMut;
 use tokio::runtime::Runtime;
 
 use genet_host_api::{
-    ResourceFetchPolicy, ResourceFetchResponse, ResourceFetcher, ResourceRequest, ResourceResponse,
+    DocumentFetchKind, DocumentFetchResult, ResourceFetchPolicy, ResourceFetchResponse,
+    ResourceFetcher, ResourceRequest, ResourceResponse,
 };
 
 #[cfg(any(feature = "netfetch", feature = "smolweb"))]
@@ -114,8 +115,19 @@ impl RemoteFetchBudget {
 #[cfg(feature = "netfetch")]
 impl HttpResourceHost {
     pub(crate) fn fetch_request(&self, request: &ResourceRequest) -> Option<ResourceFetchResponse> {
+        self.fetch_request_with_destination(request, None)
+    }
+
+    fn fetch_request_with_destination(
+        &self,
+        request: &ResourceRequest,
+        destination: Option<netfetcher::Destination>,
+    ) -> Option<ResourceFetchResponse> {
         let deadline = Instant::now().checked_add(self.budget.policy.timeout)?;
-        let wire = netfetcher::Request::from_host(request)?;
+        let mut wire = netfetcher::Request::from_host(request)?;
+        if let Some(destination) = destination {
+            wire.destination = destination;
+        }
         let _permit = self.budget.acquire_until(deadline)?;
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
@@ -300,6 +312,28 @@ impl ResourceFetcher for RemoteFetcher {
         }
         let _ = request;
         None
+    }
+
+    fn fetch_document(
+        &self,
+        request: &ResourceRequest,
+        kind: DocumentFetchKind,
+    ) -> DocumentFetchResult {
+        #[cfg(feature = "netfetch")]
+        if request.url.starts_with("http://") || request.url.starts_with("https://") {
+            let response = match kind {
+                DocumentFetchKind::TopLevel => self
+                    .http
+                    .fetch_request(request)
+                    .filter(|response| (200..300).contains(&response.status)),
+                DocumentFetchKind::Iframe => self
+                    .http
+                    .fetch_request_with_destination(request, Some(netfetcher::Destination::Iframe)),
+            };
+            return response.map_or(DocumentFetchResult::Failed, DocumentFetchResult::Response);
+        }
+        let _ = (request, kind);
+        DocumentFetchResult::Unsupported
     }
 }
 
