@@ -1,0 +1,29 @@
+[package]
+rust-version = "1.97.1"
+name = "script-lua"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = true
+description = "Lua backend for the knot block-evaluator lane: an inker BlockEvaluator over didgeridoo, the piccolo fork (pure Rust, sandboxed, budgeted by the VM's own fuel)."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# The thin knot-eval contract (BlockEvaluator + EvalOutput), the same slice
+# script-rhai satisfies.
+inker = { workspace = true }
+# didgeridoo, the piccolo fork (MIT). Its executors step against a `Fuel`
+# value, so the runaway cap is the VM's own.
+piccolo = { workspace = true }
+
+# wasm32 only: piccolo's tables seed their hashing through ahash, whose
+# getrandom needs its browser backend, selected by
+# `--cfg getrandom_backend="wasm_js"` in the build, as script-rhai's does.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[lints]
+workspace = true

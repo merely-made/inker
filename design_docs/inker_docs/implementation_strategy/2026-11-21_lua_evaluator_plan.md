@@ -1,6 +1,8 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-21. Plan. Nothing built. D1 ruled the same day.
+**Status:** 2026-11-21. In progress. L1 is met: `script-lua` evaluates a `lua eval` fence, bounded by
+fuel, with no `io` and no randomness, and checks for wasm32. L0 and L2 to L6 are not started. D1 to D5
+ruled the same day.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -69,7 +71,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome.
+outcome. D1 to D5 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -85,14 +87,52 @@ outcome.
 
   Links: area The stack · plans lua-evaluator L1, lua-evaluator L6 · summary Lua on didgeridoo takes over every job Rhai has; script-rhai retires once each consumer has moved.
 
+- **D2. Notes get no randomness, and the fork's `rand` is brought up to date (Mark, 2026-11-21):**
+  Evidence: didgeridoo's `math.random` was seeded from system entropy, so a note could differ between
+  runs; its `randomseed` did not build for 32-bit targets; and its `rand` 0.8 put three duplicate crates
+  in this graph. Offered: put it behind a feature and leave it off for notes (recommended); keep it and
+  fix the 32-bit seed; defer wasm32. Answer: "I'm ok with 1, but there's no way to deduplicate and
+  fix?". What follows: both. Didgeridoo moved to `rand` 0.10, whose small generator has one seed size on
+  every target, and `math.random` sits behind its `random` feature, on by default; `script-lua` takes
+  didgeridoo with that feature off. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1, lua-evaluator L4 · summary Didgeridoo is on rand 0.10 with math.random behind a default-on feature; script-lua leaves it off, so a fence is repeatable.
+
+- **D3. gc-arena is patched in its own fork (Mark, 2026-11-21):** Evidence: the bans check refused
+  `synstructure` 0.13 through `gc-arena-derive` beside 0.14 elsewhere, and upstream gc-arena's main still
+  requires 0.13. Offered: a recorded skip now and the fix in L4 (recommended); fix gc-arena first; hold
+  everything. Answer: "2, check upstream, if not we can edit/patch", and on where the patch lives, "Yes,
+  on a branch called main". What follows: `mark-ik/gc-arena`, branch `main`, is upstream at the revision
+  didgeridoo pinned plus two dependency rows (syn 3, synstructure 0.14); didgeridoo and Genet's
+  `genet-didge` both take it. No skip was recorded. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1 · summary gc-arena comes from the patch-only fork mark-ik/gc-arena, whose derive is on syn 3 and synstructure 0.14.
+
+- **D4. A fence may be a bare value (Mark, 2026-11-21):** Evidence: a Lua chunk returns only what it
+  `return`s, so `1 + 1` is a compile error where Rhai accepted it. Offered: accept both (recommended);
+  plain Lua only. Answer: "Accept both (Recommended)". What follows: the source is read as
+  `return <source>` first and as written otherwise; the error reported is the one for the source as
+  written, with the author's line numbers. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1 · summary A lua eval fence is tried as a value first and as a chunk otherwise.
+
+- **D5. A zero budget means a default cap (Mark, 2026-11-21):** Evidence: the trait lets a caller pass
+  0 for "the backend picks"; Rhai treats that as unlimited. Offered: a default cap (recommended);
+  unlimited, as Rhai does. Answer: "A default cap (Recommended)". What follows: 0 means 1,000,000
+  operations; nothing runs unbounded. A script that ran unbounded under Rhai can be cut off. Outcome:
+  applies this plan's constraint that every evaluation is bounded.
+
+  Links: area The stack · plans lua-evaluator L1 · summary A budget of 0 is 1,000,000 operations on Lua, never unlimited.
+
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
    Convert them, keep a reader for the old fence, or refuse them with a message? Returns to Mark in L5.
 2. Where the Lua crate lives and what it is called. Beside `script-rhai` in this repository is assumed;
    the name is unruled.
-3. Memory. Rhai caps string, array and map sizes. What bounds a Lua script's allocations here is
-   unread.
+3. Memory. Rhai caps string, array and map sizes. Piccolo reports `total_memory()` and has no
+   allocation limit; `script-lua` sets none, so only fuel bounds growth, indirectly. Whether to refuse
+   above a ceiling read between fuel steps is undecided.
 4. Whether the Lua crate and Genet's `script-engine-piccolo` should share their sandbox setup, or stay
    two users of the fork.
 5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster; nothing
@@ -118,6 +158,24 @@ outcome.
 5. Genet describes its Lua backend as "an option module ... not a third first-party substrate". D1
    changes what Lua is for in the script lanes; it does not touch that backend.
 
+6. The fork's `string` library has seven functions: `len`, `byte`, `char`, `sub`, `lower`, `upper` and
+   `reverse`. There is no `format`, `rep`, `find`, `gsub`, `gmatch` or `match`, and no `utf8`. L4 is
+   larger than this plan assumed, and L3 and L5 wait on it wherever they build text.
+7. `script-lua` (`crates/script/lua`) builds a fresh VM for each fence, because a piccolo `Lua` cannot
+   move between threads and `BlockEvaluator` must. One unit of budget is one unit of fuel. Its cost per
+   fence is unmeasured.
+8. Piccolo's tables seed their hashing through `ahash`, so wasm32 needs `getrandom`'s browser backend:
+   a wasm32-only row in the crate and `--cfg getrandom_backend="wasm_js"` in the build, as `script-rhai`
+   already requires.
+9. Floats display through Rust's formatting, so `1.0` shows as `1`; and piccolo's `sin`, `cos` and `tan`
+   call the standard library, not `libm`. L2 compares raw bits and brings its own maths.
+10. Two test failures predate this work and are not caused by it: didgeridoo's `goldenscripts` fails on
+    a checkout with CRLF line endings, and gc-arena's `ui` test differs from its saved text in compiler
+    wording on three cases, the same three with and without the patch.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
+- 2026-11-21: L1 met. `script-lua` passes 17 tests, clippy is clean, and it checks for
+  `wasm32-unknown-unknown`. Didgeridoo `6812717` (rand 0.10, the `random` feature, the gc-arena fork),
+  `mark-ik/gc-arena` `b79d86d` and Genet `5b6b624cecf` landed for it. D2 to D5 ruled.
