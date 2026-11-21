@@ -47,21 +47,21 @@ errand = { version = "0.4.0", git = "https://github.com/merely-made/errand.git",
 fleece = { package = "mere-fleece", path = "crates/fleece", version = "0.0.1" }
 fleece-extract = { package = "fleece", version = "0.5.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
 genet-host-api = { git = "https://github.com/merely-made/genet.git", branch = "main" }
-genet-scripted-dom = { version = "0.1.2", git = "https://github.com/merely-made/genet.git", branch = "main" }
-genet-static-dom = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
-hest = { version = "0.2.1", git = "https://github.com/merely-made/graphshell.git", branch = "main" }
+genet-scripted-dom = { version = ">=0.1.2", git = "https://github.com/merely-made/genet.git", branch = "main" }
+genet-static-dom = { version = ">=0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
+hest = { version = ">=0.2.1", git = "https://github.com/merely-made/graphshell.git", branch = "main" }
 illume = { version = "0.0.3", path = "crates/nematic/illume" }
 inker = { version = "0.1.1", path = "crates/inker/inker" }
-layout-dom-api = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
+layout-dom-api = { version = ">=0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
 libm = { version = "0.2", default-features = false }
-muniment = { version = "0.2.1", git = "https://github.com/merely-made/eidetic.git", branch = "main" }
+muniment = { version = ">=0.2.1", git = "https://github.com/merely-made/eidetic.git", branch = "main" }
 nematic = { version = "0.1.1", path = "crates/nematic/nematic", default-features = false }
 netfetcher = { version = "0.1.1", git = "https://github.com/merely-made/genet.git", branch = "main" }
 netrender = { version = ">=0.2.0", git = "https://github.com/merely-made/netrender.git", branch = "main" }
 page-load = { package = "mere-pageload", version = "0.0.1", path = "crates/system/page-load" }
 paint_list_api = { version = ">=0.2.0", git = "https://github.com/merely-made/netrender.git", branch = "main" }
 paint_list_render = { version = ">=0.2.0", git = "https://github.com/merely-made/netrender.git", branch = "main" }
-parley = { package = "genet-parley", version = "0.10.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
+parley = { package = "genet-parley", version = ">=0.10.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
 script-engine-api = { version = "0.1.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -94,8 +94,8 @@ muniment = { git = "https://github.com/merely-made/eidetic.git", branch = "main"
 netrender-vello = { git = "https://github.com/mark-ik/vello", branch = "mark-ik/all-vellos" }
 netrender-vello-encoding = { git = "https://github.com/mark-ik/vello", branch = "mark-ik/all-vellos" }
 netrender-vello-shaders = { git = "https://github.com/mark-ik/vello", branch = "mark-ik/all-vellos" }
-layout-dom-api = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "0.1.1" }
-genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch = "main", version = "0.1.2" }
+layout-dom-api = { git = "https://github.com/merely-made/genet.git", branch = "main", version = ">=0.1.1" }
+genet-scripted-dom = { git = "https://github.com/merely-made/genet.git", branch = "main", version = ">=0.1.2" }
 
 [patch."https://github.com/merely-made/retinue.git"]
 mere-transport = { git = "https://github.com/merely-made/murm.git", branch = "main" }
