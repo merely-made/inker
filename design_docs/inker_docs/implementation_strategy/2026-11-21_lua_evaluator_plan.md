@@ -3,8 +3,8 @@
 **Status:** 2026-11-21. In progress. L1 is met: `script-lua` evaluates a `lua eval` fence, bounded by
 fuel, with no `io` and no randomness, and checks for wasm32. L0's inventory is read from source
 (Findings 11 to 16) but not yet checked against each resolved graph. L2 to L6 are not started; the
-inventory found a fourth lane, Knot's readings, that the phases do not yet name (open question 6).
-D1 to D5 ruled the same day.
+inventory found a fourth lane, Knot's readings, which now has its own phase, LR (D9). D1 to D9 ruled
+the same day.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -58,6 +58,18 @@ translated; an unregistered or unlisted script is still refused.
 **Done-conditions:** every `string`, `table` or `utf8` function that L1 to L3 or a consumer needs is
 named in Findings and lands in the fork; the fork's Lua 5.4 suite counts do not fall.
 
+### LR. The readings lane on Lua (touches knot-editor)
+
+Knot's readings build their own engine: eight host types, the reading functions, and string, array and
+map ceilings. This phase ports that surface to Lua behind the same backend seam, before any consumer
+moves (D9).
+
+**Done-conditions:** a Lua reading backend passes Knot's reading tests translated, the sandbox cases
+included (no file, module, `eval` or network reach; a write to a host value fails); a script cannot
+exceed the row, note and source limits the Rhai lane sets, and a budget of 0 is still refused; a
+compile error reports its line; a runaway reading is cut off by fuel. Lengths are bytes, matching the
+byte offsets spans already use, with a character count offered beside them (D8).
+
 ### L5. Consumers move (touches knot-editor, graphshell, turnstone)
 
 Knot's block evaluator and readings, Scenograph's rule runner, Turnstone's command invocation.
@@ -73,7 +85,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D5 are in answer order.
+outcome. D1 to D9 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -126,6 +138,47 @@ outcome. D1 to D5 are in answer order.
 
   Links: area The stack · plans lua-evaluator L1 · summary A budget of 0 is 1,000,000 operations on Lua, never unlimited.
 
+- **D6. A missing fact is handled the Lua way (Mark, 2026-11-21):** Evidence: Scenograph rules such as
+  `facts.weight > 2.0` rely on Rhai reading a missing key as `()` and `() > 2.0` as false; a test
+  asserts "a traced non-match, not a crash", and that negating it matches. Lua raises an error
+  comparing `nil` with a number, and didgeridoo gives custom behaviour only to tables and host objects
+  (`src/meta_ops.rs:166`). Offered: Lua's way, guarded (recommended); keep the quiet non-match through
+  a change to the fork; missing facts are an error by name. Answer: "Lua's way, guarded
+  (Recommended)". What follows: a rule is written `facts.weight and facts.weight > 2.0`; the rule host
+  reads `nil` or `false` as no match; an unguarded comparison is a rule error whose trace names the
+  cause; the rule tests are rewritten. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2, lua-evaluator L5 · summary Lua rules guard a fact that may be missing; the rule host reads nil or false as no match, and an unguarded comparison is a rule error.
+
+- **D7. Text is joined as plain Lua (Mark, 2026-11-21):** Evidence: the most used feature in the
+  authored scripts is joining a string to a number or boolean with `+`, in about 14 scripts; Lua's `..`
+  joins strings and numbers and raises an error on a boolean. Offered: plain Lua (recommended); a host
+  helper that joins anything; make `..` accept booleans in the fork. Answer: "Plain Lua
+  (Recommended)". What follows: numbers join as they are and anything else is wrapped in `tostring`;
+  the affected scripts are rewritten; the fork's `..` is unchanged. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L3, lua-evaluator LR · summary Lua scripts join text with .. and tostring; no host helper and no change to the language.
+
+- **D8. Length is bytes, with a character count beside it (Mark, 2026-11-21):** Evidence: a Rhai
+  string's length counts characters, and `knot-readings/tests/reading_bindings.rs:81` asserts it; Lua's
+  `#s` counts bytes; reading spans are already byte offsets; the fork has no `utf8` library. Offered:
+  bytes with a character count beside it (recommended); bytes only. Answer: "Bytes, with a character
+  count beside it (Recommended)". What follows: `#s` stays bytes; a character count comes from
+  `utf8.len` once the fork has it, or a host function until then; the test that asserts characters says
+  which it means. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator LR, lua-evaluator L4 · summary In Lua scripts #s is bytes, as spans are; a character count is offered separately.
+
+- **D9. Readings get their own phase, before consumers move (Mark, 2026-11-21):** Evidence: the
+  inventory found Knot's readings build their own Rhai engine, with eight host types, the reading
+  functions and the only memory ceilings, and are the only product code that reads script values
+  directly (Findings 12); L1 to L3 cover `script-rhai`'s three parts and none covers this. Offered: its
+  own phase before consumers move (recommended); fold it into the consumers phase; leave readings on
+  Rhai for now. Answer: "Its own phase, before consumers move (Recommended)". What follows: phase LR,
+  placed before L5; its key is a name so the existing phase keys keep their meaning. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator LR · summary Knot's readings surface is ported to Lua in its own phase, LR, before any consumer moves.
+
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
@@ -140,13 +193,9 @@ outcome. D1 to D5 are in answer order.
 5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster; nothing
    here has measured it.
 
-6. The readings lane. Knot's readings build their own Rhai engine on `base_engine()` and are the only
-   product code that reads Rhai values and errors (Findings 12). L1 to L3 cover `script-rhai`'s three
-   parts and none covers this. Does it get its own phase before L5, and does its host surface (eight
-   types, the reading functions) move as it is?
-7. Where Lua and Rhai disagree and a test says so (Findings 14): a missing key compared with a number,
-   joining a string to a boolean, and whether a string's length counts characters or bytes. Each needs
-   a ruling: match Rhai through a host helper, or take Lua's behaviour and rewrite the scripts.
+6. Answered 2026-11-21 (D9): the readings lane is phase LR. Whether its host surface (eight types, the
+   reading functions) moves exactly as it is, or is reshaped for Lua, is still open.
+7. Answered 2026-11-21 (D6, D7, D8): Lua's behaviour in all three, and the scripts are rewritten.
 8. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
    is mostly about the user's `.rhai` files.
@@ -227,3 +276,5 @@ outcome. D1 to D5 are in answer order.
   `mark-ik/gc-arena` `b79d86d` and Genet `5b6b624cecf` landed for it. D2 to D5 ruled.
 - 2026-11-21: L0's inventory read from source (Findings 11 to 16); the resolved-graph check is
   not done. Open questions 6 to 9 added.
+- 2026-11-21: D6 to D9 ruled on the differences between Lua and Rhai and on the readings lane;
+  phase LR added before L5.
