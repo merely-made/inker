@@ -62,7 +62,7 @@ page-load = { package = "mere-pageload", version = "0.0.1", path = "crates/syste
 paint_list_api = { version = ">=0.2.0", git = "https://github.com/merely-made/netrender.git", branch = "main" }
 paint_list_render = { version = ">=0.2.0", git = "https://github.com/merely-made/netrender.git", branch = "main" }
 parley = { package = "genet-parley", version = ">=0.10.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
-script-engine-api = { version = "0.1.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
+script-engine-api = { version = ">=0.1.0", git = "https://github.com/merely-made/genet.git", branch = "main" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
