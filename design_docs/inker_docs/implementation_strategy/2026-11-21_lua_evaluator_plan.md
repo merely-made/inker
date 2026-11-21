@@ -1,8 +1,10 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
 **Status:** 2026-11-21. In progress. L1 is met: `script-lua` evaluates a `lua eval` fence, bounded by
-fuel, with no `io` and no randomness, and checks for wasm32. L0 and L2 to L6 are not started. D1 to D5
-ruled the same day.
+fuel, with no `io` and no randomness, and checks for wasm32. L0's inventory is read from source
+(Findings 11 to 16) but not yet checked against each resolved graph. L2 to L6 are not started; the
+inventory found a fourth lane, Knot's readings, that the phases do not yet name (open question 6).
+D1 to D5 ruled the same day.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -138,6 +140,20 @@ outcome. D1 to D5 are in answer order.
 5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster; nothing
    here has measured it.
 
+6. The readings lane. Knot's readings build their own Rhai engine on `base_engine()` and are the only
+   product code that reads Rhai values and errors (Findings 12). L1 to L3 cover `script-rhai`'s three
+   parts and none covers this. Does it get its own phase before L5, and does its host surface (eight
+   types, the reading functions) move as it is?
+7. Where Lua and Rhai disagree and a test says so (Findings 14): a missing key compared with a number,
+   joining a string to a boolean, and whether a string's length counts characters or bytes. Each needs
+   a ruling: match Rhai through a host helper, or take Lua's behaviour and rewrite the scripts.
+8. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
+   extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
+   is mostly about the user's `.rhai` files.
+9. What L4 is for. No authored script uses a string library function (Findings 13), so the string
+   work in didgeridoo is not gated by a consumer today. It was started on 2026-11-21 before this
+   inventory was read.
+
 ## Findings
 
 2026-11-21, from reading source; nothing was run.
@@ -173,9 +189,41 @@ outcome. D1 to D5 are in answer order.
     a checkout with CRLF line endings, and gc-arena's `ui` test differs from its saved text in compiler
     wording on three cases, the same three with and without the patch.
 
+11. L0, read 2026-11-21 from each repository's `origin/main`; nothing was run. Rhai is named by Inker
+    (`script-rhai` itself), Knot (`knot-editor` and `knot-readings`, ungated), Graphshell's Scenograph
+    (a dev-dependency, test `script_rhai_rules`, feature `scripts`) and Turnstone's `ports/graphshell`
+    (a dev-dependency). Genet, Mere, Armillary, Distillery and Woodshed have no Rhai in code.
+12. Product call sites are all in Knot: `RhaiEvaluator` registered when the allowed languages contain
+    `"rhai"` (`crates/knot-editor/src/bin/knot_endpoint/effects.rs:45`, `:65`), and the readings lane
+    (`crates/knot-readings/src/bindings.rs:99`), which builds on `base_engine()`, registers eight types
+    and the reading functions, sets string, array and map ceilings (`:106`), and classifies Rhai's
+    errors. `RhaiValueEngine` and the command lane have no production consumer; Scenograph's
+    production code uses only the `ValueEngine` trait.
+13. About 130 authored scripts exist, nearly all in tests: Inker about 55, Knot about 53, Graphshell
+    about 17, Turnstone 4. No shipping document holds a `rhai` fence. None uses `sub_string`, `split`,
+    `replace`, `trim` or number formatting. The most used feature is joining a string to a number or
+    boolean with `+` (about 14 scripts); then `for` over a host array, `.len()`, `push`, array and map
+    literals. The host functions used most are `command` (about 33), `note` (15) and `row` (12).
+14. Three behaviours the tests assert differ in Lua. A missing map key is `()` and `() > 2.0` is false
+    in Rhai (Scenograph's `script_rhai_rules.rs`); Lua raises an error comparing `nil` with a number.
+    `"x" + true` joins in Rhai; Lua joins only numbers. A Rhai string's length counts characters
+    (`knot-readings/tests/reading_bindings.rs:81`); Lua's `#s` counts bytes.
+15. Stored or wire uses of the name: Turnstone's default for `TURNSTONE_KNOT_RUN_LANGUAGES` and two
+    arguments passed to the `knot_endpoint` child
+    (`src/knot_authoring/knot_authoring_engine_from_env.rs:68`, `:332`, `:363`); the backend id
+    `knot.rhai.reading` (`crates/knot-readings/src/backend.rs:55`); the `.rhai` extension that lists a
+    user's reading scripts (`crates/knot-readings/src/scripts.rs`); the `rhai-command` fence tag; and
+    Illume's highlighter entry.
+16. A budget of 0 means three things today: unlimited in the note lane, 100,000 in the command lane,
+    and refused in the readings lane. D5 settles the note lane only. The readings lane is also the only
+    one with memory ceilings (string 64 KiB, array 8,000, map 1,024). The `maths_bits` corpus hash
+    `028dc38fdcbf650d` (`crates/script/rhai/tests/support/rule_bits.rs:22`) is L2's comparison target.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
 - 2026-11-21: L1 met. `script-lua` passes 17 tests, clippy is clean, and it checks for
   `wasm32-unknown-unknown`. Didgeridoo `6812717` (rand 0.10, the `random` feature, the gc-arena fork),
   `mark-ik/gc-arena` `b79d86d` and Genet `5b6b624cecf` landed for it. D2 to D5 ruled.
+- 2026-11-21: L0's inventory read from source (Findings 11 to 16); the resolved-graph check is
+  not done. Open questions 6 to 9 added.
