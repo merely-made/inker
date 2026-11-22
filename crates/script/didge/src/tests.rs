@@ -284,3 +284,11 @@ fn the_host_can_set_its_own_string_limit() {
         "a".repeat(16)
     );
 }
+
+#[test]
+fn length_is_bytes_and_utf8_len_counts_characters() {
+    let out = LuaEvaluator::new()
+        .eval_block("local s = 'h\u{e9}llo' return #s .. ' ' .. utf8.len(s)", ENOUGH)
+        .unwrap();
+    assert_eq!(out.text, "6 5");
+}

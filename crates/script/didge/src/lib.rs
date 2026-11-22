@@ -14,7 +14,7 @@
 //! ## Sandbox
 //!
 //! Each evaluation runs in a fresh Lua state that loads only the libraries
-//! named in [`sandbox`]: `base`, `coroutine`, `math`, `string` and `table`.
+//! named in [`sandbox`]: `base`, `coroutine`, `math`, `string`, `table` and `utf8`.
 //! `math` comes without `random`: didgeridoo is built with that feature off,
 //! so the same fence gives the same output every time.
 //! piccolo's `io` library (which holds `print`) is never loaded, and piccolo
@@ -110,6 +110,7 @@ pub fn sandbox(max_string_bytes: usize) -> Lua {
         piccolo::stdlib::load_math(ctx);
         piccolo::stdlib::load_string(ctx);
         piccolo::stdlib::load_table(ctx);
+        piccolo::stdlib::load_utf8(ctx);
     });
     lua
 }

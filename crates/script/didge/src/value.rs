@@ -101,6 +101,7 @@ impl LuaValueEngine {
             piccolo::stdlib::load_math(ctx);
             piccolo::stdlib::load_string(ctx);
             piccolo::stdlib::load_table(ctx);
+            piccolo::stdlib::load_utf8(ctx);
             let table = ctx.globals();
             for (name, value) in &self.globals {
                 put(ctx, table, name, to_value(ctx, value, 0)?)?;
