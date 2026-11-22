@@ -8,10 +8,12 @@
 //! script-rhai's `tests/support/rule_bits.rs`, in Lua, with the same inputs,
 //! the same hash and the same arithmetic in the same order. Rhai's recorded
 //! hash is the target; the Rhai engine also runs here so the two results are
-//! compared element by element, not only by hash.
+//! compared element by element, not only by hash. The Rhai rule calls host
+//! functions on libm; the Lua rule uses Lua's own `math` and `^` (D17), which
+//! didgeridoo computes with libm.
 
 use script_engine_api::{Budget, ScriptValue, ValueEngine, ValueError};
-use script_lua::{LuaValueEngine, register_libm_maths};
+use script_lua::LuaValueEngine;
 use script_rhai::{RhaiValueEngine, register_libm_maths as register_rhai_maths};
 
 const COUNT: usize = 10_000;
@@ -37,7 +39,8 @@ for i = 1, #xs do
     local dx = xs[i] - 12.5
     local dy = ys[i] + 7.25
     local d2 = dx * dx + dy * dy
-    local s = exp(-d2 / 28800.0) * sin(dx * 0.01) * cos(dy * 0.01) + pow(sqrt(d2 + 1.0), 0.5) * 0.01
+    local s = math.exp(-d2 / 28800.0) * math.sin(dx * 0.01) * math.cos(dy * 0.01)
+        + math.sqrt(d2 + 1.0) ^ 0.5 * 0.01
     out[#out + 1] = s
 end
 return out
@@ -91,7 +94,6 @@ fn run_on(engine: &mut dyn ValueEngine, rule: &str, n: usize) -> Result<Vec<f64>
 
 fn run_lua(n: usize) -> Result<Vec<f64>, ValueError> {
     let mut engine = LuaValueEngine::new();
-    register_libm_maths(&mut engine)?;
     run_on(&mut engine, LUA_RULE, n)
 }
 

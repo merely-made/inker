@@ -1,11 +1,11 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-21. In progress. L1 is met: `script-lua` evaluates a `lua eval` fence, bounded by
-fuel, with no `io` and no randomness, and checks for wasm32. L0's inventory is read from source
-(Findings 11 to 16) but not yet checked against each resolved graph. L2 to L6 are not started; the
-inventory found a fourth lane, Knot's readings, which now has its own phase, LR (D9). Of L4, the
-fork's string library and an embedder-set string limit have landed (Findings 17, 18; D10, D11). D1 to
-D11 ruled the same day.
+**Status:** 2026-11-22. In progress. L1 and L2 are met: `script-lua` evaluates a `lua eval` fence and
+implements `ValueEngine`, each bounded by fuel, with no `io` and no randomness, checked for wasm32;
+the Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is
+read from source (Findings 11 to 16) but not yet checked against each resolved graph. L3, LR, L5
+and L6 are not started. Of L4, the fork has its string library, an embedder-set string limit and
+libm maths (Findings 17, 18; D10, D11, D16). D1 to D17 are ruled.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -45,9 +45,9 @@ tries; the crate checks for `wasm32-unknown-unknown`.
 
 ### L2. The value engine on Lua
 
-**Done-conditions:** the Lua engine implements `ValueEngine`; `register_libm_maths` has a Lua
-counterpart; the `maths_bits` corpus produces the same hashes on Lua as on Rhai, which is the bit-exact
-comparison between the two engines.
+**Done-conditions:** the Lua engine implements `ValueEngine`; a Lua rule's maths is bit-exact, from
+Lua's own `math` library and `^` (D17); the `maths_bits` corpus produces the same hashes on Lua as on
+Rhai, which is the bit-exact comparison between the two engines.
 
 ### L3. The command lane on Lua
 
@@ -86,7 +86,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D11 are in answer order.
+outcome. D1 to D17 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -199,6 +199,68 @@ outcome. D1 to D11 are in answer order.
 
   Links: area The stack · plans lua-evaluator L1, lua-evaluator L4 · summary script-lua's note sandbox limits a built string to 64 KiB unless the host sets another.
 
+- **D12. Lua's `^` is libm's pow (Mark, 2026-11-22):** Evidence: the Lua value engine matched Rhai bit
+  for bit because the rule called a host `pow`; Lua's own `^` used the platform's `powf` and differed
+  from libm's `pow` in 175 of 1,999 samples; didgeridoo computes `^` in one place (`constant.rs:166`,
+  reached from `meta_ops.rs:682`). Offered: patch didgeridoo so `^` uses libm (recommended); leave `^`
+  and have rules call `pow()`; refuse `^` in rule source. Answer: "1, but I wonder if we should use
+  libm more broadly. How's it compare to powf? What is the intention behind using powf?" What follows:
+  `^` calls libm in the fork; the wider question went back with measurements and became D16.
+  Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2, lua-evaluator L4 · summary didgeridoo's power operator calls libm, so it gives the same bits on every target.
+
+- **D13. The shared maths function belongs beside the trait, in Genet (Mark, 2026-11-22):** Evidence:
+  `register_libm_maths` (12 host functions) takes any `ValueEngine`; `script-rhai` has one and the L2
+  lane put an identical copy in `script-lua`. Offered: beside the trait in Genet's `script-engine-api`
+  (recommended); keep the copy in `script-lua`; a small crate in Inker. Answer: "Beside the trait, in
+  Genet (Recommended)". What follows: D17 took the Lua copy away, so only Rhai's remains and it
+  retires in L6; the move into Genet waits for another engine that needs host maths. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2, lua-evaluator L6 · summary Engine-neutral host maths belongs in Genet's script-engine-api; the move waits until an engine other than Rhai needs it.
+
+- **D14. How a Lua table crosses to the host (Mark, 2026-11-22):** Evidence: a Lua table does not say
+  whether it is a list or a map. As built: keys exactly `1..n` make a List, all-string keys a Map, an
+  empty table an empty List, anything else is refused; a `Unit` in a list is refused, since `nil` would
+  end the list, and in a map it leaves the key out. An empty Map sent in comes back an empty List.
+  Offered: accept as built (recommended); an empty table is refused; an empty table reads as Unit.
+  Answer: "Accept as built (Recommended)". What follows: those rules stand; an ambiguous table is an
+  error, never a guess. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2, lua-evaluator L5 · summary A Lua table is a List when its keys are 1..n or it is empty, a Map when every key is a string, and refused otherwise.
+
+- **D15. A rule may build 64 KiB of string (Mark, 2026-11-22):** Evidence: Rhai's value engine sets no
+  string, array or map ceiling; the lane gave the Lua value engine the note sandbox's 64 KiB, settable
+  by the host, applying to strings a rule builds and not to ones the host passes in. Offered: 64 KiB as
+  notes (recommended); 1 MiB; unset as Rhai's is. Answer: "64 KiB, as notes (Recommended)". What
+  follows: `LuaValueEngine` defaults to `DEFAULT_MAX_STRING_BYTES`; a host replaces it with
+  `with_max_string_bytes`. Outcome: applies D10 and D11.
+
+  Links: area The stack · plans lua-evaluator L2 · summary The Lua value engine limits a built string to 64 KiB unless the host sets another.
+
+- **D16. All of didgeridoo's float maths is libm's (Mark, 2026-11-22):** Evidence: `powf` and the rest
+  are Rust's defaults and call the operating system's C library, which rounds the last bit differently
+  on each platform; the `libm` crate is one implementation everywhere. Over 2 million inputs each on
+  the laptop the two differed in 0.01% to 10% of results (pow 9.9%, exp 9.5%, tan 3.9%, sin 1.6%),
+  always by one unit in the last place, and never for sqrt, floor or remainder; libm took 0.9 to 2.7
+  times as long (pow 33 ns against 12 ns). Besides `^`, the `math` library had ten platform calls.
+  Offered: `^` and the whole math library (recommended); the same behind a feature; `^` only. Answer:
+  "^ and the whole math library (Recommended)". What follows: `math.exp`, `log`, `sin`, `cos`, `tan`,
+  `asin`, `acos` and `atan` call libm, with no switch back; Genet's scripts on the fork change with
+  it. Outcome: refines D12.
+
+  Links: area The stack · plans lua-evaluator L4 · summary Every float result a didgeridoo script computes comes from libm, the same bits on every target.
+
+- **D17. Lua rules use Lua's own maths (Mark, 2026-11-22):** Evidence: with D16 the engine's `math`
+  library is bit-exact, so a rule no longer needs host functions for maths; the value engine loaded no
+  `math` and rules called bare host names, as Rhai rules do. Offered: Lua's own math library
+  (recommended); both; bare host names only, as built. Answer: "Lua's own math library
+  (Recommended)". What follows: the value engine loads `math` (no `random`); rules write `math.sin(x)`
+  and `x ^ y`; `script-lua` has no `register_libm_maths`; the bit comparison with Rhai runs on that
+  form; the move D13 names waits. Outcome: refines D13.
+
+  Links: area The stack · plans lua-evaluator L2, lua-evaluator L5 · summary Lua rules write math.sin(x) and x ^ y; the value engine loads Lua's math library and registers no host maths.
+
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
@@ -252,8 +314,8 @@ outcome. D1 to D11 are in answer order.
 8. Piccolo's tables seed their hashing through `ahash`, so wasm32 needs `getrandom`'s browser backend:
    a wasm32-only row in the crate and `--cfg getrandom_backend="wasm_js"` in the build, as `script-rhai`
    already requires.
-9. Floats display through Rust's formatting, so `1.0` shows as `1`; and piccolo's `sin`, `cos` and `tan`
-   call the standard library, not `libm`. L2 compares raw bits and brings its own maths.
+9. Floats display through Rust's formatting, so `1.0` shows as `1`. Piccolo's `sin`, `cos` and `tan`
+   called the standard library until D16 moved them to `libm`.
 10. Two test failures predate this work and are not caused by it: didgeridoo's `goldenscripts` fails on
     a checkout with CRLF line endings, and gc-arena's `ui` test differs from its saved text in compiler
     wording on three cases, the same three with and without the patch.
@@ -299,6 +361,22 @@ outcome. D1 to D11 are in answer order.
     can catch. `script-lua` sets 64 KiB (D11): thirty doublings of a string stop at the seventeenth.
     Tables and total memory are still unbounded except by fuel.
 
+19. L2, run 2026-11-22: `LuaValueEngine` (`crates/script/lua/src/value.rs`) keeps globals and host
+    functions as plain data and builds a fresh Lua state for each evaluation, loading `base`, `math`,
+    `string` and `table`. On the `maths_bits` rule, written with `math.exp`, `math.sin`, `math.cos`,
+    `math.sqrt` and `^`, it gives Rhai's recorded hash `028dc38fdcbf650d` and equals Rhai's result at
+    each of the 10,000 positions.
+20. What the Lua engine does that Rhai's does not: a name that is a Lua reserved word is refused; a
+    global and a host function cannot share a name, since Lua has one namespace; values read out of a
+    script are capped at 2^20 nodes and 64 levels, so shared or self-holding tables cannot outrun
+    fuel; a non-UTF-8 string or a function returned by a rule is a value error. An unknown name is
+    `Unit`, not an error (D6). Rhai's method-style call test has no Lua form and became a plain call.
+21. Not verified for L2: `Budget::Unbounded` with deep recursion; the maths on wasm32 (the crate is
+    checked for that target, not run there; Rhai has a Node runner and Lua has none); speed. Each
+    evaluation rebuilds the state and copies the globals in.
+22. Didgeridoo tracks a `Cargo.lock`, which the family's no-locks rule does not expect of a
+    repository we own.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
@@ -312,3 +390,6 @@ outcome. D1 to D11 are in answer order.
 - 2026-11-21: L4 in part. Didgeridoo `98f58a2` (string methods, `rep`, `format`, patterns) and
   `106b3d6` (the string limit); `script-lua` passes 64 KiB and its 20 tests pass, wasm32 check
   included. D10 and D11 ruled.
+- 2026-11-22: L2 met. `LuaValueEngine` landed with 46 lib tests and the 4 `maths_bits` tests
+  passing, wasm32 check included. Didgeridoo `0d4bf1f` moved `^` and the `math` library to libm.
+  D12 to D17 ruled. L3 is next.

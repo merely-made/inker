@@ -11,7 +11,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use super::*;
-use crate::register_libm_maths;
 
 fn engine() -> LuaValueEngine {
     LuaValueEngine::new()
@@ -78,55 +77,45 @@ fn a_script_returns_a_map_in_key_order() {
 }
 
 #[test]
-fn engine_built_in_maths_is_not_loaded() {
-    // Positive control: the same expression resolves once the host
-    // registers it, so the refusals below are a measurement.
-    let mut with = engine();
-    register_libm_maths(&mut with).unwrap();
-    assert!(with.eval("sin(1.0)", Budget::Steps(1000)).is_ok());
-    // And a loaded library is seen: `string` is there.
-    assert_eq!(run("type(string.len)"), Ok(text("function")));
-
-    for source in [
-        "sin(1.0)",
-        "math.sin(1.0)",
-        "math.exp(1.0)",
-        "math.sqrt(4.0)",
-        "math.pi",
-        "math.floor(1.5)",
-    ] {
-        assert!(
-            matches!(run(source), Err(ValueError::Script(_))),
-            "`{source}` reached engine maths: {:?}",
-            run(source)
+fn the_sandbox_has_maths_and_no_randomness() {
+    assert_eq!(run("type(math.sin)"), Ok(text("function")));
+    for name in ["random", "randomseed"] {
+        assert_eq!(
+            run(&format!("type(math.{name})")),
+            Ok(text("nil")),
+            "{name}"
         );
     }
-    assert_eq!(run("type(math)"), Ok(text("nil")));
+    // Maths is Lua's: a bare name is not a function unless the host registers it.
+    assert!(matches!(run("sin(1.0)"), Err(ValueError::Script(_))));
 }
 
 #[test]
-fn libm_maths_matches_libm_bit_for_bit() {
+fn lua_maths_matches_libm_bit_for_bit() {
     let mut e = engine();
-    register_libm_maths(&mut e).unwrap();
     e.set_global("x", ScriptValue::Float(0.7)).unwrap();
-    let cases: [(&str, f64); 9] = [
-        ("sin(x)", libm::sin(0.7)),
-        ("cos(x)", libm::cos(0.7)),
-        ("tan(x)", libm::tan(0.7)),
-        ("exp(x)", libm::exp(0.7)),
-        ("ln(x)", libm::log(0.7)),
-        ("sqrt(x)", libm::sqrt(0.7)),
-        ("atan2(x, 2)", libm::atan2(0.7, 2.0)),
-        ("pow(x, 1.5)", libm::pow(0.7, 1.5)),
-        ("floor(x * 10)", libm::floor(7.000000000000001)),
+    let cases: [(&str, f64); 10] = [
+        ("math.sin(x)", libm::sin(0.7)),
+        ("math.cos(x)", libm::cos(0.7)),
+        ("math.tan(x)", libm::tan(0.7)),
+        ("math.exp(x)", libm::exp(0.7)),
+        ("math.log(x)", libm::log(0.7)),
+        ("math.sqrt(x)", libm::sqrt(0.7)),
+        ("math.atan(x, 2)", libm::atan2(0.7, 2.0)),
+        ("x ^ 1.5", libm::pow(0.7, 1.5)),
+        ("x ^ x", libm::pow(0.7, 0.7)),
+        ("math.floor(x * 10)", libm::floor(7.000000000000001)),
     ];
     for (source, want) in cases {
         let got = float(&e.eval(source, Budget::Steps(1000)).unwrap());
         assert_eq!(got.to_bits(), want.to_bits(), "{source}");
     }
     assert_eq!(
-        e.eval("min(abs(-3), max(5, 4))", Budget::Steps(1000)),
-        Ok(ScriptValue::Float(3.0))
+        e.eval(
+            "math.min(math.abs(-3), math.max(5, 4))",
+            Budget::Steps(1000)
+        ),
+        Ok(ScriptValue::Int(3))
     );
 }
 
@@ -283,12 +272,6 @@ fn a_name_registered_twice_is_refused() {
     // Even at another arity: the name is the unit.
     assert!(matches!(
         e.register("once", 2, f.clone()),
-        Err(ValueError::Host(_))
-    ));
-    let mut maths = engine();
-    register_libm_maths(&mut maths).unwrap();
-    assert!(matches!(
-        register_libm_maths(&mut maths),
         Err(ValueError::Host(_))
     ));
     // A global and a function share Lua's one namespace, so they collide.

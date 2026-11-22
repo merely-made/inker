@@ -14,10 +14,11 @@
 //!
 //! Each [`eval`](ValueEngine::eval) builds a fresh Lua state from the stored
 //! globals and host functions, so a rule cannot leak a binding into the next
-//! and the engine stays `Send`. The state loads `base`, `string` and `table`
-//! only: no `io`, no `coroutine`, and no `math`, so a rule reaches `sin` or
-//! `exp` only through a host function ([`register_libm_maths`](crate::register_libm_maths)),
-//! which gives the same bits natively and on wasm32.
+//! and the engine stays `Send`. The state loads `base`, `math`, `string` and
+//! `table` only: no `io` and no `coroutine`. Rules use Lua's own maths,
+//! `math.sin(x)` and `x ^ y`: didgeridoo computes both with libm, so a rule
+//! gives the same bits natively and on wasm32. `math` has no `random`,
+//! because didgeridoo is built with that feature off.
 //!
 //! ## Values
 //!
@@ -64,7 +65,7 @@ const RESERVED: [&str; 22] = [
     "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
 ];
 
-/// A Lua-backed [`ValueEngine`] with no engine-built-in maths.
+/// A Lua-backed [`ValueEngine`] whose maths is the same bits on every target.
 pub struct LuaValueEngine {
     globals: BTreeMap<String, ScriptValue>,
     functions: BTreeMap<String, (usize, HostFunction)>,
@@ -97,6 +98,7 @@ impl LuaValueEngine {
         lua.enter(|ctx| {
             ctx.set_max_string_bytes(self.max_string_bytes);
             piccolo::stdlib::load_base(ctx);
+            piccolo::stdlib::load_math(ctx);
             piccolo::stdlib::load_string(ctx);
             piccolo::stdlib::load_table(ctx);
             let table = ctx.globals();

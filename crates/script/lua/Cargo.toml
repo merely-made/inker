@@ -21,9 +21,6 @@ piccolo = { workspace = true }
 # The value-level script contract (ValueEngine, ScriptValue, Budget), the one
 # script-rhai's RhaiValueEngine implements.
 script-engine-api = { workspace = true }
-# Host maths for rules: piccolo's own `sin`, `cos` and `tan` call the standard
-# library, so rules take theirs from libm, as script-rhai's do.
-libm = { workspace = true }
 
 # wasm32 only: piccolo's tables seed their hashing through ahash, whose
 # getrandom needs its browser backend, selected by
@@ -32,6 +29,8 @@ libm = { workspace = true }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [dev-dependencies]
+# What didgeridoo's maths is compared with, bit for bit.
+libm = { workspace = true }
 # The bit comparison runs the same rule on both engines (tests/maths_bits.rs).
 script-rhai = { path = "../rhai" }
 
