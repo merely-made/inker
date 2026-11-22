@@ -4,9 +4,9 @@
 D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects commands from a
 `didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
 Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
-from source (Findings 11 to 16) but not yet checked against each resolved graph. LR, L5 and L6 are
-not started. Of L4, the fork has its string library, an embedder-set string limit and libm maths
-(Findings 17, 18; D10, D11, D16). D1 to D22 are ruled.
+from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 and L6 are
+not started; LR is built and tested on a branch of knot-editor and not yet landed (Findings 25, 26). Of L4, the fork has its string library, an embedder-set string limit and libm maths
+(Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D26 are ruled.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -87,7 +87,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D22 are in answer order.
+outcome. D1 to D26 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -310,6 +310,42 @@ outcome. D1 to D22 are in answer order.
 
   Links: area The stack · plans lua-evaluator L1, lua-evaluator L3, lua-evaluator L5 · summary Notes written for didgeridoo use the fence tags didge and didge-command, and the crate is script-didge.
 
+- **D23. Lua readings need not keep Rhai's names (Mark, 2026-11-22):** Evidence: spans have a field
+  `end`, a reserved word in Lua, so `span.end` does not parse; as built `span["end"]` worked beside an
+  alias `stop`. Offered: `stop` with `["end"]` still working (recommended); `stop` only; `finish` only.
+  Answer: "We don't have to preserve compatibility in the semantics". What follows: one clean name,
+  `stop`, on Span, Heading and Fold; relation endpoints are `subject_stop` and `object_stop`; where a
+  Rhai-shaped name or shape is awkward in Lua the Lua form is taken. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator LR, lua-evaluator L5 · summary The Lua reading surface takes clean Lua names and shapes; it does not preserve the Rhai surface's.
+
+- **D24. An absent reading value is nil (Mark, 2026-11-22):** Evidence: the Rhai surface uses stand-ins
+  (`rel` is `""`, an absent selection or unplaced endpoint is `-1`, an unknown revision is `""`); D6
+  rules a missing fact is handled Lua's way. Offered: nil, Lua's way (recommended); keep the
+  stand-ins. Answer: "nil, Lua's way (Recommended)". What follows: those values are nil, an unplaced
+  link's `span` is nil, and `has_span` is gone; a reading writes `if link.rel then`. Outcome:
+  applies D6.
+
+  Links: area The stack · plans lua-evaluator LR · summary In Lua readings an absent rel, selection, revision, span or endpoint position is nil.
+
+- **D25. The character count is `utf8.len` (Mark, 2026-11-22):** Evidence: D8 offers a character count
+  beside `#s`; the lane added a global `char_count(s)`. Offered: `char_count(s)` (recommended);
+  `utf8.len(s)`, which the fork lacked; `chars(s)`. Answer: "utf8.len(s)". What follows: didgeridoo
+  has `utf8.len` (`cca2162`), every `script-didge` sandbox loads `utf8`, and `char_count` is removed.
+  Outcome: refines D8.
+
+  Links: area The stack · plans lua-evaluator L4, lua-evaluator LR · summary Scripts count characters with Lua's own utf8.len; no host function stands in for it.
+
+- **D26. A reading's heap ceiling is a budget field (Mark, 2026-11-22):** Evidence: Rhai capped a
+  reading's arrays and maps and Lua tables have no size limit; the lane added a constant 16 MiB heap
+  ceiling read between fuel steps; open question 3 was undecided. Offered: a budget field, 16 MiB by
+  default (recommended); the constant; a 4 MiB default; no heap ceiling. Answer: "A budget field,
+  16 MiB by default (Recommended)". What follows: `ReadingBudget::max_heap_bytes`, which the Rhai lane
+  ignores. Notes, rules and commands still have no heap ceiling. Outcome: new; answers open question 3
+  for readings.
+
+  Links: area The stack · plans lua-evaluator LR · summary A Lua reading runs under ReadingBudget::max_heap_bytes, 16 MiB by default.
+
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
@@ -436,6 +472,20 @@ outcome. D1 to D22 are in answer order.
 24. Not verified for L3: nothing ran on wasm32 (the crate is checked for it); the text of piccolo's own
     error for a malformed call is not asserted.
 
+25. LR, built 2026-11-22 on knot-editor's branch `didge-readings`: `DidgeReadingBackend`
+    (`knot.didge.reading`) sits behind the same `ReadingBackend` seam as the Rhai backend, with the
+    same readers and constructors. Host values are userdata whose fields read and never write; a script
+    cannot reach their metatable. `max_ops` is fuel, `max_note_bytes` is also the string limit, a
+    compile error carries its line, and a returned list longer than four times `max_rows` is refused.
+    Rhai's reading tests are translated beside its own: 63 tests pass across both lanes.
+26. LR is not landed. Its first commit (`ef0091f`) is local; the commit carrying D23 to D26 is blocked
+    by knot-editor's bans check, because a fresh resolve after the family's winit move leaves six stale
+    skips and three new duplicates (libloading, x11rb, x11rb-protocol) in its `deny.toml`. That upkeep
+    is not LR's. Unverified for LR: wasm32, release builds, speed, very deep recursion.
+27. What `script-didge` should export for LR and does not: its fuel loop (knot-readings carries a
+    25-line copy that also counts fuel spent and checks the heap), the `return`-first compile, and the
+    classification of string-limit errors.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
@@ -455,3 +505,6 @@ outcome. D1 to D22 are in answer order.
 - 2026-11-22: L3 met. The command lane landed with 58 lib tests passing; the batch and its limits
   moved into hest 0.3.1 and `script-rhai` uses them too (33 tests pass). The crate became
   `script-didge` and its tags `didge` and `didge-command`. D18 to D22 ruled. LR is next.
+- 2026-11-22: LR built and tested on knot-editor's `didge-readings`; D23 to D26 ruled and applied
+  there. Didgeridoo `cca2162` adds `utf8.len`; `script-didge` loads it (`6493200`). LR's second
+  commit waits on knot-editor's `deny.toml` (Findings 26).
