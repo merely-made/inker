@@ -34,7 +34,7 @@ engine adapters.
 ### inker_docs/implementation_strategy/
 
 - [presentation_engines_plan](inker_docs/implementation_strategy/2026-10-28_presentation_engines_plan.md) — **cut 2026-10-28**: engine routing and surface engines, the engine flip host, shared surface receiving, the polyglot block resolver.
-- [lua_evaluator_plan](inker_docs/implementation_strategy/2026-11-21_lua_evaluator_plan.md) — **in progress, 2026-11-22: L1 and L2 met (`script-lua` evaluates a `lua eval` fence and implements `ValueEngine`, bounded, no `io`, no randomness, strings limited to 64 KiB, checks for wasm32; Lua matches Rhai bit for bit on the maths rule); the fork has its string library and libm maths**: Lua on didgeridoo (the piccolo fork) replaces Rhai (D1). A Lua crate behind the same `BlockEvaluator` and `ValueEngine` seams, bounded by the VM's fuel; consumers move, then `script-rhai` retires. Authored Rhai in documents is open question 1.
+- [lua_evaluator_plan](inker_docs/implementation_strategy/2026-11-21_lua_evaluator_plan.md) — **in progress, 2026-11-22: L1 to L3 met (`script-didge` evaluates a `didge eval` fence, implements `ValueEngine` and collects commands, bounded, no `io`, no randomness, strings limited to 64 KiB, checks for wasm32; Lua matches Rhai bit for bit on the maths rule); the fork has its string library and libm maths**: Lua on didgeridoo (the piccolo fork) replaces Rhai (D1). A Lua crate behind the same `BlockEvaluator` and `ValueEngine` seams, bounded by the VM's fuel; consumers move, then `script-rhai` retires. Authored Rhai in documents is open question 1.
 
 ## nematic_docs/ — the smolweb engine and knot composition
 

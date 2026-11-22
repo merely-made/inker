@@ -1,11 +1,12 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-22. In progress. L1 and L2 are met: `script-lua` evaluates a `lua eval` fence and
-implements `ValueEngine`, each bounded by fuel, with no `io` and no randomness, checked for wasm32;
-the Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is
-read from source (Findings 11 to 16) but not yet checked against each resolved graph. L3, LR, L5
-and L6 are not started. Of L4, the fork has its string library, an embedder-set string limit and
-libm maths (Findings 17, 18; D10, D11, D16). D1 to D17 are ruled.
+**Status:** 2026-11-22. In progress. L1, L2 and L3 are met: `script-didge` (named `script-lua` until
+D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects commands from a
+`didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
+Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
+from source (Findings 11 to 16) but not yet checked against each resolved graph. LR, L5 and L6 are
+not started. Of L4, the fork has its string library, an embedder-set string limit and libm maths
+(Findings 17, 18; D10, D11, D16). D1 to D22 are ruled.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -36,7 +37,7 @@ against `rhai` in each repository's resolved graph.
 
 ### L1. The block evaluator on Lua
 
-A `lua eval` fence to text, with the output convention `script-rhai` documents (a string, or a table
+A `didge eval` fence to text, with the output convention `script-rhai` documents (a string, or a table
 naming a format and text).
 
 **Done-conditions:** `script-rhai`'s evaluator tests pass translated to Lua; an endless loop is cut off
@@ -86,7 +87,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D17 are in answer order.
+outcome. D1 to D22 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -108,7 +109,7 @@ outcome. D1 to D17 are in answer order.
   in this graph. Offered: put it behind a feature and leave it off for notes (recommended); keep it and
   fix the 32-bit seed; defer wasm32. Answer: "I'm ok with 1, but there's no way to deduplicate and
   fix?". What follows: both. Didgeridoo moved to `rand` 0.10, whose small generator has one seed size on
-  every target, and `math.random` sits behind its `random` feature, on by default; `script-lua` takes
+  every target, and `math.random` sits behind its `random` feature, on by default; `script-didge` takes
   didgeridoo with that feature off. Outcome: new.
 
   Links: area The stack · plans lua-evaluator L1, lua-evaluator L4 · summary Didgeridoo is on rand 0.10 with math.random behind a default-on feature; script-lua leaves it off, so a fence is repeatable.
@@ -187,13 +188,13 @@ outcome. D1 to D17 are in answer order.
   embedder sets it (recommended); a lower constant in the fork; leave it at 1 GiB. Answer: "The
   embedder sets it (Recommended)". What follows: a didgeridoo state carries the limit
   (`Context::set_max_string_bytes`, 1 GiB until set) and every builder refuses a longer result;
-  `script-lua` passes its host's limit; readings pass Knot's own budget in LR. Outcome: new.
+  `script-didge` passes its host's limit; readings pass Knot's own budget in LR. Outcome: new.
 
   Links: area The stack · plans lua-evaluator L4, lua-evaluator LR · summary A didgeridoo state carries a string limit its embedder sets; script-lua and the readings lane pass their host's.
 
 - **D11. A note fence may build 64 KiB (Mark, 2026-11-21):** Evidence: D10 needs a default for the note
   sandbox; Knot allows a note 64 KiB (`knot-readings/src/lib.rs:87`). Offered: 64 KiB (recommended);
-  1 MiB; 16 MiB. Answer: "64 KiB (Recommended)". What follows: `script-lua`'s
+  1 MiB; 16 MiB. Answer: "64 KiB (Recommended)". What follows: `script-didge`'s
   `DEFAULT_MAX_STRING_BYTES` is 64 KiB and a host replaces it with
   `LuaEvaluator::with_max_string_bytes`. Outcome: new.
 
@@ -212,8 +213,8 @@ outcome. D1 to D17 are in answer order.
 
 - **D13. The shared maths function belongs beside the trait, in Genet (Mark, 2026-11-22):** Evidence:
   `register_libm_maths` (12 host functions) takes any `ValueEngine`; `script-rhai` has one and the L2
-  lane put an identical copy in `script-lua`. Offered: beside the trait in Genet's `script-engine-api`
-  (recommended); keep the copy in `script-lua`; a small crate in Inker. Answer: "Beside the trait, in
+  lane put an identical copy in `script-didge`. Offered: beside the trait in Genet's `script-engine-api`
+  (recommended); keep the copy in `script-didge`; a small crate in Inker. Answer: "Beside the trait, in
   Genet (Recommended)". What follows: D17 took the Lua copy away, so only Rhai's remains and it
   retires in L6; the move into Genet waits for another engine that needs host maths. Outcome: new.
 
@@ -256,17 +257,65 @@ outcome. D1 to D17 are in answer order.
   `math` and rules called bare host names, as Rhai rules do. Offered: Lua's own math library
   (recommended); both; bare host names only, as built. Answer: "Lua's own math library
   (Recommended)". What follows: the value engine loads `math` (no `random`); rules write `math.sin(x)`
-  and `x ^ y`; `script-lua` has no `register_libm_maths`; the bit comparison with Rhai runs on that
+  and `x ^ y`; `script-didge` has no `register_libm_maths`; the bit comparison with Rhai runs on that
   form; the move D13 names waits. Outcome: refines D13.
 
   Links: area The stack · plans lua-evaluator L2, lua-evaluator L5 · summary Lua rules write math.sin(x) and x ^ y; the value engine loads Lua's math library and registers no host maths.
+
+- **D18. A malformed command call voids the batch (Mark, 2026-11-22):** Evidence: in Rhai, calling
+  `command()` with the wrong kind of argument is a missing-function error a script can catch with no
+  effect on the batch; the Lua lane as built refuses it and voids the batch even when caught, as for
+  an unoffered command. Offered: refuse and void the batch (recommended); an ordinary error, as in
+  Rhai; coerce numbers to text. Answer: "Refuse and void the batch (Recommended)". What follows:
+  `command` takes exactly an id string and an arguments string; anything else voids the batch.
+  Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L3 · summary A command call that is not an id string and an arguments string voids the whole batch, caught or not.
+
+- **D19. A command script's default budget is a note's (Mark, 2026-11-22):** Evidence: for a budget of
+  zero Rhai's command lane used 100,000 operations and the Lua note lane uses 1,000,000 units of fuel
+  (D5); the two units are not the same amount of work. Offered: 1,000,000 as notes (recommended);
+  100,000 as built; no default, zero is refused. Answer: "1,000,000, as notes (Recommended)". What
+  follows: the command evaluator uses `DEFAULT_MAX_OPS`; `collect_invocations` still refuses
+  `Budget::Steps(0)`, as Rhai's does. Outcome: applies D5.
+
+  Links: area The stack · plans lua-evaluator L3 · summary A didge-command fence given a zero budget runs under the note lane's default of 1,000,000.
+
+- **D20. The command limits and the batch live in hest (Mark, 2026-11-22):** Evidence: `CommandLimits`
+  and the batch bookkeeping (256 invocations, 64 KiB of arguments, the first refusal voids the batch)
+  are neither engine's and existed in `script-rhai` and again in the Lua crate. Offered: leave both
+  until Rhai retires (recommended); move them into hest now. Answer: "Move them into hest now". What
+  follows: `hest::batch::{Batch, CommandLimits}` in hest 0.3.1 (Graphshell `1071722f`); both command
+  lanes use it and re-export `CommandLimits`. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L3, lua-evaluator L6 · summary hest owns the command batch and its limits; script-rhai and script-didge both collect through it.
+
+- **D21. A fence names the engine, put back as a question (Mark, 2026-11-22):** Evidence: the command
+  evaluator's tag was `lua-command`, mirroring `rhai-command`; hosts allowlist the tag and notes carry
+  it. Offered: `lua-command` (recommended); decide with the other stored names in L5. Answer: "Didge?
+  Or is there potential of using another lua backend (i.e. shoukd we consider them interchangeable)".
+  What follows: answered and put back as D22. Outcome: a question, not a ruling.
+
+  Links: area The stack · plans lua-evaluator L3, lua-evaluator L5 · summary Whether a fence tag names the language or the engine was asked back and ruled as D22.
+
+- **D22. Notes name the engine: `didge` and `didge-command` (Mark, 2026-11-22):** Evidence: evaluators
+  are looked up by tag, so the engine behind a tag can change without touching a note; the scripts are
+  plain Lua 5.4, and what is didgeridoo's alone is the sandbox's promises (fuel, the string limit,
+  maths with the same bits everywhere, no `io`). Offered: the language, `lua` and `lua-command`
+  (recommended); the engine, `didge` and `didge-command`; both, with `didge` as an alias. Answer: "The
+  engine: didge and didge-command". What follows: the tags are `didge` and `didge-command`; the crate
+  is `script-didge` at `crates/script/didge`; a different Lua backend would take its own tag. The
+  type names (`LuaEvaluator`, `LuaValueEngine`, `LuaCommandEvaluator`) are unchanged and unruled.
+  Outcome: new; answers open question 2.
+
+  Links: area The stack · plans lua-evaluator L1, lua-evaluator L3, lua-evaluator L5 · summary Notes written for didgeridoo use the fence tags didge and didge-command, and the crate is script-didge.
 
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
    Convert them, keep a reader for the old fence, or refuse them with a message? Returns to Mark in L5.
-2. Where the Lua crate lives and what it is called. Beside `script-rhai` in this repository is assumed;
-   the name is unruled.
+2. Answered 2026-11-22 (D22): the crate is `script-didge`, beside `script-rhai`. Whether its types
+   keep the `Lua` prefix is open.
 3. Memory. Strings are answered 2026-11-21 (D10, D11). Rhai also caps array and map sizes; piccolo
    reports `total_memory()` and has no allocation limit, so a table grows until fuel stops the
    script. Whether to refuse above a ceiling read between fuel steps is undecided.
@@ -280,7 +329,8 @@ outcome. D1 to D17 are in answer order.
 7. Answered 2026-11-21 (D6, D7, D8): Lua's behaviour in all three, and the scripts are rewritten.
 8. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
-   is mostly about the user's `.rhai` files.
+   is mostly about the user's `.rhai` files. Since D22 the highlighter (`illume`) knows `lua` and not
+   `didge`, so a `didge` fence is not coloured as Lua until it is taught the tag.
 9. What L4 is for. No authored script uses a string library function (Findings 13), so the string
    work in didgeridoo was not gated by a consumer; it landed 2026-11-21 (Findings 17). What L4 still
    owes is `utf8.len` for D8's character count, and whatever LR's reading functions need.
@@ -308,7 +358,7 @@ outcome. D1 to D17 are in answer order.
 6. The fork's `string` library has seven functions: `len`, `byte`, `char`, `sub`, `lower`, `upper` and
    `reverse`. There is no `format`, `rep`, `find`, `gsub`, `gmatch` or `match`, and no `utf8`. L4 is
    larger than this plan assumed, and L3 and L5 wait on it wherever they build text.
-7. `script-lua` (`crates/script/lua`) builds a fresh VM for each fence, because a piccolo `Lua` cannot
+7. `script-didge` (`crates/script/didge`) builds a fresh VM for each fence, because a piccolo `Lua` cannot
    move between threads and `BlockEvaluator` must. One unit of budget is one unit of fuel. Its cost per
    fence is unmeasured.
 8. Piccolo's tables seed their hashing through `ahash`, so wasm32 needs `getrandom`'s browser backend:
@@ -358,10 +408,10 @@ outcome. D1 to D17 are in answer order.
     string metatable; `pack`, `unpack`, `packsize`, `dump` and `utf8` are still absent.
 18. The string limit (D10) landed in didgeridoo `106b3d6`: `..`, `rep`, `format`, `gsub` and
     `table.concat` each succeed at the limit and are refused one byte past it, with an error a script
-    can catch. `script-lua` sets 64 KiB (D11): thirty doublings of a string stop at the seventeenth.
+    can catch. `script-didge` sets 64 KiB (D11): thirty doublings of a string stop at the seventeenth.
     Tables and total memory are still unbounded except by fuel.
 
-19. L2, run 2026-11-22: `LuaValueEngine` (`crates/script/lua/src/value.rs`) keeps globals and host
+19. L2, run 2026-11-22: `LuaValueEngine` (`crates/script/didge/src/value.rs`) keeps globals and host
     functions as plain data and builds a fresh Lua state for each evaluation, loading `base`, `math`,
     `string` and `table`. On the `maths_bits` rule, written with `math.exp`, `math.sin`, `math.cos`,
     `math.sqrt` and `^`, it gives Rhai's recorded hash `028dc38fdcbf650d` and equals Rhai's result at
@@ -377,10 +427,19 @@ outcome. D1 to D17 are in answer order.
 22. Didgeridoo tracks a `Cargo.lock`, which the family's no-locks rule does not expect of a
     repository we own.
 
+23. L3, run 2026-11-22: `collect_invocations` and `LuaCommandEvaluator` (`src/command.rs`) register one
+    `command(id, arguments)` function on the note sandbox; a Lua string carries exact bytes, so Rhai's
+    separate blob form has no counterpart. All of Rhai's command tests are translated; a refusal caught
+    with `pcall` or inside a coroutine still voids the batch; an ordinary `didge` fence has no
+    `command`. `Budget::Unbounded` runs with the largest countable fuel, not literally without a
+    limit. Piccolo has no `xpcall`.
+24. Not verified for L3: nothing ran on wasm32 (the crate is checked for it); the text of piccolo's own
+    error for a malformed call is not asserted.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
-- 2026-11-21: L1 met. `script-lua` passes 17 tests, clippy is clean, and it checks for
+- 2026-11-21: L1 met. `script-didge` passes 17 tests, clippy is clean, and it checks for
   `wasm32-unknown-unknown`. Didgeridoo `6812717` (rand 0.10, the `random` feature, the gc-arena fork),
   `mark-ik/gc-arena` `b79d86d` and Genet `5b6b624cecf` landed for it. D2 to D5 ruled.
 - 2026-11-21: L0's inventory read from source (Findings 11 to 16); the resolved-graph check is
@@ -388,8 +447,11 @@ outcome. D1 to D17 are in answer order.
 - 2026-11-21: D6 to D9 ruled on the differences between Lua and Rhai and on the readings lane;
   phase LR added before L5.
 - 2026-11-21: L4 in part. Didgeridoo `98f58a2` (string methods, `rep`, `format`, patterns) and
-  `106b3d6` (the string limit); `script-lua` passes 64 KiB and its 20 tests pass, wasm32 check
+  `106b3d6` (the string limit); `script-didge` passes 64 KiB and its 20 tests pass, wasm32 check
   included. D10 and D11 ruled.
 - 2026-11-22: L2 met. `LuaValueEngine` landed with 46 lib tests and the 4 `maths_bits` tests
   passing, wasm32 check included. Didgeridoo `0d4bf1f` moved `^` and the `math` library to libm.
   D12 to D17 ruled. L3 is next.
+- 2026-11-22: L3 met. The command lane landed with 58 lib tests passing; the batch and its limits
+  moved into hest 0.3.1 and `script-rhai` uses them too (33 tests pass). The crate became
+  `script-didge` and its tags `didge` and `didge-command`. D18 to D22 ruled. LR is next.

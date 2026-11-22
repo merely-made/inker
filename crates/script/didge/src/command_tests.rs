@@ -276,7 +276,7 @@ fn the_language_tag_is_lua_command_and_the_evaluator_is_send() {
     fn assert_send<T: Send>() {}
     assert_send::<LuaCommandEvaluator>();
     let evaluator = LuaCommandEvaluator::new(offered(), SCHEMA, CommandLimits::default());
-    assert_eq!(evaluator.language(), "lua-command");
+    assert_eq!(evaluator.language(), "didge-command");
 }
 
 fn document(source: &str) -> EngineDocument {
@@ -290,7 +290,7 @@ fn document(source: &str) -> EngineDocument {
         diagnostics: Vec::new(),
         navigation: Default::default(),
         blocks: vec![Block::CodeBlock {
-            language: Some("lua-command eval".into()),
+            language: Some("didge-command eval".into()),
             text: source.into(),
         }],
     }
@@ -312,12 +312,12 @@ fn actual_block_pass_emits_plain_invocation_data_with_generated_provenance() {
     let mut document = document(source);
     document.navigation.block_count = 1;
     let mut registry = registry();
-    assert_eq!(registry.languages(), vec!["lua-command"]);
+    assert_eq!(registry.languages(), vec!["didge-command"]);
     let mut evaluate = |language: &str, source: &str| registry.evaluate(language, source, 10_000);
     let mut render = |_: &EngineInput| -> Result<EngineDocument, String> {
         panic!("plain JSON must not be nested rendered")
     };
-    let policy = EvaluationPolicy::for_own_notes(vec!["lua-command".into()]);
+    let policy = EvaluationPolicy::for_own_notes(vec!["didge-command".into()]);
     let outcome = evaluate_blocks(&mut document, &mut evaluate, &mut render, &policy);
     assert_eq!(outcome.evaluated, 1);
     assert!(outcome.denied.is_empty());
@@ -346,7 +346,7 @@ fn actual_block_pass_emits_plain_invocation_data_with_generated_provenance() {
             .provenance
             .source_label
             .as_deref(),
-        Some("evaluated:lua-command")
+        Some("evaluated:didge-command")
     );
 }
 
@@ -354,7 +354,7 @@ fn actual_block_pass_emits_plain_invocation_data_with_generated_provenance() {
 fn denied_fences_and_failed_scripts_remain_source_without_generated_provenance() {
     for policy in [
         EvaluationPolicy::deny_all(),
-        EvaluationPolicy::for_own_notes(vec!["lua".into()]),
+        EvaluationPolicy::for_own_notes(vec!["didge".into()]),
     ] {
         let mut document = document(r#"command("view:fit", "")"#);
         let before = document.blocks.clone();
@@ -381,7 +381,7 @@ fn denied_fences_and_failed_scripts_remain_source_without_generated_provenance()
         &mut document,
         &mut evaluate,
         &mut render,
-        &EvaluationPolicy::for_own_notes(vec!["lua-command".into()]),
+        &EvaluationPolicy::for_own_notes(vec!["didge-command".into()]),
     );
     assert_eq!(outcome.failed.len(), 1);
     assert_eq!(outcome.evaluated, 0);

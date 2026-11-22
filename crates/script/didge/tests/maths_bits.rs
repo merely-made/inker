@@ -13,7 +13,7 @@
 //! didgeridoo computes with libm.
 
 use script_engine_api::{Budget, ScriptValue, ValueEngine, ValueError};
-use script_lua::LuaValueEngine;
+use script_didge::LuaValueEngine;
 use script_rhai::{RhaiValueEngine, register_libm_maths as register_rhai_maths};
 
 const COUNT: usize = 10_000;

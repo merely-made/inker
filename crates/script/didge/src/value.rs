@@ -51,7 +51,7 @@ const MAX_NODES: usize = 1 << 20;
 const FUEL_PER_STEP: i32 = 4096;
 
 /// The name compiled chunks carry in error messages.
-const CHUNK_NAME: &str = "lua rule";
+const CHUNK_NAME: &str = "didge rule";
 
 /// Put before the source to read it as a value, on the same line so error
 /// line numbers stay the author's.

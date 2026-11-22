@@ -10,84 +10,17 @@
 //! Arguments are a UTF-8 string or Rhai blob; the host supplies their schema.
 //! A complete successful evaluation returns data, never execution or permission.
 //! Receivers must recheck current declarations, arguments and authority before
-//! dispatch, and establish their own terminal [`hest::Outcome`].
+//! dispatch, and establish their own terminal [`hest::Outcome`]. The limits and
+//! the batch are hest's (`hest::batch`).
 
 use std::sync::{Arc, Mutex};
 
+use hest::batch::Batch;
+pub use hest::batch::CommandLimits;
 use hest::{Invocation, menu::CommandSet};
 use inker::{BlockEvaluator, EvalOutput};
 use rhai::{Blob, Dynamic, EvalAltResult, ImmutableString, Position};
 pub use script_engine_api::Budget;
-
-/// Retention limits for one batch, including repeated calls to the same id.
-/// These limit collected data, rather than the script engine's total heap.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CommandLimits {
-    pub max_invocations: usize,
-    pub max_argument_bytes: usize,
-}
-
-impl Default for CommandLimits {
-    fn default() -> Self {
-        Self {
-            max_invocations: 256,
-            max_argument_bytes: 64 * 1024,
-        }
-    }
-}
-
-#[derive(Default)]
-struct Batch {
-    invocations: Vec<Invocation>,
-    argument_bytes: usize,
-    refusal: Option<String>,
-}
-
-impl Batch {
-    fn collect(
-        &mut self,
-        offered: &CommandSet,
-        schema: &str,
-        limits: CommandLimits,
-        id: &str,
-        arguments: &[u8],
-    ) -> Result<(), String> {
-        if let Some(reason) = &self.refusal {
-            return Err(reason.clone());
-        }
-        let collect = || {
-            let declaration = offered
-                .get(id)
-                .ok_or_else(|| format!("command `{id}` is not offered"))?;
-            if let Some(reason) = &declaration.disabled_reason {
-                return Err(format!("command `{id}` is disabled: {reason}"));
-            }
-            if self.invocations.len() >= limits.max_invocations {
-                return Err("command batch exceeds its invocation limit".into());
-            }
-            let remaining = limits
-                .max_argument_bytes
-                .saturating_sub(self.argument_bytes);
-            if arguments.len() > remaining {
-                return Err("command batch exceeds its argument byte limit".into());
-            }
-            Ok(declaration.invocation(schema, arguments.to_vec()))
-        };
-        match collect() {
-            Ok(invocation) => {
-                self.argument_bytes += invocation.arguments.len();
-                self.invocations.push(invocation);
-                Ok(())
-            },
-            Err(reason) => {
-                // A script may catch the binding's runtime error. A refused
-                // request still invalidates the whole batch in that case.
-                self.refusal.get_or_insert_with(|| reason.clone());
-                Err(reason)
-            },
-        }
-    }
-}
 
 fn script_error(reason: String) -> Box<EvalAltResult> {
     EvalAltResult::ErrorRuntime(reason.into(), Position::NONE).into()
@@ -114,16 +47,14 @@ pub fn collect_invocations(
     };
     let mut engine = crate::base_engine();
     engine.set_max_operations(max_ops);
-    let batch = Arc::new(Mutex::new(Batch::default()));
+    let batch = Arc::new(Mutex::new(Batch::new(offered.clone(), schema, limits)));
     let collect = {
         let batch = Arc::clone(&batch);
-        let offered = Arc::new(offered.clone());
-        let schema = schema.to_string();
         move |id: ImmutableString, arguments: &[u8]| {
             batch
                 .lock()
                 .map_err(|_| script_error("command batch is unavailable".into()))?
-                .collect(&offered, &schema, limits, &id, arguments)
+                .collect(&id, arguments)
                 .map_err(script_error)
         }
     };
@@ -140,13 +71,12 @@ pub fn collect_invocations(
     let _ = engine
         .eval::<Dynamic>(source)
         .map_err(|error| error.to_string())?;
-    let mut batch = batch
+    // The engine's `command` functions still hold the batch, so take a copy.
+    batch
         .lock()
-        .map_err(|_| "command batch is unavailable".to_string())?;
-    match batch.refusal.take() {
-        Some(reason) => Err(reason),
-        None => Ok(std::mem::take(&mut batch.invocations)),
-    }
+        .map_err(|_| "command batch is unavailable".to_string())?
+        .clone()
+        .finish()
 }
 
 /// Opt-in block evaluator that renders invocation data as plain JSON.

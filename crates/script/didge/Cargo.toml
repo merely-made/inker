@@ -1,12 +1,12 @@
 [package]
 rust-version = "1.97.1"
-name = "script-lua"
+name = "script-didge"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = true
-description = "Lua backend for the knot block-evaluator lane: an inker BlockEvaluator over didgeridoo, the piccolo fork (pure Rust, sandboxed, budgeted by the VM's own fuel)."
+description = "Lua on didgeridoo for knot notes, rules and commands: an inker BlockEvaluator and a ValueEngine over didgeridoo, the piccolo fork (pure Rust, sandboxed, budgeted by the VM's own fuel)."
 
 [lib]
 path = "src/lib.rs"
