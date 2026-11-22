@@ -150,6 +150,11 @@ struct Shared {
 /// batch escapes a parse, runtime, fuel or collection error, including a
 /// collection error caught inside the script. Each call has a fresh Lua state
 /// and batch. Successful collection has no terminal outcome.
+///
+/// # Errors
+///
+/// A script that does not parse, fails, runs past its budget, or has any
+/// request refused (unoffered, disabled, over a limit, or ill-typed).
 pub fn collect_invocations(
     source: &str,
     offered: &CommandSet,
