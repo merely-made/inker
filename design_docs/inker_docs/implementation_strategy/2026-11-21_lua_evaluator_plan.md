@@ -3,8 +3,9 @@
 **Status:** 2026-11-21. In progress. L1 is met: `script-lua` evaluates a `lua eval` fence, bounded by
 fuel, with no `io` and no randomness, and checks for wasm32. L0's inventory is read from source
 (Findings 11 to 16) but not yet checked against each resolved graph. L2 to L6 are not started; the
-inventory found a fourth lane, Knot's readings, which now has its own phase, LR (D9). D1 to D9 ruled
-the same day.
+inventory found a fourth lane, Knot's readings, which now has its own phase, LR (D9). Of L4, the
+fork's string library and an embedder-set string limit have landed (Findings 17, 18; D10, D11). D1 to
+D11 ruled the same day.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -85,7 +86,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D9 are in answer order.
+outcome. D1 to D11 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -179,15 +180,34 @@ outcome. D1 to D9 are in answer order.
 
   Links: area The stack · plans lua-evaluator LR · summary Knot's readings surface is ported to Lua in its own phase, LR, before any consumer moves.
 
+- **D10. The string limit is the embedder's (Mark, 2026-11-21):** Evidence: didgeridoo's new
+  `string.rep` built its result before fuel was looked at, under a constant 1 GiB ceiling held twice
+  while interned; nothing bounded `..`, `format`, `gsub` or `table.concat`. Knot's Rhai readings cap a
+  string at 64 KiB (`max_note_bytes`); `script-rhai`'s note lane sets no string cap. Offered: the
+  embedder sets it (recommended); a lower constant in the fork; leave it at 1 GiB. Answer: "The
+  embedder sets it (Recommended)". What follows: a didgeridoo state carries the limit
+  (`Context::set_max_string_bytes`, 1 GiB until set) and every builder refuses a longer result;
+  `script-lua` passes its host's limit; readings pass Knot's own budget in LR. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L4, lua-evaluator LR · summary A didgeridoo state carries a string limit its embedder sets; script-lua and the readings lane pass their host's.
+
+- **D11. A note fence may build 64 KiB (Mark, 2026-11-21):** Evidence: D10 needs a default for the note
+  sandbox; Knot allows a note 64 KiB (`knot-readings/src/lib.rs:87`). Offered: 64 KiB (recommended);
+  1 MiB; 16 MiB. Answer: "64 KiB (Recommended)". What follows: `script-lua`'s
+  `DEFAULT_MAX_STRING_BYTES` is 64 KiB and a host replaces it with
+  `LuaEvaluator::with_max_string_bytes`. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1, lua-evaluator L4 · summary script-lua's note sandbox limits a built string to 64 KiB unless the host sets another.
+
 ## Open questions
 
 1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
    Convert them, keep a reader for the old fence, or refuse them with a message? Returns to Mark in L5.
 2. Where the Lua crate lives and what it is called. Beside `script-rhai` in this repository is assumed;
    the name is unruled.
-3. Memory. Rhai caps string, array and map sizes. Piccolo reports `total_memory()` and has no
-   allocation limit; `script-lua` sets none, so only fuel bounds growth, indirectly. Whether to refuse
-   above a ceiling read between fuel steps is undecided.
+3. Memory. Strings are answered 2026-11-21 (D10, D11). Rhai also caps array and map sizes; piccolo
+   reports `total_memory()` and has no allocation limit, so a table grows until fuel stops the
+   script. Whether to refuse above a ceiling read between fuel steps is undecided.
 4. Whether the Lua crate and Genet's `script-engine-piccolo` should share their sandbox setup, or stay
    two users of the fork.
 5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster; nothing
@@ -200,8 +220,8 @@ outcome. D1 to D9 are in answer order.
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
    is mostly about the user's `.rhai` files.
 9. What L4 is for. No authored script uses a string library function (Findings 13), so the string
-   work in didgeridoo is not gated by a consumer today. It was started on 2026-11-21 before this
-   inventory was read.
+   work in didgeridoo was not gated by a consumer; it landed 2026-11-21 (Findings 17). What L4 still
+   owes is `utf8.len` for D8's character count, and whatever LR's reading functions need.
 
 ## Findings
 
@@ -268,6 +288,17 @@ outcome. D1 to D9 are in answer order.
     one with memory ceilings (string 64 KiB, array 8,000, map 1,024). The `maths_bits` corpus hash
     `028dc38fdcbf650d` (`crates/script/rhai/tests/support/rule_bits.rs:22`) is L2's comparison target.
 
+17. Landed in didgeridoo 2026-11-21 (`98f58a2`): methods on strings (`s:upper()`), `string.rep`,
+    `string.format`, and `find`, `match`, `gmatch` and `gsub` on a matcher with no native recursion.
+    One call stops with an error at 32 million matcher steps, about 0.2 s on the laptop in a release
+    build, and at 200 pending backtracking points; matcher work is charged to fuel. `gmatch` reads a
+    leading `^` as a literal, as Lua 5.4 does. `getmetatable("")` raises instead of returning the
+    string metatable; `pack`, `unpack`, `packsize`, `dump` and `utf8` are still absent.
+18. The string limit (D10) landed in didgeridoo `106b3d6`: `..`, `rep`, `format`, `gsub` and
+    `table.concat` each succeed at the limit and are refused one byte past it, with an error a script
+    can catch. `script-lua` sets 64 KiB (D11): thirty doublings of a string stop at the seventeenth.
+    Tables and total memory are still unbounded except by fuel.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
@@ -278,3 +309,6 @@ outcome. D1 to D9 are in answer order.
   not done. Open questions 6 to 9 added.
 - 2026-11-21: D6 to D9 ruled on the differences between Lua and Rhai and on the readings lane;
   phase LR added before L5.
+- 2026-11-21: L4 in part. Didgeridoo `98f58a2` (string methods, `rep`, `format`, patterns) and
+  `106b3d6` (the string limit); `script-lua` passes 64 KiB and its 20 tests pass, wasm32 check
+  included. D10 and D11 ruled.

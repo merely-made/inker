@@ -21,6 +21,13 @@
 //! has no `load`, `dofile` or `require`, so a fence cannot touch files,
 //! stdout or other code.
 //!
+//! ## Memory
+//!
+//! Fuel bounds work, not size, so the sandbox also sets didgeridoo's string
+//! limit: no string a fence builds may pass
+//! [`LuaEvaluator::max_string_bytes`], [`DEFAULT_MAX_STRING_BYTES`] unless the
+//! host sets another.
+//!
 //! ## Output convention
 //!
 //! A chunk's first return value becomes the rendered block. Return a string
@@ -35,6 +42,10 @@ use piccolo::{Closure, Context, Executor, Fuel, Lua, StashedExecutor, Value};
 /// The budget used when the caller passes `max_ops == 0` ("backend picks").
 /// Every evaluation is bounded, so `0` never means unlimited here.
 pub const DEFAULT_MAX_OPS: u64 = 1_000_000;
+
+/// The longest string a fence may build unless the host says otherwise: the
+/// size Knot allows a note.
+pub const DEFAULT_MAX_STRING_BYTES: usize = 64 * 1024;
 
 /// Fuel handed to one `Executor::step` call. Between steps the arena is left,
 /// which lets the collector run during a long evaluation.
@@ -51,20 +62,43 @@ const RETURN_PREFIX: &str = "return ";
 ///
 /// It holds no Lua state: each call builds a fresh sandbox, so nothing leaks
 /// between fences and the evaluator stays `Send` (a piccolo `Lua` is not).
-#[derive(Debug, Default, Clone, Copy)]
-pub struct LuaEvaluator;
+#[derive(Debug, Clone, Copy)]
+pub struct LuaEvaluator {
+    max_string_bytes: usize,
+}
 
-impl LuaEvaluator {
-    pub fn new() -> Self {
-        Self
+impl Default for LuaEvaluator {
+    fn default() -> Self {
+        Self {
+            max_string_bytes: DEFAULT_MAX_STRING_BYTES,
+        }
     }
 }
 
-/// A Lua state with exactly the libraries a note fence may reach. Everything
-/// else, `io` included, is absent because it is never loaded.
-pub fn sandbox() -> Lua {
+impl LuaEvaluator {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The longest string, in bytes, a fence may build.
+    pub fn max_string_bytes(&self) -> usize {
+        self.max_string_bytes
+    }
+
+    /// Replace the string limit with the host's own.
+    pub fn with_max_string_bytes(mut self, bytes: usize) -> Self {
+        self.max_string_bytes = bytes;
+        self
+    }
+}
+
+/// A Lua state with exactly the libraries a note fence may reach, and a limit
+/// on the strings it may build. Everything else, `io` included, is absent
+/// because it is never loaded.
+pub fn sandbox(max_string_bytes: usize) -> Lua {
     let mut lua = Lua::empty();
     lua.enter(|ctx| {
+        ctx.set_max_string_bytes(max_string_bytes);
         piccolo::stdlib::load_base(ctx);
         piccolo::stdlib::load_coroutine(ctx);
         piccolo::stdlib::load_math(ctx);
@@ -81,7 +115,7 @@ impl BlockEvaluator for LuaEvaluator {
 
     fn eval_block(&mut self, source: &str, max_ops: u64) -> Result<EvalOutput, String> {
         let budget = if max_ops == 0 { DEFAULT_MAX_OPS } else { max_ops };
-        let mut lua = sandbox();
+        let mut lua = sandbox(self.max_string_bytes);
         let executor = lua
             .try_enter(|ctx| {
                 // A bare value first, as Lua's own prompt does, so `1 + 1`

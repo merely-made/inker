@@ -147,8 +147,8 @@ fn a_runtime_error_is_reported() {
 #[test]
 fn the_sandbox_cannot_reach_io() {
     assert_eq!(probe(Lua::full(), "return type(print)"), "function");
-    assert_eq!(probe(sandbox(), "return type(print)"), "nil");
-    assert_eq!(probe(sandbox(), "return type(io)"), "nil");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(print)"), "nil");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(io)"), "nil");
 
     let mut evaluator = LuaEvaluator::new();
     assert!(evaluator.eval_block(r#"io.open("/etc/passwd")"#, ENOUGH).is_err());
@@ -161,17 +161,17 @@ fn the_sandbox_cannot_reach_io() {
 #[test]
 fn the_sandbox_has_no_randomness() {
     // Control: the rest of `math` is there.
-    assert_eq!(probe(sandbox(), "return type(math.floor)"), "function");
-    assert_eq!(probe(sandbox(), "return type(math.random)"), "nil");
-    assert_eq!(probe(sandbox(), "return type(math.randomseed)"), "nil");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.floor)"), "function");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.random)"), "nil");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.randomseed)"), "nil");
 }
 
 #[test]
 fn the_sandbox_cannot_load_code_from_disk_or_strings() {
-    assert_eq!(probe(sandbox(), "return type(string)"), "table");
+    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(string)"), "table");
     for name in ["require", "dofile", "loadfile", "load", "loadstring", "os", "debug", "package"] {
         let source = format!("return type({name})");
-        assert_eq!(probe(sandbox(), &source), "nil", "{name} is reachable");
+        assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), &source), "nil", "{name} is reachable");
     }
     assert!(LuaEvaluator::new()
         .eval_block(r#"return require("sibling")"#, ENOUGH)
@@ -218,4 +218,69 @@ fn a_lua_fence_evaluates_through_the_inker_pass() {
         Block::Paragraph { spans }
             if spans == &vec![InlineSpan::Text("sum is 55".into())]
     ));
+}
+
+#[test]
+fn a_fence_cannot_build_a_string_past_the_limit() {
+    let mut eval = LuaEvaluator::new();
+    let limit = eval.max_string_bytes();
+    assert_eq!(limit, DEFAULT_MAX_STRING_BYTES);
+    // The control: exactly at the limit it builds.
+    let at = eval
+        .eval_block(&format!("return #string.rep('a', {limit})"), ENOUGH)
+        .unwrap();
+    assert_eq!(at.text, limit.to_string());
+    for build in [
+        format!("string.rep('a', {})", limit + 1),
+        format!("string.rep('a', {limit}) .. 'b'"),
+        format!("string.format('%s%s', string.rep('a', {limit}), 'b')"),
+        format!("table.concat({{string.rep('a', {limit}), 'b'}})"),
+        format!(
+            "(string.gsub(string.rep('a', {}), 'a', 'bb'))",
+            limit / 2 + 1
+        ),
+    ] {
+        let err = eval
+            .eval_block(&format!("return #({build})"), ENOUGH)
+            .expect_err(&build);
+        assert!(
+            err.contains("too large") || err.contains("too long"),
+            "{build}: {err}"
+        );
+    }
+}
+
+#[test]
+fn doubling_a_string_is_refused_long_before_the_budget() {
+    // Thirty doublings would be a gibibyte; the limit stops it at the seventeenth.
+    let err = LuaEvaluator::new()
+        .eval_block(
+            "local s = 'a' for _ = 1, 30 do s = s .. s end return #s",
+            ENOUGH,
+        )
+        .unwrap_err();
+    assert!(err.contains("too long"), "{err}");
+}
+
+#[test]
+fn the_host_can_set_its_own_string_limit() {
+    let source = format!("return #string.rep('a', {})", DEFAULT_MAX_STRING_BYTES + 1);
+    let mut roomy = LuaEvaluator::new().with_max_string_bytes(DEFAULT_MAX_STRING_BYTES * 2);
+    assert_eq!(
+        roomy.eval_block(&source, ENOUGH).unwrap().text,
+        (DEFAULT_MAX_STRING_BYTES + 1).to_string()
+    );
+    let mut tight = LuaEvaluator::new().with_max_string_bytes(16);
+    assert!(
+        tight
+            .eval_block("return string.rep('a', 17)", ENOUGH)
+            .is_err()
+    );
+    assert_eq!(
+        tight
+            .eval_block("return string.rep('a', 16)", ENOUGH)
+            .unwrap()
+            .text,
+        "a".repeat(16)
+    );
 }
