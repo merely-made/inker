@@ -374,6 +374,7 @@ fn node(
         numeric_value: None,
         numeric_minimum: None,
         numeric_maximum: None,
+        table: Default::default(),
         bounds,
         state: DocumentA11yState::default(),
         actions: Vec::new(),
