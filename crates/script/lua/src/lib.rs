@@ -39,8 +39,10 @@
 use inker::{BlockEvaluator, EvalOutput};
 use piccolo::{Closure, Context, Executor, Fuel, Lua, StashedExecutor, Value};
 
+mod command;
 mod value;
 
+pub use command::{COMMAND_DEFAULT_MAX_OPS, CommandLimits, LuaCommandEvaluator, collect_invocations};
 pub use value::LuaValueEngine;
 
 /// The budget used when the caller passes `max_ops == 0` ("backend picks").

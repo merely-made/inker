@@ -21,6 +21,10 @@ piccolo = { workspace = true }
 # The value-level script contract (ValueEngine, ScriptValue, Budget), the one
 # script-rhai's RhaiValueEngine implements.
 script-engine-api = { workspace = true }
+# Explicit command-producing scripts share declarations and opaque invocation
+# data with hosts; evaluating one never executes or authorizes a command.
+hest = { workspace = true }
+serde_json = { workspace = true }
 
 # wasm32 only: piccolo's tables seed their hashing through ahash, whose
 # getrandom needs its browser backend, selected by
