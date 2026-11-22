@@ -39,6 +39,12 @@
 use inker::{BlockEvaluator, EvalOutput};
 use piccolo::{Closure, Context, Executor, Fuel, Lua, StashedExecutor, Value};
 
+mod maths;
+mod value;
+
+pub use maths::register_libm_maths;
+pub use value::LuaValueEngine;
+
 /// The budget used when the caller passes `max_ops == 0` ("backend picks").
 /// Every evaluation is bounded, so `0` never means unlimited here.
 pub const DEFAULT_MAX_OPS: u64 = 1_000_000;

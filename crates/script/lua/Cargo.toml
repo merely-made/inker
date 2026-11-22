@@ -18,12 +18,22 @@ inker = { workspace = true }
 # didgeridoo, the piccolo fork (MIT). Its executors step against a `Fuel`
 # value, so the runaway cap is the VM's own.
 piccolo = { workspace = true }
+# The value-level script contract (ValueEngine, ScriptValue, Budget), the one
+# script-rhai's RhaiValueEngine implements.
+script-engine-api = { workspace = true }
+# Host maths for rules: piccolo's own `sin`, `cos` and `tan` call the standard
+# library, so rules take theirs from libm, as script-rhai's do.
+libm = { workspace = true }
 
 # wasm32 only: piccolo's tables seed their hashing through ahash, whose
 # getrandom needs its browser backend, selected by
 # `--cfg getrandom_backend="wasm_js"` in the build, as script-rhai's does.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[dev-dependencies]
+# The bit comparison runs the same rule on both engines (tests/maths_bits.rs).
+script-rhai = { path = "../rhai" }
 
 [lints]
 workspace = true
