@@ -502,3 +502,11 @@ fn a_host_function_returning_a_value_the_boundary_refuses_is_a_value_error() {
         Err(ValueError::Value(_))
     ));
 }
+
+#[test]
+fn the_smallest_integer_key_is_refused_not_a_panic() {
+    assert!(matches!(
+        run("return { [-9223372036854775807 - 1] = 1 }"),
+        Err(ValueError::Value(_))
+    ));
+}

@@ -256,8 +256,9 @@ fn from_table<'gc>(
             let Value::Integer(key) = key else {
                 unreachable!("every key was checked to be an integer")
             };
-            let slot = usize::try_from(key - 1)
-                .ok()
+            let slot = key
+                .checked_sub(1)
+                .and_then(|index| usize::try_from(index).ok())
                 .and_then(|index| slots.get_mut(index))
                 .ok_or_else(|| ValueError::Value("a table with gaps in its positions".into()))?;
             *slot = Some(from_value(item, depth + 1, nodes)?);
