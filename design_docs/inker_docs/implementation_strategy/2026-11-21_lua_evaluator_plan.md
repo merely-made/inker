@@ -5,7 +5,7 @@ D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects comma
 `didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
 Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
 from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 and L6 are
-not started; LR is built and tested on a branch of knot-editor and not yet landed (Findings 25, 26). Of L4, the fork has its string library, an embedder-set string limit and libm maths
+not started. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
 (Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D26 are ruled.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
@@ -478,10 +478,9 @@ outcome. D1 to D26 are in answer order.
     cannot reach their metatable. `max_ops` is fuel, `max_note_bytes` is also the string limit, a
     compile error carries its line, and a returned list longer than four times `max_rows` is refused.
     Rhai's reading tests are translated beside its own: 63 tests pass across both lanes.
-26. LR is not landed. Its first commit (`ef0091f`) is local; the commit carrying D23 to D26 is blocked
-    by knot-editor's bans check, because a fresh resolve after the family's winit move leaves six stale
-    skips and three new duplicates (libloading, x11rb, x11rb-protocol) in its `deny.toml`. That upkeep
-    is not LR's. Unverified for LR: wasm32, release builds, speed, very deep recursion.
+26. LR landed on knot-editor `main` as `ef0091f` and `9534cab`, the second carrying D23 to D26 and the
+    `deny.toml` upkeep a fresh resolve needed (six stale skips removed, `libloading` 0.8.9 skipped).
+    Unverified for LR: wasm32, release builds, speed, very deep recursion.
 27. What `script-didge` should export for LR and does not: its fuel loop (knot-readings carries a
     25-line copy that also counts fuel spent and checks the heap), the `return`-first compile, and the
     classification of string-limit errors.
@@ -508,3 +507,4 @@ outcome. D1 to D26 are in answer order.
 - 2026-11-22: LR built and tested on knot-editor's `didge-readings`; D23 to D26 ruled and applied
   there. Didgeridoo `cca2162` adds `utf8.len`; `script-didge` loads it (`6493200`). LR's second
   commit waits on knot-editor's `deny.toml` (Findings 26).
+- 2026-11-23: LR met; it landed on knot-editor `main` (`9534cab`). L5 is next.
