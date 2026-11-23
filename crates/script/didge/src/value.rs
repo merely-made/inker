@@ -8,7 +8,7 @@
 //!
 //! [`LuaValueEngine`] implements [`ValueEngine`]: neutral [`ScriptValue`]s in
 //! and out, host functions over them, and evaluation under a [`Budget`]. It is
-//! the Lua counterpart of `script-rhai`'s `RhaiValueEngine`.
+//! what replaced `script-rhai`'s `RhaiValueEngine` (Lua plan, L6).
 //!
 //! ## Sandbox
 //!

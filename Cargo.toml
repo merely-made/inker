@@ -13,7 +13,6 @@ members = [
     "crates/system/document-lanes",
     "crates/system/page-load",
     "crates/fleece",
-    "crates/script/rhai",
     "crates/script/didge",
 ]
 

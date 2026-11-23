@@ -9,7 +9,7 @@
 //! [`LuaEvaluator`] implements inker's thin [`BlockEvaluator`] slice over
 //! didgeridoo, the piccolo fork: evaluate a `lua eval` fence to text, bounded
 //! by the VM's own [`Fuel`] so a runaway is refused rather than hanging the
-//! render. It is the Lua counterpart of `script-rhai`'s `RhaiEvaluator`.
+//! render. It replaced `script-rhai`'s `RhaiEvaluator` (Lua plan, L6).
 //!
 //! ## Sandbox
 //!

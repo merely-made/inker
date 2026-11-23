@@ -25,7 +25,7 @@ carries the adapters that drive them.
 | `crates/system/document-lanes` | `mere-lanes` | The reader and smolweb sessions, their reading types and palette, and the remote fetcher |
 | `crates/system/page-load` | `mere-pageload` | The fetch vocabulary and the sans-IO page load |
 | `crates/fleece` | `mere-fleece` | Bounded traversal, clipping and capture over supplied documents |
-| `crates/script/rhai` | `script-rhai` | The Rhai block evaluator and its command batches |
+| `crates/script/didge` | `script-didge` | Lua on didgeridoo: the block evaluator, the value engine and command batches |
 
 `knot-editor-host` retired 2026-11-07 under Mere's engine split plan D17; the
 editor lives in Knot's `knot-document`, the lexers in `illume`.
@@ -46,7 +46,7 @@ its Mere location is in Mere's and genet's own histories.
 
 Inker names nothing from `mere.git` (the plan's F3, ruled D34: the `structured-data`
 feature of `mere-fleece` retired). `mere-lanes`
-takes `tinct` and `script-rhai` takes `hest` from Graphshell's contract root,
+takes `tinct` and `script-didge` takes `hest` from Graphshell's contract root,
 which D19 allows.
 
 ## Building

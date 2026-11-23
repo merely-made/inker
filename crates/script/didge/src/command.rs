@@ -12,8 +12,8 @@
 //! A complete successful evaluation returns data, never execution or
 //! permission. Receivers must recheck current declarations, arguments and
 //! authority before dispatch, and establish their own terminal
-//! [`hest::Outcome`]. This is the Lua counterpart of `script-rhai`'s command
-//! lane. The limits and the batch are hest's (`hest::batch`).
+//! [`hest::Outcome`]. It replaced `script-rhai`'s command lane (Lua plan,
+//! L6). The limits and the batch are hest's (`hest::batch`).
 
 use std::cell::RefCell;
 use std::fmt;

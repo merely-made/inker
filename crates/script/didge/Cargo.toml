@@ -12,14 +12,12 @@ description = "Lua on didgeridoo for knot notes, rules and commands: an inker Bl
 path = "src/lib.rs"
 
 [dependencies]
-# The thin knot-eval contract (BlockEvaluator + EvalOutput), the same slice
-# script-rhai satisfies.
+# The thin knot-eval contract (BlockEvaluator + EvalOutput).
 inker = { workspace = true }
 # didgeridoo, the piccolo fork (MIT). Its executors step against a `Fuel`
 # value, so the runaway cap is the VM's own.
 piccolo = { workspace = true }
-# The value-level script contract (ValueEngine, ScriptValue, Budget), the one
-# script-rhai's RhaiValueEngine implements.
+# The value-level script contract (ValueEngine, ScriptValue, Budget).
 script-engine-api = { workspace = true }
 # Explicit command-producing scripts share declarations and opaque invocation
 # data with hosts; evaluating one never executes or authorizes a command.
@@ -28,15 +26,13 @@ serde_json = { workspace = true }
 
 # wasm32 only: piccolo's tables seed their hashing through ahash, whose
 # getrandom needs its browser backend, selected by
-# `--cfg getrandom_backend="wasm_js"` in the build, as script-rhai's does.
+# `--cfg getrandom_backend="wasm_js"` in the build.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [dev-dependencies]
 # What didgeridoo's maths is compared with, bit for bit.
 libm = { workspace = true }
-# The bit comparison runs the same rule on both engines (tests/maths_bits.rs).
-script-rhai = { path = "../rhai" }
 
 [lints]
 workspace = true

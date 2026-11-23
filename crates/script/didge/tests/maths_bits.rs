@@ -4,34 +4,21 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-//! The bit comparison between the two engines (Lua plan, L2): the rule of
-//! script-rhai's `tests/support/rule_bits.rs`, in Lua, with the same inputs,
-//! the same hash and the same arithmetic in the same order. Rhai's recorded
-//! hash is the target; the Rhai engine also runs here so the two results are
-//! compared element by element, not only by hash. The Rhai rule calls host
-//! functions on libm; the Lua rule uses Lua's own `math` and `^` (D17), which
+//! The bit receipt for Lua rules (Lua plan, L2): the rule of script-rhai's
+//! `tests/support/rule_bits.rs`, in Lua, with the same inputs, the same hash
+//! and the same arithmetic in the same order. Rhai's recorded hash is the
+//! target; the element-by-element comparison with the Rhai engine left with
+//! script-rhai (L6). The Lua rule uses Lua's own `math` and `^` (D17), which
 //! didgeridoo computes with libm.
 
 use script_engine_api::{Budget, ScriptValue, ValueEngine, ValueError};
 use script_didge::LuaValueEngine;
-use script_rhai::{RhaiValueEngine, register_libm_maths as register_rhai_maths};
 
 const COUNT: usize = 10_000;
-/// Recorded by the Rhai engine (`script-rhai/tests/support/rule_bits.rs`).
+/// Recorded by the Rhai engine (`script-rhai/tests/support/rule_bits.rs`, retired
+/// in L6) and matched element by element until then.
 const EXPECTED_HASH: &str = "028dc38fdcbf650d";
 const BUDGET: Budget = Budget::Steps(200_000_000);
-
-const RHAI_RULE: &str = r#"
-let out = [];
-for i in 0..xs.len() {
-    let dx = xs[i] - 12.5;
-    let dy = ys[i] + 7.25;
-    let d2 = dx * dx + dy * dy;
-    let s = exp(-d2 / 28800.0) * sin(dx * 0.01) * cos(dy * 0.01) + pow(sqrt(d2 + 1.0), 0.5) * 0.01;
-    out.push(s);
-}
-out
-"#;
 
 const LUA_RULE: &str = r#"
 local out = {}
@@ -97,12 +84,6 @@ fn run_lua(n: usize) -> Result<Vec<f64>, ValueError> {
     run_on(&mut engine, LUA_RULE, n)
 }
 
-fn run_rhai(n: usize) -> Result<Vec<f64>, ValueError> {
-    let mut engine = RhaiValueEngine::new();
-    register_rhai_maths(&mut engine)?;
-    run_on(&mut engine, RHAI_RULE, n)
-}
-
 fn hash_hex(values: &[f64]) -> String {
     format!("{:016x}", fnv(values))
 }
@@ -110,22 +91,6 @@ fn hash_hex(values: &[f64]) -> String {
 #[test]
 fn the_rule_hashes_to_the_recorded_bits() {
     assert_eq!(hash_hex(&run_lua(COUNT).unwrap()), EXPECTED_HASH);
-}
-
-/// Element by element, so a mismatch names the first index and both patterns.
-#[test]
-fn lua_and_rhai_agree_on_every_result() {
-    let lua = run_lua(COUNT).unwrap();
-    let rhai = run_rhai(COUNT).unwrap();
-    assert_eq!(lua.len(), rhai.len());
-    if let Some(i) = (0..lua.len()).find(|&i| lua[i].to_bits() != rhai[i].to_bits()) {
-        panic!(
-            "first difference at {i}: lua {:#018x}, rhai {:#018x}",
-            lua[i].to_bits(),
-            rhai[i].to_bits()
-        );
-    }
-    assert_eq!(hash_hex(&rhai), EXPECTED_HASH);
 }
 
 /// The hash must be able to move: one ulp in one result changes it.

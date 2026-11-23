@@ -41,7 +41,7 @@ reason = "held by const-random-macro 0.1.16, rand_core 0.6.4, ring 0.17.14; gone
 
 [[bans.skip]]
 crate = "getrandom@0.3.4"
-reason = "held by ahash 0.8.12 (its latest release; through rhai) and rand_core 0.9.5; script-rhai's wasm32 dev row names getrandom 0.3 only to turn on wasm_js for ahash's copy and goes with it; gone when ahash moves to getrandom 0.4.3"
+reason = "held by ahash 0.8.12 (its latest release; through piccolo), rand_core 0.9.5 and tempfile 3.27.0; script-didge's wasm32 row names getrandom 0.3 only to turn on wasm_js for ahash's copy; gone when ahash moves to getrandom 0.4.3"
 
 [[bans.skip]]
 crate = "hashbrown@0.14.5"

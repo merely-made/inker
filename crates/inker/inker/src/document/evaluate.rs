@@ -73,9 +73,9 @@ impl EvalOutput {
 /// This is the **thin slice** the knot path needs — evaluate a source string
 /// under a budget and hand back text — deliberately distinct from genet's
 /// full DOM-shaped `ScriptEngine` seam (reflectors, host promises, native
-/// callbacks), which mod and DOM scripting use. Lua, Rhai, and JS all satisfy
-/// this cheaply; a backend whose language has a native operation cap (Rhai)
-/// gets `eval_block`'s budget for free.
+/// callbacks), which mod and DOM scripting use. Lua and JS both satisfy this
+/// cheaply; a backend whose VM counts its own steps (didgeridoo's fuel) gets
+/// `eval_block`'s budget for free.
 /// `Send` because an evaluator is owned by whatever document endpoint holds
 /// it, and those are scheduled across threads by their hosts. It is a bound on
 /// the backend rather than on the caller: a language runtime that is
@@ -84,7 +84,7 @@ impl EvalOutput {
 /// `Sync` is deliberately not required, since evaluation takes `&mut self` and
 /// no two threads share one evaluator.
 pub trait BlockEvaluator: Send {
-    /// The fence language tag this evaluator handles (e.g. `"rhai"`, `"lua"`).
+    /// The fence language tag this evaluator handles (e.g. `"lua"`).
     fn language(&self) -> &str;
 
     /// Evaluate `source`, bounded by `max_ops` coarse operations (the unit is

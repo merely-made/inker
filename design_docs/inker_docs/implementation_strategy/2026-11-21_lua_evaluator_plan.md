@@ -1,12 +1,12 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-23. In progress. L1, L2 and L3 are met: `script-didge` (named `script-lua` until
-D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects commands from a
-`didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
-Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
-from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 is met: Knot,
-Scenograph and Turnstone run on Lua and no consumer names `script-rhai` (Findings 28 to 30). L6 is next. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
-(Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D31 are ruled; D30 replaces D22's fence tags.
+**Status:** 2026-11-23. L1, L2, L3, LR, L5 and L6 are met: Lua on didgeridoo (`script-didge`) runs
+note fences (`lua eval`), rules and the command lane (`lua-command`) for Knot, Scenograph and
+Turnstone, and `script-rhai` is removed. `rhai` resolves in no family repository that records its
+resolve, and no other repository's manifest names it (Findings 31); that check stands in for L0's,
+whose inventory was read from source (Findings 11 to 16). Of L4, the fork has its string library, an
+embedder-set string limit and libm maths (Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D33
+are ruled; D30 replaces D22's fence tags.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -398,6 +398,23 @@ outcome. D1 to D31 are in answer order.
 
   Links: area The stack · plans lua-evaluator L5 · summary A failed fence is followed by a self-contained error block: what failed, the error and the source.
 
+- **D32. Illume keeps highlighting `rhai` fences (Mark, 2026-11-23):** Evidence: L6 removes the
+  engine; Illume's `rhai` entry is a keyword lexer with no Rhai dependency, and D27 keeps a refused
+  fence in the note as source. Offered: keep it (recommended); drop it with the engine. Answer: "Keep
+  it (Recommended)". What follows: an old note's `rhai` fence still reads as code while Knot refuses
+  to run it. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L6 · summary Illume still highlights rhai fences after the engine retires; highlighting is not execution.
+
+- **D33. Records that name Rhai are left as they are (Mark, 2026-11-23):** Evidence: outside live
+  code, Rhai is named by Mere's family-promotion `source-workspace.toml` (the frozen input of a
+  finished migration script), a Netrender receipt's probe manifest, and older design docs in Knot and
+  Inker; none is a resolved graph. Offered: leave them (recommended); scrub them. Answer: "Leave
+  them (Recommended)". What follows: L6 restates the lanes only in Graphshell's graph behaviors plan
+  and here. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L6 · summary Files that record Rhai as it was are not edited when Rhai retires.
+
 ## Open questions
 
 1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
@@ -553,6 +570,16 @@ outcome. D1 to D31 are in answer order.
     Lua (the `itertools` skip moved to 0.12.1; the `windows-sys` 0.59.0 skip went).
     `.cargo/config.toml.example` still names pre-split `../mere/...` paths. Unverified for L5:
     consumers on wasm32, release builds.
+31. L6, Inker: `crates/script/rhai` is removed with its workspace row; `script-didge` loses its dev
+    edge to it, and `maths_bits` keeps the hash Rhai recorded (`028dc38fdcbf650d`) while the
+    element-by-element comparison with the Rhai engine goes. `illume` 37, `inker` 140,
+    `script-didge` 59 and `maths_bits` 3 tests pass; `cargo tree -i rhai` finds no package; bans pass
+    with the `getrandom` 0.3.4 skip argued through piccolo. Across the family, `house resolved show`
+    on each `main` finds `rhai` in Inker's note before this change (the positive control) and in none
+    of the seven others that carry a note (graphshell, knot-editor, turnstone, isocosm, murm,
+    armillary, dramatis); the twenty-one heads without a note name neither `rhai` nor `script-rhai` in
+    a manifest. Finding 29's option was taken: Scenograph's `states` is a set (graphshell
+    `01858e8e`, `graphshell:scenograph-editor D1`).
 
 ## Progress
 
@@ -582,3 +609,5 @@ outcome. D1 to D31 are in answer order.
   `lua-command`; `inker`, `script-didge`, `script-rhai` and `illume` tests pass.
 - 2026-11-23: L5 met. Knot `06d25e7`, Scenograph on graphshell `0ee16afe` and Turnstone `39796c25`
   run on Lua, and none names `script-rhai` (Findings 28 to 30). L6 is next.
+- 2026-11-23: L6 met. `script-rhai` is removed and `rhai` resolves nowhere in the family (Findings
+  31). D32 and D33 ruled. Graphshell's graph behaviors plan states the lanes as they now are.
