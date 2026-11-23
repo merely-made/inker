@@ -4,8 +4,8 @@
 D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects commands from a
 `didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
 Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
-from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 is in progress: Inker's side is
-done (D27 to D31); Knot, Turnstone and Scenograph have not moved. L6 is not started. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
+from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 is met: Knot,
+Scenograph and Turnstone run on Lua and no consumer names `script-rhai` (Findings 28 to 30). L6 is next. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
 (Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D31 are ruled; D30 replaces D22's fence tags.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
@@ -414,7 +414,7 @@ outcome. D1 to D31 are in answer order.
 6. Answered 2026-11-21 (D9): the readings lane is phase LR. Whether its host surface (eight types, the
    reading functions) moves exactly as it is, or is reshaped for Lua, is still open.
 7. Answered 2026-11-21 (D6, D7, D8): Lua's behaviour in all three, and the scripts are rewritten.
-8. Answered 2026-11-23 (D28, D30) but for Turnstone's names, which move with L5. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
+8. Answered 2026-11-23 (D28, D30); Turnstone's environment default moved with L5 (Findings 30). Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
    is mostly about the user's `.rhai` files. Since D22 the highlighter (`illume`) knows `lua` and not
    `didge`, so a `didge` fence is not coloured as Lua until it is taught the tag.
@@ -535,6 +535,24 @@ outcome. D1 to D31 are in answer order.
 27. What `script-didge` should export for LR and does not: its fuel loop (knot-readings carries a
     25-line copy that also counts fuel spent and checks the heap), the `return`-first compile, and the
     classification of string-limit errors.
+28. L5 in Knot, knot-editor `main` `06d25e7`: readings run only on Lua; a `.rhai` reading is listed
+    with a note asking for a `.lua` rewrite; Knot's evaluate policy retires `rhai` and `rhai-command`
+    with messages naming `lua eval` and `lua-command eval`; `script-rhai` leaves the workspace. A
+    fresh resolve needed a `windows-sys` 0.59.0 skip (dirs-sys 0.5.0, latest). The desktop
+    `readings_panel` tests fail at "the Readings toolbar toggle is missing" on `main` before and after
+    this change, so the readings panel is unverified end to end.
+29. L5 in Scenograph, graphshell `main` `0ee16afe`: the rule runner's real-engine test runs on
+    `LuaValueEngine`. No value (`nil`) is no match and negates like `false` ("script: no value").
+    Rhai's `states.contains(x)` has no Lua form; the rules walk `ipairs(states)`. Handing rules a
+    set-shaped `states` table is an option not taken.
+30. L5 in Turnstone, turnstone `main` `39796c25`: the authoring default allows `lua`, the authoring
+    fixture says `lua eval`, and the command-invocation test runs a Lua batch through `script-didge`.
+    The endpoint receipts pass 7 of 7 against a `knot_endpoint` built from `06d25e7`, but only with
+    the `endpoint-process` feature: under `authoring` alone the hub is a stub and every receipt fails
+    with "Knot authoring worker is unavailable". The commit carries `deny.toml` upkeep unrelated to
+    Lua (the `itertools` skip moved to 0.12.1; the `windows-sys` 0.59.0 skip went).
+    `.cargo/config.toml.example` still names pre-split `../mere/...` paths. Unverified for L5:
+    consumers on wasm32, release builds.
 
 ## Progress
 
@@ -562,3 +580,5 @@ outcome. D1 to D31 are in answer order.
 - 2026-11-23: L5 begun. D27 to D31 ruled. Inker: fences are `lua eval` and `lua-command`, a failed
   fence leaves an error block, a host can retire a language with a message, and Illume colours
   `lua-command`; `inker`, `script-didge`, `script-rhai` and `illume` tests pass.
+- 2026-11-23: L5 met. Knot `06d25e7`, Scenograph on graphshell `0ee16afe` and Turnstone `39796c25`
+  run on Lua, and none names `script-rhai` (Findings 28 to 30). L6 is next.
