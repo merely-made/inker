@@ -1,12 +1,12 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-22. In progress. L1, L2 and L3 are met: `script-didge` (named `script-lua` until
+**Status:** 2026-11-23. In progress. L1, L2 and L3 are met: `script-didge` (named `script-lua` until
 D22) evaluates a `didge eval` fence, implements `ValueEngine` and collects commands from a
 `didge-command` fence, each bounded by fuel, with no `io` and no randomness, checked for wasm32; the
 Lua engine matches Rhai bit for bit on the `maths_bits` rule (Findings 19). L0's inventory is read
-from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 and L6 are
-not started. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
-(Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D26 are ruled.
+from source (Findings 11 to 16) but not yet checked against each resolved graph. L5 is in progress: Inker's side is
+done (D27 to D31); Knot, Turnstone and Scenograph have not moved. L6 is not started. LR is met: Knot's readings run on Lua behind the same backend seam (Findings 25). Of L4, the fork has its string library, an embedder-set string limit and libm maths
+(Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D31 are ruled; D30 replaces D22's fence tags.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -87,7 +87,7 @@ graph; Graphshell's graph behaviors plan states the lanes as they then are.
 ## Decisions
 
 Each records the evidence put to Mark, what was offered, his answer in his words, what follows, and an
-outcome. D1 to D26 are in answer order.
+outcome. D1 to D31 are in answer order.
 
 - **D1. Lua replaces Rhai (Mark, 2026-11-21):** Evidence: `script-rhai` is 1,472 lines behind two
   engine-neutral traits; nothing on Lua implements them yet; piccolo steps an executor against a `Fuel`
@@ -346,11 +346,62 @@ outcome. D1 to D26 are in answer order.
 
   Links: area The stack · plans lua-evaluator LR · summary A Lua reading runs under ReadingBudget::max_heap_bytes, 16 MiB by default.
 
+- **D27. Rhai already written is refused with a message (Mark, 2026-11-23):** Evidence: no shipping
+  document holds a `rhai` fence (Findings 13), and none was found in the application data on the
+  laptop; Knot reports a failed fence only as a count. Offered: refuse with a message naming the Lua
+  form (recommended); keep a Rhai reader until L6; convert fences automatically. Answer: "Refuse with
+  a message (Recommended)". What follows: a host names retired languages in
+  `EvaluationPolicy::retired`, each with the message its fences fail with, checked before the
+  allowlist; Knot retires `rhai` and `rhai-command`; a `.rhai` reading is listed with a note, not
+  skipped. No Rhai reader is kept. Outcome: new; answers open question 1.
+
+  Links: area The stack · plans lua-evaluator L5, lua-evaluator L6 · summary An old rhai fence or reading is refused with a message naming the Lua form; no Rhai reader is kept.
+
+- **D28. Reading scripts are `.lua` files (Mark, 2026-11-23):** Evidence: Knot finds readings by
+  extension (`crates/knot-readings/src/scripts.rs:36`, `.rhai`). Offered: `.didge`, after D22
+  (recommended); `.lua`. Answer: ".lua". What follows: Knot lists `.lua` readings. Outcome: new;
+  answers open question 8 for the extension.
+
+  Links: area The stack · plans lua-evaluator L5 · summary Knot's reading scripts are .lua files.
+
+- **D29. Code is named for the language, put back as a question (Mark, 2026-11-23):** Evidence:
+  Illume's highlighter knows `lua` and not `didge`, so a `didge` fence was uncoloured. Offered: add
+  `didge` now and drop `rhai` in L6 (recommended); add `didge` and drop `rhai` now; leave it.
+  Answer: "didge is lua. maybe a lua "- didgeridoo" tag of some sort, but files and code should be
+  described/portrayed as the language. questions of the engine should highlight that the engine
+  providing the language is what it is, i.e. didgeridoo, or didge for short." What follows: it
+  contradicts D22's tags and was put back as D30. Outcome: contradicts D22.
+
+  Links: area The stack · contradicts lua-evaluator D22 · plans lua-evaluator L5 · summary Files and code are named for Lua and didgeridoo where the engine is the subject; put back as D30.
+
+- **D30. Fences are `lua eval` and `lua-command` (Mark, 2026-11-23):** Evidence: D29; the `didge`
+  tags had been live in `script-didge` since 2026-11-22 and no shipping note used them. Offered:
+  `lua eval` and `lua-command`, with didgeridoo named in the crate, the backend id
+  `knot.didge.reading`, refusal messages and receipts (recommended); `lua` with an optional engine
+  word; `lua` with `didge` kept as an alias. Answer: "lua eval / lua-command (Recommended)". What
+  follows: `LuaEvaluator` handles `lua` and `LuaCommandEvaluator` `lua-command`; chunk names read
+  `lua eval`, `lua command` and `lua rule`; the fuel refusal reads "didgeridoo refused: ..."; Illume
+  colours `lua-command` as Lua; the crate stays `script-didge`; Knot's reading backend becomes
+  `LuaReadingBackend` and keeps the id `knot.didge.reading`. Outcome: new; replaces D22's tags.
+
+  Links: area The stack · replaces lua-evaluator D22 · plans lua-evaluator L5 · summary Notes say lua eval and lua-command; didgeridoo is named only where the engine is the subject.
+
+- **D31. A failed fence leaves an error block that stands on its own (Mark, 2026-11-23):** Evidence:
+  D27's message needs a place; Knot's Run reported only counts and never a fence's error. Offered:
+  in the Run summary (recommended); in place, under the fence; both. Answer: "2 might be a nice
+  error convention, add a block that could be copy pasted without the original context and just the
+  trace/code/whatever we've got". What follows: Inker's evaluate pass keeps every failed fence (an
+  error, a budget refusal, a render failure, a retired language) and adds a preformatted block after
+  it: the fence's info string with "failed", the error, and the source; its provenance is
+  `failed:<lang>`. A denied fence (evaluation off, a language not allowed) still adds nothing.
+  Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L5 · summary A failed fence is followed by a self-contained error block: what failed, the error and the source.
+
 ## Open questions
 
-1. Rhai already written into documents. Knot notes hold `rhai eval` fences and `rhai-command` scripts.
-   Convert them, keep a reader for the old fence, or refuse them with a message? Returns to Mark in L5.
-2. Answered 2026-11-22 (D22): the crate is `script-didge`, beside `script-rhai`. Whether its types
+1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
+2. Answered 2026-11-22 (D22) and 2026-11-23 (D30): the crate is `script-didge`, beside `script-rhai`. Whether its types
    keep the `Lua` prefix is open.
 3. Memory. Strings are answered 2026-11-21 (D10, D11). Rhai also caps array and map sizes; piccolo
    reports `total_memory()` and has no allocation limit, so a table grows until fuel stops the
@@ -363,7 +414,7 @@ outcome. D1 to D26 are in answer order.
 6. Answered 2026-11-21 (D9): the readings lane is phase LR. Whether its host surface (eight types, the
    reading functions) moves exactly as it is, or is reshaped for Lua, is still open.
 7. Answered 2026-11-21 (D6, D7, D8): Lua's behaviour in all three, and the scripts are rewritten.
-8. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
+8. Answered 2026-11-23 (D28, D30) but for Turnstone's names, which move with L5. Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
    is mostly about the user's `.rhai` files. Since D22 the highlighter (`illume`) knows `lua` and not
    `didge`, so a `didge` fence is not coloured as Lua until it is taught the tag.
@@ -508,3 +559,6 @@ outcome. D1 to D26 are in answer order.
   there. Didgeridoo `cca2162` adds `utf8.len`; `script-didge` loads it (`6493200`). LR's second
   commit waits on knot-editor's `deny.toml` (Findings 26).
 - 2026-11-23: LR met; it landed on knot-editor `main` (`9534cab`). L5 is next.
+- 2026-11-23: L5 begun. D27 to D31 ruled. Inker: fences are `lua eval` and `lua-command`, a failed
+  fence leaves an error block, a host can retire a language with a message, and Illume colours
+  `lua-command`; `inker`, `script-didge`, `script-rhai` and `illume` tests pass.

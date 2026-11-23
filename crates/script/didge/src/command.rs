@@ -29,7 +29,7 @@ pub use script_engine_api::Budget;
 use crate::{DEFAULT_MAX_OPS, DEFAULT_MAX_STRING_BYTES, run_bounded, sandbox};
 
 /// The name compiled chunks carry in error messages.
-const CHUNK_NAME: &str = "didge command";
+const CHUNK_NAME: &str = "lua command";
 
 /// Arguments `command` takes: an id and its argument bytes.
 const COMMAND_ARITY: usize = 2;
@@ -136,7 +136,7 @@ fn collect_with(
 
 /// Opt-in block evaluator that renders invocation data as plain JSON.
 ///
-/// Its distinct `didge-command` language tag requires separate registration and
+/// Its distinct `lua-command` language tag requires separate registration and
 /// host allowlisting. Output is data, never automatically dispatched. Ordinary
 /// [`crate::LuaEvaluator`] note fences remain pure and have no `command` binding.
 pub struct LuaCommandEvaluator {
@@ -170,7 +170,7 @@ impl LuaCommandEvaluator {
 
 impl BlockEvaluator for LuaCommandEvaluator {
     fn language(&self) -> &str {
-        "didge-command"
+        "lua-command"
     }
 
     fn eval_block(&mut self, source: &str, max_ops: u64) -> Result<EvalOutput, String> {

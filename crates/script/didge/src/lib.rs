@@ -7,7 +7,7 @@
 //! Lua backend for the knot block-evaluator lane.
 //!
 //! [`LuaEvaluator`] implements inker's thin [`BlockEvaluator`] slice over
-//! didgeridoo, the piccolo fork: evaluate a `didge eval` fence to text, bounded
+//! didgeridoo, the piccolo fork: evaluate a `lua eval` fence to text, bounded
 //! by the VM's own [`Fuel`] so a runaway is refused rather than hanging the
 //! render. It is the Lua counterpart of `script-rhai`'s `RhaiEvaluator`.
 //!
@@ -58,13 +58,13 @@ pub const DEFAULT_MAX_STRING_BYTES: usize = 64 * 1024;
 const FUEL_PER_STEP: i32 = 4096;
 
 /// The name compiled chunks carry in error messages.
-const CHUNK_NAME: &str = "didge eval";
+const CHUNK_NAME: &str = "lua eval";
 
 /// Put before the source to read it as a value. On the same line, so line
 /// numbers in errors stay the author's.
 const RETURN_PREFIX: &str = "return ";
 
-/// A Lua-backed [`BlockEvaluator`] for `didge eval` knot fences.
+/// A Lua-backed [`BlockEvaluator`] for `lua eval` knot fences.
 ///
 /// It holds no Lua state: each call builds a fresh sandbox, so nothing leaks
 /// between fences and the evaluator stays `Send` (a piccolo `Lua` is not).
@@ -117,7 +117,7 @@ pub fn sandbox(max_string_bytes: usize) -> Lua {
 
 impl BlockEvaluator for LuaEvaluator {
     fn language(&self) -> &str {
-        "didge"
+        "lua"
     }
 
     fn eval_block(&mut self, source: &str, max_ops: u64) -> Result<EvalOutput, String> {
@@ -167,7 +167,7 @@ fn run_bounded(lua: &mut Lua, executor: &StashedExecutor, budget: u64) -> Result
         left = left.saturating_sub(u64::try_from(spent.max(1)).unwrap_or(1));
         if left == 0 {
             return Err(format!(
-                "refused: the script ran past its budget of {budget} operations"
+                "didgeridoo refused: the script ran past its budget of {budget} operations"
             ));
         }
     }

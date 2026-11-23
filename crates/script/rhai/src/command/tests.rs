@@ -266,7 +266,7 @@ fn actual_block_pass_emits_plain_invocation_data_with_generated_provenance() {
 }
 
 #[test]
-fn denied_fences_and_failed_scripts_remain_source_without_generated_provenance() {
+fn denied_fences_remain_source_and_failed_scripts_add_only_an_error_block() {
     for policy in [
         EvaluationPolicy::deny_all(),
         EvaluationPolicy::for_own_notes(vec!["rhai".into()]),
@@ -300,6 +300,10 @@ fn denied_fences_and_failed_scripts_remain_source_without_generated_provenance()
     );
     assert_eq!(outcome.failed.len(), 1);
     assert_eq!(outcome.evaluated, 0);
-    assert_eq!(document.blocks, before);
+    assert_eq!(document.blocks[..1], before[..]);
+    assert!(matches!(
+        &document.blocks[1..],
+        [Block::Preformatted { text }] if text.starts_with("rhai-command eval failed")
+    ));
     assert!(outcome.provenance.get(0).is_none());
 }

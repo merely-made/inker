@@ -148,6 +148,10 @@ pub struct EvaluationPolicy {
     pub enabled: bool,
     /// Languages that may run (e.g. `lua`). Anything else is denied.
     pub allowed_languages: Vec<String>,
+    /// Languages no longer run, each with the message its fences fail with
+    /// (e.g. `rhai`, naming the Lua form). Checked before the allowlist, so an
+    /// old fence says why it did not run instead of staying a silent sample.
+    pub retired: Vec<(String, String)>,
 }
 
 impl EvaluationPolicy {
@@ -157,6 +161,7 @@ impl EvaluationPolicy {
         Self {
             enabled: false,
             allowed_languages: Vec::new(),
+            retired: Vec::new(),
         }
     }
 
@@ -165,7 +170,14 @@ impl EvaluationPolicy {
         Self {
             enabled: true,
             allowed_languages,
+            retired: Vec::new(),
         }
+    }
+
+    /// Refuse fences in `language` with `message`.
+    pub fn with_retired(mut self, language: impl Into<String>, message: impl Into<String>) -> Self {
+        self.retired.push((language.into(), message.into()));
+        self
     }
 }
 
@@ -175,11 +187,12 @@ pub struct EvalOutcome {
     pub evaluated: usize,
     /// `(language, reason)` for fences the policy refused.
     pub denied: Vec<(String, String)>,
-    /// `(language, error)` for fences that ran in policy but errored
-    /// (compile error, runtime error, budget exhaustion). Their source fence
-    /// stays in place.
+    /// `(language, error)` for fences that errored (compile error, runtime
+    /// error, budget exhaustion) or whose language is retired. Their source
+    /// fence stays in place, followed by an error block.
     pub failed: Vec<(String, String)>,
-    /// Generated-block provenance (top-level index → "evaluated:<lang>").
+    /// Generated-block provenance (top-level index → "evaluated:<lang>", or
+    /// "failed:<lang>" for an error block).
     pub provenance: BlockProvenanceMap,
 }
 
@@ -203,6 +216,19 @@ fn content_type_for(format: &str) -> &str {
         "djot" | "knot" => "text/x-knot",
         other => other,
     }
+}
+
+/// The block a failed fence leaves after itself: the fence's info string, the
+/// error and the source, so it can be copied out and read without the note
+/// around it.
+fn error_block(info: &str, error: &str, source: &str) -> Block {
+    let mut text = format!("{info} failed\n{error}");
+    let source = source.trim_end();
+    if !source.is_empty() {
+        text.push_str("\n\nsource:\n");
+        text.push_str(source);
+    }
+    Block::Preformatted { text }
 }
 
 /// Turn a plain-text eval result into a block: a multi-line result keeps its
@@ -235,11 +261,13 @@ pub fn evaluate_blocks(
             Block::CodeBlock {
                 language: Some(language),
                 text,
-            } => parse_eval(language).map(|lang| (lang.to_string(), text.clone())),
+            } => {
+                parse_eval(language).map(|lang| (lang.to_string(), language.clone(), text.clone()))
+            },
             _ => None,
         };
 
-        let Some((lang, source)) = fence else {
+        let Some((lang, info, source)) = fence else {
             blocks.push(block);
             continue;
         };
@@ -247,6 +275,23 @@ pub fn evaluate_blocks(
         if !policy.enabled {
             outcome.denied.push((lang, "evaluation disabled".into()));
             blocks.push(block);
+            continue;
+        }
+        let failure =
+            |blocks: &mut Vec<Block>, outcome: &mut EvalOutcome, block: Block, error: String| {
+                blocks.push(block);
+                outcome.provenance.insert(
+                    blocks.len(),
+                    BlockProvenance::from_document(DocumentProvenance {
+                        source_label: Some(format!("failed:{lang}")),
+                        ..DocumentProvenance::default()
+                    }),
+                );
+                blocks.push(error_block(&info, &error, &source));
+                outcome.failed.push((lang.clone(), error));
+            };
+        if let Some((_, message)) = policy.retired.iter().find(|(l, _)| l == &lang) {
+            failure(&mut blocks, &mut outcome, block, message.clone());
             continue;
         }
         if !policy.allowed_languages.iter().any(|l| l == &lang) {
@@ -260,8 +305,7 @@ pub fn evaluate_blocks(
         let output = match evaluate(&lang, &source) {
             Ok(output) => output,
             Err(error) => {
-                outcome.failed.push((lang, error));
-                blocks.push(block);
+                failure(&mut blocks, &mut outcome, block, error);
                 continue;
             },
         };
@@ -290,17 +334,19 @@ pub fn evaluate_blocks(
                 outcome.evaluated += 1;
             },
             Err(error) => {
-                outcome
-                    .failed
-                    .push((lang, format!("render output: {error}")));
-                blocks.push(block);
+                failure(
+                    &mut blocks,
+                    &mut outcome,
+                    block,
+                    format!("render output: {error}"),
+                );
             },
         }
     }
 
     document.blocks = blocks;
-    if outcome.evaluated > 0 {
-        // Splices shift top-level indices the navigation table was keyed by.
+    if outcome.evaluated > 0 || !outcome.failed.is_empty() {
+        // Splices and error blocks shift top-level indices the navigation table was keyed by.
         document.navigation = Default::default();
     }
     outcome
@@ -437,6 +483,48 @@ mod tests {
         let outcome = evaluate_blocks(&mut document, &mut evaluate, &mut stub_render, &allow_lua());
         assert_eq!(outcome.failed.len(), 1);
         assert!(matches!(&document.blocks[0], Block::CodeBlock { .. }));
+        // The error block stands on its own: what failed, why, and the source.
+        assert!(matches!(
+            &document.blocks[1],
+            Block::Preformatted { text }
+                if text == "lua eval failed\nruntime error: boom\n\nsource:\nerror('boom')"
+        ));
+        assert_eq!(
+            outcome
+                .provenance
+                .get(1)
+                .and_then(|p| p.provenance.source_label.as_deref()),
+            Some("failed:lua")
+        );
+    }
+
+    #[test]
+    fn a_retired_language_fails_with_its_message_before_the_allowlist() {
+        let mut document = doc_with(vec![eval_fence("rhai eval", "40 + 2")]);
+        let mut evaluate =
+            |_: &str, _: &str| -> Result<EvalOutput, String> { panic!("retired never runs") };
+        let policy = allow_lua().with_retired("rhai", "rhai is no longer run; write `lua eval`");
+        let outcome = evaluate_blocks(&mut document, &mut evaluate, &mut stub_render, &policy);
+        assert!(outcome.denied.is_empty());
+        assert_eq!(
+            outcome.failed,
+            vec![(
+                "rhai".to_string(),
+                "rhai is no longer run; write `lua eval`".to_string()
+            )]
+        );
+        assert!(matches!(
+            &document.blocks[1],
+            Block::Preformatted { text }
+                if text == "rhai eval failed\nrhai is no longer run; write `lua eval`\n\nsource:\n40 + 2"
+        ));
+
+        // Evaluation off still runs nothing and says nothing.
+        let mut document = doc_with(vec![eval_fence("rhai eval", "40 + 2")]);
+        let disabled = EvaluationPolicy::deny_all().with_retired("rhai", "retired");
+        let outcome = evaluate_blocks(&mut document, &mut evaluate, &mut stub_render, &disabled);
+        assert_eq!((outcome.denied.len(), outcome.failed.len()), (1, 0));
+        assert_eq!(document.blocks.len(), 1);
     }
 
     #[test]

@@ -33,7 +33,7 @@ fn probe(mut lua: Lua, source: &str) -> String {
 
 #[test]
 fn language_tag_is_lua() {
-    assert_eq!(LuaEvaluator::new().language(), "didge");
+    assert_eq!(LuaEvaluator::new().language(), "lua");
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn a_chunk_that_returns_nothing_is_empty_plain_text() {
 fn a_runaway_is_cut_off_by_fuel() {
     let mut evaluator = LuaEvaluator::new();
     let err = evaluator.eval_block("while true do end", SMALL).unwrap_err();
-    assert!(err.starts_with("refused"), "expected a budget refusal, got: {err}");
+    assert!(err.starts_with("didgeridoo refused"), "expected a budget refusal, got: {err}");
     // The evaluator is still usable after stopping a runaway.
     let out = evaluator.eval_block("return 1 + 1", ENOUGH).unwrap();
     assert_eq!(out.text, "2");
@@ -116,7 +116,7 @@ fn a_zero_budget_still_bounds_a_runaway() {
     let err = LuaEvaluator::new()
         .eval_block("while true do end", 0)
         .unwrap_err();
-    assert!(err.starts_with("refused"), "got: {err}");
+    assert!(err.starts_with("didgeridoo refused"), "got: {err}");
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn a_runaway_recursion_is_refused() {
     let err = LuaEvaluator::new()
         .eval_block("local function f() return f() + 1 end return f()", SMALL)
         .unwrap_err();
-    assert!(err.starts_with("refused"), "got: {err}");
+    assert!(err.starts_with("didgeridoo refused"), "got: {err}");
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn the_sandbox_cannot_load_code_from_disk_or_strings() {
         .is_err());
 }
 
-/// The full polyglot path: a `didge eval` fence, routed through the
+/// The full polyglot path: a `lua eval` fence, routed through the
 /// `BlockEvaluators` registry and inker's evaluate pass, renders inline.
 #[test]
 fn a_lua_fence_evaluates_through_the_inker_pass() {
@@ -189,7 +189,7 @@ fn a_lua_fence_evaluates_through_the_inker_pass() {
 
     let mut registry = BlockEvaluators::new();
     registry.register(Box::new(LuaEvaluator::new()));
-    assert_eq!(registry.languages(), vec!["didge"]);
+    assert_eq!(registry.languages(), vec!["lua"]);
 
     let mut document = EngineDocument {
         address: "note.knot".into(),
@@ -201,7 +201,7 @@ fn a_lua_fence_evaluates_through_the_inker_pass() {
         diagnostics: Vec::new(),
         navigation: Default::default(),
         blocks: vec![Block::CodeBlock {
-            language: Some("didge eval".into()),
+            language: Some("lua eval".into()),
             text: "local s = 0 for i = 1, 10 do s = s + i end return \"sum is \" .. s".into(),
         }],
     };
@@ -209,7 +209,7 @@ fn a_lua_fence_evaluates_through_the_inker_pass() {
     let mut evaluate = |lang: &str, source: &str| registry.evaluate(lang, source, ENOUGH);
     let mut render =
         |_input: &EngineInput| -> Result<EngineDocument, String> { unreachable!("plain output") };
-    let policy = EvaluationPolicy::for_own_notes(vec!["didge".into()]);
+    let policy = EvaluationPolicy::for_own_notes(vec!["lua".into()]);
 
     let outcome = evaluate_blocks(&mut document, &mut evaluate, &mut render, &policy);
     assert_eq!(outcome.evaluated, 1);

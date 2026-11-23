@@ -45,8 +45,11 @@ pub fn default_pack() -> InjectionRegistry {
     }
     reg.register("rhai", Box::new(ClikeLexer::new(RHAI_KEYWORDS)));
     reg.register("rune", Box::new(ClikeLexer::new(RUNE_KEYWORDS)));
-    // Lua (piccolo): its own lexer, since piccolo is not a dependency to reuse.
-    reg.register("lua", Box::new(LuaLexer));
+    // Lua (didgeridoo): its own lexer, since didgeridoo is not a dependency to
+    // reuse. `lua-command` is the command lane's Lua.
+    for label in ["lua", "lua-command"] {
+        reg.register(label, Box::new(LuaLexer));
+    }
     // CSS and HTML: logos floors. cssparser / html5ever are parse-oriented and do
     // not hand back clean highlight spans, so a coarse DFA is the right tool; a
     // host may override for precision.
@@ -384,6 +387,7 @@ mod tests {
             "rhai",
             "rune",
             "lua",
+            "lua-command",
             "css",
             "html",
             "htm",
