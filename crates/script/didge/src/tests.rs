@@ -23,7 +23,7 @@ fn probe(mut lua: Lua, source: &str) -> String {
             Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
         })
         .unwrap();
-    drive(&mut lua, &executor, DriveLimits::new(Some(ENOUGH))).unwrap();
+    drive(&mut lua, &executor, default_limits(Some(ENOUGH))).unwrap();
     lua.try_enter(|ctx| {
         let value = ctx.fetch(&executor).take_result::<Value>(ctx).unwrap()?;
         Ok(value.display().to_string())
@@ -417,21 +417,21 @@ fn drive_reports_fuel_spent_and_distinguishes_its_errors() {
         &mut lua,
         "local n = 0 for i = 1, 100 do n = n + i end return n",
     );
-    let spent = drive(&mut lua, &executor, DriveLimits::new(None)).unwrap();
+    let spent = drive(&mut lua, &executor, default_limits(None)).unwrap();
     assert!(spent > 0);
     let executor = start(&mut lua, "while true do end");
     assert_eq!(
-        drive(&mut lua, &executor, DriveLimits::new(Some(SMALL))),
+        drive(&mut lua, &executor, default_limits(Some(SMALL))),
         Err(DriveError::OutOfFuel { max_ops: SMALL })
     );
     let executor = start(&mut lua, GROWTH);
     assert_eq!(
-        drive(&mut lua, &executor, DriveLimits::new(None)),
+        drive(&mut lua, &executor, default_limits(None)),
         Err(DriveError::OverHeap {
             max_heap_bytes: DEFAULT_MAX_HEAP_BYTES
         })
     );
     // A script's own error is its result, read with `take_result`, not a drive error.
     let executor = start(&mut lua, "error('boom')");
-    assert!(drive(&mut lua, &executor, DriveLimits::new(None)).is_ok());
+    assert!(drive(&mut lua, &executor, default_limits(None)).is_ok());
 }

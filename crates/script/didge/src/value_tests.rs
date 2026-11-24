@@ -501,14 +501,11 @@ const BIG_BUT_FINITE: &str = "local t = {} for i = 1, 400000 do t[i] = {} end re
 fn a_growing_table_is_refused_for_heap_even_when_unbounded() {
     for budget in [Budget::Unbounded, Budget::Steps(100_000_000)] {
         let got = engine().eval(GROWTH, budget);
-        let Err(ValueError::Script(message)) = got else {
-            panic!("expected a heap refusal, got {got:?}");
-        };
         assert_eq!(
-            message,
-            format!(
-                "didgeridoo refused: the script used more than {DEFAULT_MAX_HEAP_BYTES} bytes of memory"
-            )
+            got,
+            Err(ValueError::Heap {
+                max_bytes: DEFAULT_MAX_HEAP_BYTES
+            })
         );
     }
 }

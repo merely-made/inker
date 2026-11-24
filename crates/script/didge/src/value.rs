@@ -333,12 +333,14 @@ fn script_error(error: Error<'_>) -> ValueError {
     }
 }
 
-/// Drive `executor` under `limits`. Out of fuel is [`ValueError::Budget`]; the
-/// heap ceiling has no variant of its own, so it is a [`ValueError::Script`]
-/// carrying the refusal text.
+/// Drive `executor` under `limits`. Out of fuel is [`ValueError::Budget`]; past
+/// the heap ceiling is [`ValueError::Heap`].
 fn run(lua: &mut Lua, executor: &StashedExecutor, limits: DriveLimits) -> Result<(), ValueError> {
     drive(lua, executor, limits).map(drop).map_err(|e| match e {
         DriveError::OutOfFuel { .. } => ValueError::Budget,
+        DriveError::OverHeap { max_heap_bytes } => ValueError::Heap {
+            max_bytes: max_heap_bytes,
+        },
         other => ValueError::Script(other.to_string()),
     })
 }
