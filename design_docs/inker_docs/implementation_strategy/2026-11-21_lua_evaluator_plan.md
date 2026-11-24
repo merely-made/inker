@@ -5,7 +5,7 @@
 `script-rhai` is removed. `rhai` resolves in no family repository that records its resolve, and no
 other repository's manifest names it (Findings 31); that check stands in for L0's, whose inventory
 was read from source (Findings 11 to 16). L4 closed with every library function a consumer calls
-present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D42 are ruled; D30
+present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D43 are ruled; D30
 replaces D22's fence tags. D34's heap ceiling runs through didgeridoo's bounded run (D36); Knot's
 readings still carry their own copy of it.
 
@@ -510,6 +510,18 @@ outcome. D1 to D31 are in answer order.
 
   Links: area The stack · plans lua-evaluator L1 · summary A crate that uses didgeridoo-only API names didgeridoo in its own manifest.
 
+- **D43. didgeridoo compiles `table.sort` and `table.move` on first use (Mark, 2026-11-24):**
+  Evidence: Findings 37; of a 0.22 to 0.30 ms value-engine evaluation, 0.197 ms is `load_table`
+  compiling the two Lua-source functions into every new state, and every fence pays it too; a
+  compiled function belongs to one state. Offered: compile on first use in the fork (recommended);
+  rewrite both natively; reuse one state per value engine; the value engine skips `table`. Answer:
+  "Compile on first use, in the fork (Recommended)". What follows: didgeridoo `7ed3b9f`: native
+  placeholders under both names compile on first call, replace themselves and tail-call the
+  compiled function, so `pairs`, `rawget` and `type` see a function throughout. Outcome: refines
+  D38.
+
+  Links: area The stack · amends lua-evaluator D38 · plans lua-evaluator L2 · summary didgeridoo compiles its two Lua-source table functions only when a script first calls one.
+
 ## Open questions
 
 1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
@@ -719,6 +731,14 @@ outcome. D1 to D31 are in answer order.
     At Findings 35's rate a resolve over a hundred occurrences with one scripted rule would spend
     about 21 ms evaluating.
 
+37. Where a value-engine evaluation's time goes (D38, D43), measured 2026-11-24 in release at
+    Inker `c9024b5`, medians of five after warm-up: `load_table` 0.197 ms; base, math, string and
+    utf8 together 0.016 ms; six globals 0.0012 ms; compiling a rule 0.0075 to 0.011 ms; running and
+    converting 0.0015 to 0.0018 ms; a whole evaluation 0.22 to 0.30 ms. A thousand evaluations of
+    one rule with six globals rebound took 237 ms. After didgeridoo `7ed3b9f`, building a state
+    with the core libraries takes 23.5 µs (220.4 µs before) and `return 1` on it 6.3 µs (6.8);
+    the fork's suite still reads 1 of 32 and its golden-script failures are the same eight.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
@@ -755,3 +775,6 @@ outcome. D1 to D31 are in answer order.
   (`14ffe15`), `ValueError::Heap` added (genet `72ef547e7e2`), and the timings recorded (Findings 35,
   36). Questions 4 and 5 answered.
 - 2026-11-24: D39 to D42 ruled: Genet, Isocosm and Mesocosm move onto didgeridoo's bounded run.
+- 2026-11-24: D39 to D42 landed: genet `335e441f9bc`, isocosm `45df1cde` (with `50da0fff`, chirograph's
+  stale constructor, which a fresh resolve needed). D43 ruled and landed (didgeridoo `7ed3b9f`,
+  Findings 37).
