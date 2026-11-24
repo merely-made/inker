@@ -5,7 +5,7 @@
 `script-rhai` is removed. `rhai` resolves in no family repository that records its resolve, and no
 other repository's manifest names it (Findings 31); that check stands in for L0's, whose inventory
 was read from source (Findings 11 to 16). L4 closed with every library function a consumer calls
-present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D38 are ruled; D30
+present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D42 are ruled; D30
 replaces D22's fence tags. D34's heap ceiling runs through didgeridoo's bounded run (D36); Knot's
 readings still carry their own copy of it.
 
@@ -471,6 +471,45 @@ outcome. D1 to D31 are in answer order.
 
   Links: area The stack · plans lua-evaluator L2 · summary The value engine's per-evaluation cost is on record; caching waits until scripted rules run somewhere.
 
+- **D39. Genet's bounded eval runs through `drive`, heap off by default (Mark, 2026-11-24):**
+  Evidence: D36; `genet-didge` keeps one Lua state per engine, holding the page's script state, and
+  its `eval_bounded` counts `Budget::Steps(n)` as n slices of 4,096 fuel with no memory check;
+  `eval` and `pump` have no limit (Findings 34). Offered: `eval_bounded` through `drive` with
+  n × 4,096 fuel and a heap ceiling the engine may set, off by default (recommended); the same with a
+  default ceiling; Genet keeps its loop. Answer: "eval_bounded via drive, heap off by default
+  (Recommended)". What follows: a budget means the work it meant; `eval` and `pump` are unchanged.
+  Outcome: applies D36.
+
+  Links: area The stack · amends lua-evaluator D36 · plans lua-evaluator L1 · summary Genet's bounded eval uses didgeridoo's loop with the same budgets; its heap ceiling is opt-in.
+
+- **D40. Isocosm's generators and Mesocosm's runner keep their fuel and gain 16 MiB (Mark,
+  2026-11-24):** Evidence: their totals of 4,096 and 8,192 fuel already bound memory to about
+  200 KB at Findings 32's rate. Offered: the same fuel and a 16 MiB ceiling in their limits structs,
+  each with its own named refusal (recommended); the same fuel, no ceiling; a ceiling derived from
+  each output cap. Answer: "Same fuel, 16 MiB ceiling (Recommended)". What follows: Mesocosm gains
+  `Refused::Heap`; Isocosm's generator refusal names the ceiling. Outcome: applies D36.
+
+  Links: area The stack · amends lua-evaluator D36 · plans lua-evaluator L1 · summary Isocosm's and Mesocosm's pack scripts run through didgeridoo's loop with their own fuel and a 16 MiB ceiling.
+
+- **D41. Isocosm's rules lane is bounded, and the host may change the bound (Mark, 2026-11-24):**
+  Evidence: `System` runs each formula with `lua.execute`, which refuels without end, on one
+  long-lived state; the shipped formulas are embedded integer maths, but `System::load` takes any
+  script. Offered: every formula through `drive`, 1,000,000 fuel and 16 MiB by default in a limits
+  struct the host sets (recommended); bound only systems loaded from packs; leave it unbounded.
+  Answer: "Bound it, settable (Recommended)". What follows: a runaway formula is refused instead of
+  hanging. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1 · summary Isocosm's rules formulas run under a fuel and heap bound the host can change.
+
+- **D42. A crate that calls `drive` takes the fork directly (Mark, 2026-11-24):** Evidence:
+  `isocosm-system` and `mesocosm-phenotype` say `piccolo = "0.3"` and reach the fork only through
+  their workspaces' `[patch.crates-io]` rows, which do not travel with the crate; `drive` exists only
+  in the fork; Inker and Knot take it by git. Offered: a git row to didgeridoo's main (recommended);
+  keep "0.3" and the patch. Answer: "Take the fork directly (Recommended)". What follows: the patch
+  rows stay for crates that still say "0.3". Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1 · summary A crate that uses didgeridoo-only API names didgeridoo in its own manifest.
+
 ## Open questions
 
 1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
@@ -715,3 +754,4 @@ outcome. D1 to D31 are in answer order.
 - 2026-11-23: D34 built (Inker `a24df36`). D36 to D38 ruled: the bounded run moved into didgeridoo
   (`14ffe15`), `ValueError::Heap` added (genet `72ef547e7e2`), and the timings recorded (Findings 35,
   36). Questions 4 and 5 answered.
+- 2026-11-24: D39 to D42 ruled: Genet, Isocosm and Mesocosm move onto didgeridoo's bounded run.
