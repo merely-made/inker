@@ -5,9 +5,9 @@
 `script-rhai` is removed. `rhai` resolves in no family repository that records its resolve, and no
 other repository's manifest names it (Findings 31); that check stands in for L0's, whose inventory
 was read from source (Findings 11 to 16). L4 closed with every library function a consumer calls
-present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D35 are ruled; D30
-replaces D22's fence tags. Open: D34's heap ceiling is being built, D35's timings are being taken,
-and question 4.
+present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D38 are ruled; D30
+replaces D22's fence tags. D34's heap ceiling runs through didgeridoo's bounded run (D36); Knot's
+readings still carry their own copy of it.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -438,6 +438,39 @@ outcome. D1 to D31 are in answer order.
 
   Links: area The stack · plans lua-evaluator L1 · summary Lua's speed is measured against Rhai on the last commit that has both.
 
+- **D36. The bounded run lives in didgeridoo (Mark, 2026-11-23):** Evidence: open question 4; five
+  embedders on the fork (Genet's `genet-didge`, Isocosm's generators and rules, Mesocosm's expression
+  runner, `script-didge`, Knot's readings) share no code, each steps 4,096-fuel slices of its own,
+  only the readings read the heap, and which libraries each loads differs for reasons of its own
+  (Findings 34). Offered: a bounded-run helper in the fork, fuel slices, a heap ceiling and the fuel
+  spent, with `script-didge` calling it and each host choosing its libraries (recommended); D34's
+  loop in `script-didge`, others depending on it; stay separate. Answer: "In didgeridoo itself
+  (Recommended)". What follows: `piccolo::{drive, DriveLimits, DriveError}` (didgeridoo
+  `14ffe15`); `script-didge` re-exports them and keeps the 16 MiB default as its own policy
+  (`default_limits`). Knot's copy goes next; Genet, Isocosm and Mesocosm adopt it in their own
+  repositories. Outcome: refines D34.
+
+  Links: area The stack · amends lua-evaluator D34 · plans lua-evaluator L1, lua-evaluator L2, lua-evaluator L3 · summary The fuel-and-heap loop is didgeridoo's; each embedder calls it and picks its own libraries and limits.
+
+- **D37. A heap refusal is its own `ValueError` (Mark, 2026-11-23):** Evidence: D34's heap ceiling
+  reached the value engine, whose `ValueError` (Genet's `script-engine-api`) had no heap kind; the
+  build used `ValueError::Script` with the refusal text, and `ValueError::Budget` would drop the
+  text; nothing outside `script-engine-api` matches `ValueError` exhaustively. Offered: `Script`
+  with the message (recommended); `Budget`; a heap variant in Genet. Answer: "Add a heap variant in
+  Genet". What follows: `ValueError::Heap { max_bytes }` (genet `72ef547e7e2`), and the value
+  engine returns it. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2 · summary A value engine past its memory ceiling returns ValueError::Heap with the ceiling.
+
+- **D38. The value engine's cost is recorded, and Scenograph asked (Mark, 2026-11-23):** Evidence:
+  D35's timings (Findings 35): Lua is 2.5 to 2.7 times Rhai's speed on work, but one value-engine
+  evaluation costs 0.214 ms against Rhai's 0.0078 ms, unexamined. Offered: find the cause and cache
+  (recommended); record only; record and ask how often Scenograph evaluates. Answer: "Record, and ask
+  Scenograph". What follows: Findings 36 answers for Scenograph; a cache waits for a consumer that
+  runs scripted rules. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L2 · summary The value engine's per-evaluation cost is on record; caching waits until scripted rules run somewhere.
+
 ## Open questions
 
 1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
@@ -446,10 +479,10 @@ outcome. D1 to D31 are in answer order.
    answered").
 3. Answered 2026-11-23 (D34): a heap ceiling read between fuel steps. Strings were answered
    2026-11-21 (D10, D11).
-4. Whether the Lua crate and Genet's `script-engine-piccolo` should share their sandbox setup, or stay
-   two users of the fork.
-5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster. D35
-   measures it.
+4. Answered 2026-11-23 (D36): the bounded run is didgeridoo's; each embedder keeps its own choice of
+   libraries.
+5. Answered 2026-11-23 (D35, D38; Findings 35, 36): Lua is faster on work and slower per
+   value-engine evaluation.
 
 6. Answered 2026-11-21 (D9): the readings lane is phase LR. Its host surface moved as it is, with
    the same readers and constructors (Findings 25; Mark, 2026-11-23: "Mark both answered").
@@ -632,6 +665,21 @@ outcome. D1 to D31 are in answer order.
     all or nothing, with an ABI number, declared files only and `deny_unknown_fields`, and pins a
     fixture's exact proposal and entropy draws.
 
+35. Speed (D35), measured 2026-11-23 in release builds at Inker `274fa4c`, the last commit with both
+    engines; medians of five runs after a warm-up, on a shared Ryzen 9 7940HS. The `maths_bits` rule
+    at n = 10,000: Rhai 53.2 ms, Lua 21.1 ms (both hash `028dc38fdcbf650d`); at n = 100,000: 524 and
+    203 ms. A 100,000-iteration note fence: 104.5 and 38.1 ms. A trivial fence on a fresh evaluator:
+    0.347 and 0.227 ms (a reused Rhai evaluator costs 0.0012 ms; `script-didge` builds a VM for every
+    fence). One value-engine evaluation of `x * x + math.sqrt(x) * 2.0`: 0.0078 and 0.214 ms, Rhai
+    27 times faster; that the chunk is compiled again each time is likely and unchecked. Spreads run
+    up to 21 per cent, more on sub-millisecond rows.
+36. How often Scenograph evaluates (D38), read 2026-11-23 at graphshell `7809663e`: `RuleSet::resolve`
+    walks every rule for each occurrence, and a rule holding a script binds six globals and evaluates
+    once (`presentation.rs`, the rule loop). Scripted rules need the `scripts` feature, off by
+    default, and no crate in Graphshell, Turnstone or Knot turns it on, so none runs in production.
+    At Findings 35's rate a resolve over a hundred occurrences with one scripted rule would spend
+    about 21 ms evaluating.
+
 ## Progress
 
 - 2026-11-21: plan written; D1 ruled.
@@ -664,3 +712,6 @@ outcome. D1 to D31 are in answer order.
   31). D32 and D33 ruled. Graphshell's graph behaviors plan states the lanes as they now are.
 - 2026-11-23: L4 met (Findings 33). D34 (a heap ceiling, Findings 32) and D35 (time Lua against Rhai)
   ruled; questions 2 and 6 closed on D29, D30 and Findings 25; question 4 surveyed (Findings 34).
+- 2026-11-23: D34 built (Inker `a24df36`). D36 to D38 ruled: the bounded run moved into didgeridoo
+  (`14ffe15`), `ValueError::Heap` added (genet `72ef547e7e2`), and the timings recorded (Findings 35,
+  36). Questions 4 and 5 answered.
