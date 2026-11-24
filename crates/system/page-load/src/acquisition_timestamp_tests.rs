@@ -87,6 +87,10 @@ fn same_url_terminal_without_progress_does_not_borrow_old_source_metadata() {
             content_type: Some("text/markdown".into()),
             body: "old bytes".into(),
             effective_url: Some("https://old.example/page".into()),
+            http_response: Some(HttpDocumentResponse::new(
+                "https://old.example/page",
+                [("referrer-policy".into(), "no-referrer".into())],
+            )),
             acquired_at_ms: 10,
         },
         9,
@@ -103,6 +107,7 @@ fn same_url_terminal_without_progress_does_not_borrow_old_source_metadata() {
                     content_disposition: None,
                     bytes: b"new bytes".to_vec(),
                     body: "new bytes".into(),
+                    http_response: None,
                 }),
             },
             30,
@@ -115,5 +120,6 @@ fn same_url_terminal_without_progress_does_not_borrow_old_source_metadata() {
     assert_eq!(document.bytes, b"new bytes");
     assert_eq!(document.content_type, None);
     assert_eq!(document.effective_url, None);
+    assert!(document.http_response.is_none());
     assert_eq!(document.acquired_at_ms, 30);
 }

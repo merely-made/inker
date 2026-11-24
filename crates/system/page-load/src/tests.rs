@@ -33,6 +33,7 @@ fn fetched_documents_are_address_scoped() {
         content_type: Some("text/gemini".into()),
         body: "# Capsule".into(),
         effective_url: Some("gemini://example/one".into()),
+        http_response: None,
         acquired_at_ms: 1,
     };
     let mut load = PageLoad::default();
@@ -131,6 +132,7 @@ fn a_settled_response_keeps_what_streaming_learned() {
                 content_disposition: None,
                 bytes: b"# Page".to_vec(),
                 body: "# Page".into(),
+                http_response: None,
             }),
         ),
         90,
@@ -143,10 +145,110 @@ fn a_settled_response_keeps_what_streaming_learned() {
         Some("gemini://example/moved")
     );
     assert_eq!(document.content_type.as_deref(), Some("text/gemini"));
+    assert!(document.http_response.is_none());
     assert_eq!(document.acquired_at_ms, 40);
     assert_eq!(
         load.phase(),
         Some(&LoadPhase::Settled { received_bytes: 6 })
+    );
+}
+
+#[test]
+fn terminal_http_response_replaces_the_streamed_prefix() {
+    let url = "https://example.test/requested";
+    let final_url = "https://example.test/final/page";
+    let headers = [
+        ("content-security-policy".into(), "frame-src 'self'".into()),
+        ("referrer-policy".into(), "origin".into()),
+        ("content-security-policy".into(), "script-src 'self'".into()),
+    ];
+    let mut load = PageLoad::default();
+    load.begin(11);
+    assert_eq!(
+        load.accept_progress(
+            PageProgress {
+                request: 11,
+                url: url.into(),
+                response_url: "https://example.test/prefix".into(),
+                content_type: Some("text/html".into()),
+                bytes: b"<html>".to_vec(),
+            },
+            40,
+        ),
+        Some(6)
+    );
+    let prefix = load.fetched(url).expect("prefix is retained");
+    assert_eq!(
+        prefix.effective_url.as_deref(),
+        Some("https://example.test/prefix")
+    );
+    assert!(prefix.http_response.is_none());
+
+    assert_eq!(
+        load.accept_outcome(
+            FetchOutcome {
+                request: 11,
+                url: url.into(),
+                result: Ok(Fetched {
+                    http_response: Some(HttpDocumentResponse::new(final_url, headers.clone())),
+                    ..Fetched::text(None, "<html></html>")
+                }),
+            },
+            90,
+        ),
+        LoadAnswer::Document
+    );
+    let document = load.fetched(url).expect("terminal response is retained");
+    assert!(load.fetched(final_url).is_none());
+    assert_eq!(document.bytes, b"<html></html>");
+    assert_eq!(document.content_type.as_deref(), Some("text/html"));
+    assert_eq!(document.effective_url.as_deref(), Some(final_url));
+    assert_eq!(document.acquired_at_ms, 40);
+    let http_response = document
+        .http_response
+        .as_ref()
+        .expect("HTTP response is retained");
+    assert_eq!(http_response.final_url(), final_url);
+    assert_eq!(http_response.policy_headers(), headers.as_slice());
+}
+
+#[test]
+fn a_stale_http_response_cannot_replace_the_current_policy() {
+    let url = "https://example.test/requested";
+    let mut load = PageLoad::default();
+    load.begin(21);
+    load.begin(22);
+    let answer = |request, final_url, policy: &str| FetchOutcome {
+        request,
+        url: url.into(),
+        result: Ok(Fetched {
+            http_response: Some(HttpDocumentResponse::new(
+                final_url,
+                [("referrer-policy".into(), policy.into())],
+            )),
+            ..Fetched::text(Some("text/html".into()), "<html></html>")
+        }),
+    };
+    assert_eq!(
+        load.accept_outcome(answer(22, "https://example.test/current", "origin"), 80),
+        LoadAnswer::Document
+    );
+    assert_eq!(
+        load.accept_outcome(answer(21, "https://example.test/stale", "unsafe-url"), 90),
+        LoadAnswer::Stale
+    );
+    let document = load.fetched(url).expect("current response is retained");
+    assert_eq!(
+        document.effective_url.as_deref(),
+        Some("https://example.test/current")
+    );
+    let http_response = document
+        .http_response
+        .as_ref()
+        .expect("HTTP response is retained");
+    assert_eq!(
+        http_response.policy_headers(),
+        [("referrer-policy".to_owned(), "origin".to_owned())]
     );
 }
 
@@ -159,6 +261,7 @@ fn downloads_are_handed_back_not_retained() {
         content_disposition: None,
         bytes: vec![0, 1],
         body: "\0\u{1}".into(),
+        http_response: None,
     };
     assert_eq!(
         load.accept_outcome(outcome(4, Ok(binary.clone())), 1),
@@ -177,6 +280,7 @@ fn conversations_stay_typed_and_keep_the_last_document() {
             content_type: None,
             body: "# Old".into(),
             effective_url: None,
+            http_response: None,
             acquired_at_ms: 1,
         },
         5,
@@ -215,12 +319,14 @@ fn attachment_and_unrenderable_media_download_but_text_stays_a_document() {
         content_disposition: Some("attachment; filename=notes.txt".into()),
         bytes: b"notes".to_vec(),
         body: "notes".into(),
+        http_response: None,
     }));
     assert!(is_download_response(&Fetched {
         content_type: Some("application/octet-stream".into()),
         content_disposition: None,
         bytes: vec![0, 1],
         body: "\0\u{1}".into(),
+        http_response: None,
     }));
     assert!(!is_download_response(&Fetched::text(
         Some("text/gemini; charset=utf-8".into()),

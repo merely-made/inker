@@ -22,6 +22,8 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
+pub use document_session_api::HttpDocumentResponse;
+
 /// Process-local correlation for one page request. The id crosses the actor
 /// boundary unchanged so hosts can cancel one node's load without affecting a
 /// second node fetching the same address.
@@ -41,6 +43,8 @@ pub struct Fetched {
     pub content_disposition: Option<String>,
     pub bytes: Vec<u8>,
     pub body: String,
+    /// Final address and document policy of a successful HTTP response.
+    pub http_response: Option<HttpDocumentResponse>,
 }
 
 impl Fetched {
@@ -53,6 +57,7 @@ impl Fetched {
             content_disposition: None,
             bytes,
             body,
+            http_response: None,
         }
     }
 }
@@ -178,6 +183,8 @@ pub struct LoadedDocument {
     /// The response address the transport reported, after redirects. Absent
     /// when only the request address is known.
     pub effective_url: Option<String>,
+    /// Final HTTP response metadata. Streamed prefixes carry no policy.
+    pub http_response: Option<HttpDocumentResponse>,
     /// Milliseconds since the Unix epoch when the host admitted these bytes.
     pub acquired_at_ms: u64,
 }
@@ -350,6 +357,7 @@ impl PageLoad {
                 bytes,
                 content_type: content_type.clone(),
                 effective_url: Some(response_url.clone()),
+                http_response: None,
                 acquired_at_ms,
             },
         ));
@@ -376,9 +384,9 @@ impl PageLoad {
         ))
     }
 
-    /// Take one terminal answer. A response keeps what streaming already
-    /// learned about its address (the effective URL, the media type, the time
-    /// it was first admitted) and retains the complete bytes.
+    /// Take one terminal answer. Keep the complete bytes and HTTP response
+    /// metadata, use streaming metadata as a fallback, and preserve the time
+    /// the response was first admitted.
     pub fn accept_outcome(&mut self, outcome: FetchOutcome, now_ms: u64) -> LoadAnswer {
         if !self.finish(outcome.request) {
             return LoadAnswer::Stale;
@@ -395,7 +403,11 @@ impl PageLoad {
                 let observed = self
                     .stream_acquired_at(&outcome.url)
                     .and_then(|_| self.fetched(&outcome.url));
-                let effective_url = observed.and_then(|previous| previous.effective_url.clone());
+                let effective_url = fetched
+                    .http_response
+                    .as_ref()
+                    .map(|response| response.final_url().to_owned())
+                    .or_else(|| observed.and_then(|previous| previous.effective_url.clone()));
                 let content_type = fetched
                     .content_type
                     .or_else(|| observed.and_then(|previous| previous.content_type.clone()));
@@ -408,6 +420,7 @@ impl PageLoad {
                         content_type,
                         body: fetched.body,
                         effective_url,
+                        http_response: fetched.http_response,
                         acquired_at_ms,
                     },
                     received_bytes,
