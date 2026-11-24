@@ -34,7 +34,7 @@ engine adapters.
 ### inker_docs/implementation_strategy/
 
 - [presentation_engines_plan](inker_docs/implementation_strategy/2026-10-28_presentation_engines_plan.md) — **cut 2026-10-28**: engine routing and surface engines, the engine flip host, shared surface receiving, the polyglot block resolver.
-- [lua_evaluator_plan](inker_docs/implementation_strategy/2026-11-21_lua_evaluator_plan.md) — **L6 met, 2026-11-23: `script-rhai` is removed; Knot, Scenograph and Turnstone run on Lua (`lua eval`, `lua-command`, `.lua` readings); `rhai` resolves nowhere in the family; L4's tail is open**: Lua on didgeridoo (the piccolo fork) replaced Rhai (D1). One crate, `script-didge`, behind the `BlockEvaluator` and `ValueEngine` seams, bounded by the VM's fuel. Old `rhai` fences and `.rhai` readings are refused with a message naming the Lua form (D27).
+- [lua_evaluator_plan](inker_docs/implementation_strategy/2026-11-21_lua_evaluator_plan.md) — **Every phase met, 2026-11-23: `script-rhai` is removed; Knot, Scenograph and Turnstone run on Lua (`lua eval`, `lua-command`, `.lua` readings); `rhai` resolves nowhere in the family; a heap ceiling (D34) and timings against Rhai (D35) are in progress**: Lua on didgeridoo (the piccolo fork) replaced Rhai (D1). One crate, `script-didge`, behind the `BlockEvaluator` and `ValueEngine` seams, bounded by the VM's fuel. Old `rhai` fences and `.rhai` readings are refused with a message naming the Lua form (D27).
 
 ## nematic_docs/ — the smolweb engine and knot composition
 

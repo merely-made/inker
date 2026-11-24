@@ -1,12 +1,13 @@
 # Lua evaluator plan: Lua on didgeridoo replaces Rhai
 
-**Status:** 2026-11-23. L1, L2, L3, LR, L5 and L6 are met: Lua on didgeridoo (`script-didge`) runs
-note fences (`lua eval`), rules and the command lane (`lua-command`) for Knot, Scenograph and
-Turnstone, and `script-rhai` is removed. `rhai` resolves in no family repository that records its
-resolve, and no other repository's manifest names it (Findings 31); that check stands in for L0's,
-whose inventory was read from source (Findings 11 to 16). Of L4, the fork has its string library, an
-embedder-set string limit and libm maths (Findings 17, 18; D10, D11, D16), and `utf8.len`. D1 to D33
-are ruled; D30 replaces D22's fence tags.
+**Status:** 2026-11-23. Every phase is met: Lua on didgeridoo (`script-didge`) runs note fences
+(`lua eval`), rules and the command lane (`lua-command`) for Knot, Scenograph and Turnstone, and
+`script-rhai` is removed. `rhai` resolves in no family repository that records its resolve, and no
+other repository's manifest names it (Findings 31); that check stands in for L0's, whose inventory
+was read from source (Findings 11 to 16). L4 closed with every library function a consumer calls
+present in the fork and its Lua 5.4 suite count unchanged (Findings 33). D1 to D35 are ruled; D30
+replaces D22's fence tags. Open: D34's heap ceiling is being built, D35's timings are being taken,
+and question 4.
 
 **For:** one scripting language where there are two. Rhai runs note fences, rules and the command lane;
 Lua on didgeridoo (the piccolo fork, `merely-made/didgeridoo`) runs sandboxed bodies in Genet. Mark
@@ -415,21 +416,43 @@ outcome. D1 to D31 are in answer order.
 
   Links: area The stack · plans lua-evaluator L6 · summary Files that record Rhai as it was are not edited when Rhai retires.
 
+- **D34. `script-didge` refuses a heap above a ceiling (Mark, 2026-11-23):** Evidence: open question
+  3; on didgeridoo a growing table reaches 4 to 26 MiB within the default fence budget of 1,000,000
+  fuel and 64 to 240 MiB at 10,000,000, about 25 bytes a unit (Findings 32), and the value engine
+  takes an unbounded budget; Knot's readings already refuse above 16 MiB, read between 4,096-fuel
+  steps, in a copy of the fuel loop (Findings 27). Offered: a ceiling in `script-didge`'s shared
+  fuel loop, 16 MiB by default and set by the host, the loop exported so Knot drops its copy
+  (recommended); a ceiling only when the budget is unbounded; fuel alone, with the rate written
+  down. Answer: "Heap ceiling in script-didge (Recommended)". What follows: one exported loop serves
+  every lane and checks the heap between steps, an unbounded budget included; the refusal reads like
+  fuel's. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1, lua-evaluator L2, lua-evaluator L3 · summary script-didge refuses a script whose heap passes a host-set ceiling, 16 MiB by default, read between fuel steps.
+
+- **D35. Speed is measured against Rhai's last commit (Mark, 2026-11-23):** Evidence: open question
+  5; nothing has timed either engine, and Inker's `ebc5b30^` still holds both, with the same
+  `maths_bits` rule on each. Offered: measure now in release builds on that commit, the rule, a note
+  fence and per-fence VM setup, changing no code (recommended); measure when a consumer is slow; drop
+  the question. Answer: "Measure via a cheap subagent (Recommended)". What follows: the numbers land
+  in Findings. Outcome: new.
+
+  Links: area The stack · plans lua-evaluator L1 · summary Lua's speed is measured against Rhai on the last commit that has both.
+
 ## Open questions
 
 1. Answered 2026-11-23 (D27): Rhai already written is refused with a message, in an error block (D31).
-2. Answered 2026-11-22 (D22) and 2026-11-23 (D30): the crate is `script-didge`, beside `script-rhai`. Whether its types
-   keep the `Lua` prefix is open.
-3. Memory. Strings are answered 2026-11-21 (D10, D11). Rhai also caps array and map sizes; piccolo
-   reports `total_memory()` and has no allocation limit, so a table grows until fuel stops the
-   script. Whether to refuse above a ceiling read between fuel steps is undecided.
+2. Answered 2026-11-22 (D22) and 2026-11-23 (D30): the crate is `script-didge`. Its types keep the
+   `Lua` prefix, since code is named for the language (D29, D30; Mark, 2026-11-23: "Mark both
+   answered").
+3. Answered 2026-11-23 (D34): a heap ceiling read between fuel steps. Strings were answered
+   2026-11-21 (D10, D11).
 4. Whether the Lua crate and Genet's `script-engine-piccolo` should share their sandbox setup, or stay
    two users of the fork.
-5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster; nothing
-   here has measured it.
+5. Speed. Rhai walks a syntax tree and piccolo runs bytecode, so Lua is expected to be faster. D35
+   measures it.
 
-6. Answered 2026-11-21 (D9): the readings lane is phase LR. Whether its host surface (eight types, the
-   reading functions) moves exactly as it is, or is reshaped for Lua, is still open.
+6. Answered 2026-11-21 (D9): the readings lane is phase LR. Its host surface moved as it is, with
+   the same readers and constructors (Findings 25; Mark, 2026-11-23: "Mark both answered").
 7. Answered 2026-11-21 (D6, D7, D8): Lua's behaviour in all three, and the scripts are rewritten.
 8. Answered 2026-11-23 (D28, D30); Turnstone's environment default moved with L5 (Findings 30). Names stored outside code (Findings 15): the environment default, the backend id, the `.rhai`
    extension of user reading scripts, the `rhai-command` tag and the highlighter entry. Open question 1
@@ -580,6 +603,34 @@ outcome. D1 to D31 are in answer order.
     armillary, dramatis); the twenty-one heads without a note name neither `rhai` nor `script-rhai` in
     a manifest. Finding 29's option was taken: Scenograph's `states` is a set (graphshell
     `01858e8e`, `graphshell:scenograph-editor D1`).
+32. Memory, measured 2026-11-23 on didgeridoo `cca2162` (a scratch probe stepping 4,096 fuel at a
+    time and reading `total_memory()` after each step): a fresh VM holds about 22 KB. Within 1,000,000
+    fuel an array of integers peaks at 4.0 MiB, nested tables at 15.4 MiB and table values under
+    float keys at 25.7 MiB; within 10,000,000 fuel, 64.0, 153.4 and 240.4 MiB. Growth is about 25
+    bytes a unit of fuel at worst, so fuel bounds memory only as tightly as the budget does, and not
+    at all when the budget is unbounded.
+33. L4, checked 2026-11-23. Library calls in the Lua the consumers ship and test, by search: Inker's
+    `script-didge` calls `string.rep`, `string.char`, `string.format`, `string.gsub`,
+    `table.concat`, `utf8.len` and `math`'s `sin`, `cos`, `tan`, `atan`, `exp`, `log`, `sqrt`,
+    `floor`, `abs`, `min` and `max`; Scenograph's rules call `math.exp`; Knot's readings call none.
+    Turnstone's `os.time` and `os.clock`, and Inker's `io.open`, `os.execute`, `coroutine` and
+    `math.random`, appear only in tests that assert the sandbox refuses them. Isocosm's generators,
+    rules and Mesocosm's expression pack, which run on the same fork, call only `ipairs`. Every one
+    is registered in the fork's `src/stdlib` (didgeridoo `cca2162`). The fork's suite reads 1 of 32
+    files passing, 1 skipped, 22 failing and 8 not loading, the count `spec-results.toml` recorded
+    on 2026-10-18, so it did not fall.
+34. Open question 4, surveyed 2026-11-23 (read only). Four sandboxes on the fork share no code:
+    Genet's `genet-didge` loads `Lua::full()` (io included), installs host functions and a promise
+    `await`, keeps one VM per engine, and caps only `eval_bounded` by steps; Isocosm's generators
+    use `Lua::core()` with a total fuel cap, output and depth limits and a fresh VM each, while its
+    rules lane keeps one VM and runs uncapped `execute`; Mesocosm's expression runner uses
+    `Lua::core()` without `math.random`, an 8,192-fuel policy, output, depth and length limits;
+    `script-didge` and Knot's readings step 4,096-fuel slices, and only the readings read the heap.
+    None has a memory limit except the readings. Mesocosm's process-definition plan names shared
+    sandbox code "an extraction candidate. It is not extracted first." Isocosm and Mesocosm scripts
+    return proposals the host validates, as `lua-command` returns invocations; Mesocosm admits a pack
+    all or nothing, with an ABI number, declared files only and `deny_unknown_fields`, and pins a
+    fixture's exact proposal and entropy draws.
 
 ## Progress
 
@@ -611,3 +662,5 @@ outcome. D1 to D31 are in answer order.
   run on Lua, and none names `script-rhai` (Findings 28 to 30). L6 is next.
 - 2026-11-23: L6 met. `script-rhai` is removed and `rhai` resolves nowhere in the family (Findings
   31). D32 and D33 ruled. Graphshell's graph behaviors plan states the lanes as they now are.
+- 2026-11-23: L4 met (Findings 33). D34 (a heap ceiling, Findings 32) and D35 (time Lua against Rhai)
+  ruled; questions 2 and 6 closed on D29, D30 and Findings 25; question 4 surveyed (Findings 34).
