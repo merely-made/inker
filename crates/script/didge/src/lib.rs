@@ -46,7 +46,10 @@ pub use piccolo::{DriveError, DriveLimits, drive};
 mod command;
 mod value;
 
-pub use command::{Budget, CommandLimits, LuaCommandEvaluator, collect_invocations};
+pub use command::{
+    Budget, CommandLimits, LuaCommandEvaluator, collect_invocations,
+    collect_invocations_with_context,
+};
 pub use value::LuaValueEngine;
 
 /// The budget used when the caller passes `max_ops == 0` ("backend picks").

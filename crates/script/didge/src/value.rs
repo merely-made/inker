@@ -178,7 +178,7 @@ fn put<'gc>(
         .map_err(|e| ValueError::Value(e.to_string()))
 }
 
-fn to_value<'gc>(
+pub(crate) fn to_value<'gc>(
     ctx: Context<'gc>,
     value: &ScriptValue,
     depth: usize,

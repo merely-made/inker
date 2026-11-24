@@ -429,3 +429,87 @@ fn a_host_heap_ceiling_lets_a_big_script_finish() {
         "[]"
     );
 }
+
+fn context() -> ScriptValue {
+    let map = |pairs: Vec<(&str, ScriptValue)>| {
+        ScriptValue::Map(pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
+    };
+    map(vec![
+        ("version", ScriptValue::Int(1)),
+        (
+            "selection",
+            ScriptValue::List(vec![
+                ScriptValue::Str("n1".into()),
+                ScriptValue::Str("n2".into()),
+            ]),
+        ),
+        (
+            "focus",
+            map(vec![("kind", ScriptValue::Str("graph".into()))]),
+        ),
+    ])
+}
+
+fn with_context(source: &str, context: &ScriptValue) -> Result<Vec<Invocation>, String> {
+    collect_invocations_with_context(
+        source,
+        &offered(),
+        SCHEMA,
+        Budget::Steps(10_000),
+        CommandLimits::default(),
+        context,
+    )
+}
+
+#[test]
+fn a_script_reads_the_context_into_an_invocation() {
+    let actual = with_context(
+        r#"command("view:fit", context.selection[1] .. ":" .. context.focus.kind)"#,
+        &context(),
+    )
+    .unwrap();
+    assert_eq!(
+        actual,
+        vec![
+            command(ids::VIEW_FIT)
+                .unwrap()
+                .invocation(SCHEMA, b"n1:graph".to_vec())
+        ]
+    );
+}
+
+#[test]
+fn writes_to_the_context_stay_in_the_scripts_copy() {
+    let host = context();
+    let before = host.clone();
+    let actual = with_context(
+        r#"
+        context.selection[1] = "changed"
+        context.focus.kind = "other"
+        context.extra = 1
+        command("view:fit", context.selection[1])
+    "#,
+        &host,
+    )
+    .unwrap();
+    assert_eq!(actual[0].arguments, b"changed".to_vec());
+    assert_eq!(host, before);
+    // A later call sees the host's value again.
+    let again = with_context(r#"command("view:fit", context.selection[1])"#, &host).unwrap();
+    assert_eq!(again[0].arguments, b"n1".to_vec());
+}
+
+#[test]
+fn the_plain_function_binds_no_context() {
+    let error = collect(r#"command("view:fit", context.selection[1])"#).unwrap_err();
+    assert!(
+        error.contains("context") || error.contains("index"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_context_with_no_lua_form_is_refused() {
+    let bad = ScriptValue::List(vec![ScriptValue::Unit]);
+    assert!(with_context(r#"command("view:fit", "")"#, &bad).is_err());
+}

@@ -25,9 +25,11 @@ use hest::{Invocation, menu::CommandSet};
 use inker::{BlockEvaluator, EvalOutput};
 use piccolo::{Callback, CallbackReturn, Closure, Error, Executor, Value};
 pub use script_engine_api::Budget;
+use script_engine_api::ScriptValue;
 
 use crate::{
     DEFAULT_MAX_HEAP_BYTES, DEFAULT_MAX_OPS, DEFAULT_MAX_STRING_BYTES, DriveLimits, drive, sandbox,
+    value::to_value,
 };
 
 /// The name compiled chunks carry in error messages.
@@ -76,9 +78,43 @@ pub fn collect_invocations(
         limits,
         DEFAULT_MAX_STRING_BYTES,
         DEFAULT_MAX_HEAP_BYTES,
+        None,
     )
 }
 
+/// [`collect_invocations`] with one global, `context`, built from the host's
+/// value. The script reads it as plain Lua tables.
+///
+/// The context is read-only by copy: each call converts `context` into a
+/// fresh table inside that call's own Lua state, so a script that assigns
+/// into it changes only its own copy, never the host's value. Everything else
+/// is as [`collect_invocations`].
+///
+/// # Errors
+///
+/// As [`collect_invocations`], and a `context` that has no Lua form (a unit
+/// in a list, or nesting past the depth limit).
+pub fn collect_invocations_with_context(
+    source: &str,
+    offered: &CommandSet,
+    schema: &str,
+    budget: Budget,
+    limits: CommandLimits,
+    context: &ScriptValue,
+) -> Result<Vec<Invocation>, String> {
+    collect_with(
+        source,
+        offered,
+        schema,
+        budget,
+        limits,
+        DEFAULT_MAX_STRING_BYTES,
+        DEFAULT_MAX_HEAP_BYTES,
+        Some(context),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn collect_with(
     source: &str,
     offered: &CommandSet,
@@ -87,6 +123,7 @@ fn collect_with(
     limits: CommandLimits,
     max_string_bytes: usize,
     max_heap_bytes: usize,
+    context: Option<&ScriptValue>,
 ) -> Result<Vec<Invocation>, String> {
     let max_ops = match budget {
         Budget::Unbounded => None,
@@ -114,6 +151,11 @@ fn collect_with(
                 Ok(CallbackReturn::Return)
             });
             ctx.globals().set(ctx, "command", command)?;
+            if let Some(context) = context {
+                let value = to_value(ctx, context, 0)
+                    .map_err(|e| Error::from(CommandRefused(e.to_string())))?;
+                ctx.globals().set(ctx, "context", value)?;
+            }
             // The source as written: a command script is statements.
             let closure = Closure::load(ctx, Some(CHUNK_NAME), source.as_bytes())?;
             Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
@@ -208,6 +250,7 @@ impl BlockEvaluator for LuaCommandEvaluator {
             self.limits,
             self.max_string_bytes,
             self.max_heap_bytes,
+            None,
         )?;
         serde_json::to_string(&invocations)
             .map(EvalOutput::plain)
