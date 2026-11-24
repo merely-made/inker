@@ -26,7 +26,9 @@ use inker::{BlockEvaluator, EvalOutput};
 use piccolo::{Callback, CallbackReturn, Closure, Error, Executor, Value};
 pub use script_engine_api::Budget;
 
-use crate::{DEFAULT_MAX_OPS, DEFAULT_MAX_STRING_BYTES, run_bounded, sandbox};
+use crate::{
+    DEFAULT_MAX_HEAP_BYTES, DEFAULT_MAX_OPS, DEFAULT_MAX_STRING_BYTES, DriveLimits, drive, sandbox,
+};
 
 /// The name compiled chunks carry in error messages.
 const CHUNK_NAME: &str = "lua command";
@@ -73,6 +75,7 @@ pub fn collect_invocations(
         budget,
         limits,
         DEFAULT_MAX_STRING_BYTES,
+        DEFAULT_MAX_HEAP_BYTES,
     )
 }
 
@@ -83,12 +86,12 @@ fn collect_with(
     budget: Budget,
     limits: CommandLimits,
     max_string_bytes: usize,
+    max_heap_bytes: usize,
 ) -> Result<Vec<Invocation>, String> {
-    let fuel = match budget {
-        // The same bound as a budget of every step a run can count.
-        Budget::Unbounded => u64::MAX,
+    let max_ops = match budget {
+        Budget::Unbounded => None,
         Budget::Steps(0) => return Err("command script has no operation budget".into()),
-        Budget::Steps(steps) => steps,
+        Budget::Steps(steps) => Some(steps),
     };
     let batch = Rc::new(RefCell::new(Batch::new(offered.clone(), schema, limits)));
     let mut lua = sandbox(max_string_bytes);
@@ -116,7 +119,11 @@ fn collect_with(
             Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
         })
         .map_err(|e| e.to_string())?;
-    run_bounded(&mut lua, &executor, fuel)?;
+    let limits = DriveLimits {
+        max_ops,
+        max_heap_bytes,
+    };
+    drive(&mut lua, &executor, limits).map_err(|e| e.to_string())?;
     lua.try_enter(|ctx| {
         // A main chunk that yields leaves the executor suspended, not
         // finished; that is a script error, not a result.
@@ -144,6 +151,7 @@ pub struct LuaCommandEvaluator {
     schema: String,
     limits: CommandLimits,
     max_string_bytes: usize,
+    max_heap_bytes: usize,
 }
 
 impl LuaCommandEvaluator {
@@ -153,6 +161,7 @@ impl LuaCommandEvaluator {
             schema: schema.into(),
             limits,
             max_string_bytes: DEFAULT_MAX_STRING_BYTES,
+            max_heap_bytes: DEFAULT_MAX_HEAP_BYTES,
         }
     }
 
@@ -164,6 +173,17 @@ impl LuaCommandEvaluator {
     /// Replace the string limit with the host's own.
     pub fn with_max_string_bytes(mut self, bytes: usize) -> Self {
         self.max_string_bytes = bytes;
+        self
+    }
+
+    /// The most memory, in bytes, a script's state may hold.
+    pub fn max_heap_bytes(&self) -> usize {
+        self.max_heap_bytes
+    }
+
+    /// Replace the heap ceiling with the host's own.
+    pub fn with_max_heap_bytes(mut self, bytes: usize) -> Self {
+        self.max_heap_bytes = bytes;
         self
     }
 }
@@ -187,6 +207,7 @@ impl BlockEvaluator for LuaCommandEvaluator {
             budget,
             self.limits,
             self.max_string_bytes,
+            self.max_heap_bytes,
         )?;
         serde_json::to_string(&invocations)
             .map(EvalOutput::plain)

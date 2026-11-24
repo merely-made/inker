@@ -493,3 +493,33 @@ fn the_smallest_integer_key_is_refused_not_a_panic() {
         Err(ValueError::Value(_))
     ));
 }
+
+const GROWTH: &str = "local t = {} local i = 0 while true do i = i + 1 t[i] = {} end";
+const BIG_BUT_FINITE: &str = "local t = {} for i = 1, 400000 do t[i] = {} end return #t";
+
+#[test]
+fn a_growing_table_is_refused_for_heap_even_when_unbounded() {
+    for budget in [Budget::Unbounded, Budget::Steps(100_000_000)] {
+        let got = engine().eval(GROWTH, budget);
+        let Err(ValueError::Script(message)) = got else {
+            panic!("expected a heap refusal, got {got:?}");
+        };
+        assert_eq!(
+            message,
+            format!(
+                "didgeridoo refused: the script used more than {DEFAULT_MAX_HEAP_BYTES} bytes of memory"
+            )
+        );
+    }
+}
+
+#[test]
+fn a_host_heap_ceiling_lets_a_big_script_finish() {
+    assert_eq!(engine().max_heap_bytes(), DEFAULT_MAX_HEAP_BYTES);
+    assert!(engine().eval(BIG_BUT_FINITE, Budget::Unbounded).is_err());
+    let mut roomy = LuaValueEngine::new().with_max_heap_bytes(DEFAULT_MAX_HEAP_BYTES * 16);
+    assert_eq!(
+        roomy.eval(BIG_BUT_FINITE, Budget::Unbounded),
+        Ok(ScriptValue::Int(400_000))
+    );
+}

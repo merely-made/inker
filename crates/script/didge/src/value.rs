@@ -32,12 +32,12 @@
 use std::collections::BTreeMap;
 
 use piccolo::{
-    Callback, CallbackReturn, Closure, Context, Error, Executor, Fuel, Lua, Stack, StashedExecutor,
+    Callback, CallbackReturn, Closure, Context, Error, Executor, Lua, Stack, StashedExecutor,
     Table, Value,
 };
 use script_engine_api::{Budget, HostFunction, ScriptValue, ValueEngine, ValueError};
 
-use crate::DEFAULT_MAX_STRING_BYTES;
+use crate::{DEFAULT_MAX_HEAP_BYTES, DEFAULT_MAX_STRING_BYTES, DriveError, DriveLimits, drive};
 
 /// Nesting deeper than this does not cross the boundary, either way.
 const MAX_DEPTH: usize = 64;
@@ -46,9 +46,6 @@ const MAX_DEPTH: usize = 64;
 /// time they are met, so a table that holds itself twice per level cannot
 /// make the copy outrun the fuel.
 const MAX_NODES: usize = 1 << 20;
-
-/// Fuel handed to one `Executor::step` call.
-const FUEL_PER_STEP: i32 = 4096;
 
 /// The name compiled chunks carry in error messages.
 const CHUNK_NAME: &str = "lua rule";
@@ -70,6 +67,7 @@ pub struct LuaValueEngine {
     globals: BTreeMap<String, ScriptValue>,
     functions: BTreeMap<String, (usize, HostFunction)>,
     max_string_bytes: usize,
+    max_heap_bytes: usize,
 }
 
 impl LuaValueEngine {
@@ -78,6 +76,7 @@ impl LuaValueEngine {
             globals: BTreeMap::new(),
             functions: BTreeMap::new(),
             max_string_bytes: DEFAULT_MAX_STRING_BYTES,
+            max_heap_bytes: DEFAULT_MAX_HEAP_BYTES,
         }
     }
 
@@ -89,6 +88,17 @@ impl LuaValueEngine {
     /// Replace the string limit with the host's own.
     pub fn with_max_string_bytes(mut self, bytes: usize) -> Self {
         self.max_string_bytes = bytes;
+        self
+    }
+
+    /// The most memory, in bytes, a rule's state may hold.
+    pub fn max_heap_bytes(&self) -> usize {
+        self.max_heap_bytes
+    }
+
+    /// Replace the heap ceiling with the host's own.
+    pub fn with_max_heap_bytes(mut self, bytes: usize) -> Self {
+        self.max_heap_bytes = bytes;
         self
     }
 
@@ -323,33 +333,14 @@ fn script_error(error: Error<'_>) -> ValueError {
     }
 }
 
-/// Step `executor` until it finishes or `limit` fuel is spent; `None` has no
-/// limit. Running out is [`ValueError::Budget`].
-fn run(lua: &mut Lua, executor: &StashedExecutor, limit: Option<u64>) -> Result<(), ValueError> {
-    let mut left = limit;
-    loop {
-        let slice = left
-            .and_then(|left| i32::try_from(left).ok())
-            .unwrap_or(FUEL_PER_STEP)
-            .min(FUEL_PER_STEP);
-        let mut fuel = Fuel::with(slice);
-        let finished = lua
-            .enter(|ctx| ctx.fetch(executor).step(ctx, &mut fuel))
-            .map_err(|e| ValueError::Script(e.to_string()))?;
-        if finished {
-            return Ok(());
-        }
-        if let Some(remaining) = left {
-            // A callback may overdraw the slice; count at least one unit so an
-            // interrupt cannot spin forever.
-            let spent = i64::from(slice) - i64::from(fuel.remaining());
-            let remaining = remaining.saturating_sub(u64::try_from(spent.max(1)).unwrap_or(1));
-            if remaining == 0 {
-                return Err(ValueError::Budget);
-            }
-            left = Some(remaining);
-        }
-    }
+/// Drive `executor` under `limits`. Out of fuel is [`ValueError::Budget`]; the
+/// heap ceiling has no variant of its own, so it is a [`ValueError::Script`]
+/// carrying the refusal text.
+fn run(lua: &mut Lua, executor: &StashedExecutor, limits: DriveLimits) -> Result<(), ValueError> {
+    drive(lua, executor, limits).map(drop).map_err(|e| match e {
+        DriveError::OutOfFuel { .. } => ValueError::Budget,
+        other => ValueError::Script(other.to_string()),
+    })
 }
 
 impl ValueEngine for LuaValueEngine {
@@ -397,7 +388,11 @@ impl ValueEngine for LuaValueEngine {
             };
             Ok::<_, ValueError>(ctx.stash(Executor::start(ctx, closure.into(), ())))
         })?;
-        run(&mut lua, &executor, limit)?;
+        let limits = DriveLimits {
+            max_ops: limit,
+            max_heap_bytes: self.max_heap_bytes,
+        };
+        run(&mut lua, &executor, limits)?;
         lua.enter(|ctx| {
             let result = ctx.fetch(&executor).take_result::<Value>(ctx);
             // A main chunk that yields leaves the executor suspended, not

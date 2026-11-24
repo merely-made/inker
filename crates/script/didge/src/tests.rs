@@ -23,7 +23,7 @@ fn probe(mut lua: Lua, source: &str) -> String {
             Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
         })
         .unwrap();
-    run_bounded(&mut lua, &executor, ENOUGH).unwrap();
+    drive(&mut lua, &executor, DriveLimits::new(Some(ENOUGH))).unwrap();
     lua.try_enter(|ctx| {
         let value = ctx.fetch(&executor).take_result::<Value>(ctx).unwrap()?;
         Ok(value.display().to_string())
@@ -46,7 +46,10 @@ fn the_evaluator_is_send() {
 fn evaluates_arithmetic_to_plain_text() {
     let mut evaluator = LuaEvaluator::new();
     let out = evaluator
-        .eval_block("local s = 0 for i = 1, 10 do s = s + i end return s", ENOUGH)
+        .eval_block(
+            "local s = 0 for i = 1, 10 do s = s + i end return s",
+            ENOUGH,
+        )
         .unwrap();
     assert_eq!(out.format, "plain");
     assert_eq!(out.text, "55");
@@ -57,7 +60,10 @@ fn a_bare_value_needs_no_return() {
     let mut evaluator = LuaEvaluator::new();
     assert_eq!(evaluator.eval_block("1 + 1", ENOUGH).unwrap().text, "2");
     // A trailing comment, and a value spread over lines, still read as a value.
-    assert_eq!(evaluator.eval_block("2 * 3 -- six", ENOUGH).unwrap().text, "6");
+    assert_eq!(
+        evaluator.eval_block("2 * 3 -- six", ENOUGH).unwrap().text,
+        "6"
+    );
     assert_eq!(evaluator.eval_block("1 +\n2", ENOUGH).unwrap().text, "3");
     // Statements are not a value, and run as written.
     let chunk = "local n = 4\nreturn n * n";
@@ -78,7 +84,10 @@ fn a_compile_error_names_the_authors_line() {
 fn a_gemtext_string_is_detected() {
     let mut evaluator = LuaEvaluator::new();
     let out = evaluator
-        .eval_block("return \"## generated\\n=> gemini://x.test/ a link\"", ENOUGH)
+        .eval_block(
+            "return \"## generated\\n=> gemini://x.test/ a link\"",
+            ENOUGH,
+        )
         .unwrap();
     assert_eq!(out.format, "gemtext");
     assert!(out.text.starts_with("## generated"));
@@ -88,7 +97,10 @@ fn a_gemtext_string_is_detected() {
 fn an_explicit_format_table_is_honored() {
     let mut evaluator = LuaEvaluator::new();
     let out = evaluator
-        .eval_block(r#"return { format = "markdown", text = "**bold**" }"#, ENOUGH)
+        .eval_block(
+            r#"return { format = "markdown", text = "**bold**" }"#,
+            ENOUGH,
+        )
         .unwrap();
     assert_eq!(out.format, "markdown");
     assert_eq!(out.text, "**bold**");
@@ -96,15 +108,22 @@ fn an_explicit_format_table_is_honored() {
 
 #[test]
 fn a_chunk_that_returns_nothing_is_empty_plain_text() {
-    let out = LuaEvaluator::new().eval_block("local x = 1", ENOUGH).unwrap();
+    let out = LuaEvaluator::new()
+        .eval_block("local x = 1", ENOUGH)
+        .unwrap();
     assert_eq!((out.format.as_str(), out.text.as_str()), ("plain", ""));
 }
 
 #[test]
 fn a_runaway_is_cut_off_by_fuel() {
     let mut evaluator = LuaEvaluator::new();
-    let err = evaluator.eval_block("while true do end", SMALL).unwrap_err();
-    assert!(err.starts_with("didgeridoo refused"), "expected a budget refusal, got: {err}");
+    let err = evaluator
+        .eval_block("while true do end", SMALL)
+        .unwrap_err();
+    assert!(
+        err.starts_with("didgeridoo refused"),
+        "expected a budget refusal, got: {err}"
+    );
     // The evaluator is still usable after stopping a runaway.
     let out = evaluator.eval_block("return 1 + 1", ENOUGH).unwrap();
     assert_eq!(out.text, "2");
@@ -130,7 +149,11 @@ fn a_runaway_recursion_is_refused() {
 #[test]
 fn a_compile_error_is_reported_not_panicked() {
     let mut evaluator = LuaEvaluator::new();
-    assert!(evaluator.eval_block("this is not valid lua @@@", SMALL).is_err());
+    assert!(
+        evaluator
+            .eval_block("this is not valid lua @@@", SMALL)
+            .is_err()
+    );
 }
 
 #[test]
@@ -147,11 +170,21 @@ fn a_runtime_error_is_reported() {
 #[test]
 fn the_sandbox_cannot_reach_io() {
     assert_eq!(probe(Lua::full(), "return type(print)"), "function");
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(print)"), "nil");
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(io)"), "nil");
+    assert_eq!(
+        probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(print)"),
+        "nil"
+    );
+    assert_eq!(
+        probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(io)"),
+        "nil"
+    );
 
     let mut evaluator = LuaEvaluator::new();
-    assert!(evaluator.eval_block(r#"io.open("/etc/passwd")"#, ENOUGH).is_err());
+    assert!(
+        evaluator
+            .eval_block(r#"io.open("/etc/passwd")"#, ENOUGH)
+            .is_err()
+    );
     assert!(evaluator.eval_block(r#"print("leak")"#, ENOUGH).is_err());
 }
 
@@ -161,21 +194,54 @@ fn the_sandbox_cannot_reach_io() {
 #[test]
 fn the_sandbox_has_no_randomness() {
     // Control: the rest of `math` is there.
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.floor)"), "function");
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.random)"), "nil");
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.randomseed)"), "nil");
+    assert_eq!(
+        probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(math.floor)"),
+        "function"
+    );
+    assert_eq!(
+        probe(
+            sandbox(DEFAULT_MAX_STRING_BYTES),
+            "return type(math.random)"
+        ),
+        "nil"
+    );
+    assert_eq!(
+        probe(
+            sandbox(DEFAULT_MAX_STRING_BYTES),
+            "return type(math.randomseed)"
+        ),
+        "nil"
+    );
 }
 
 #[test]
 fn the_sandbox_cannot_load_code_from_disk_or_strings() {
-    assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(string)"), "table");
-    for name in ["require", "dofile", "loadfile", "load", "loadstring", "os", "debug", "package"] {
+    assert_eq!(
+        probe(sandbox(DEFAULT_MAX_STRING_BYTES), "return type(string)"),
+        "table"
+    );
+    for name in [
+        "require",
+        "dofile",
+        "loadfile",
+        "load",
+        "loadstring",
+        "os",
+        "debug",
+        "package",
+    ] {
         let source = format!("return type({name})");
-        assert_eq!(probe(sandbox(DEFAULT_MAX_STRING_BYTES), &source), "nil", "{name} is reachable");
+        assert_eq!(
+            probe(sandbox(DEFAULT_MAX_STRING_BYTES), &source),
+            "nil",
+            "{name} is reachable"
+        );
     }
-    assert!(LuaEvaluator::new()
-        .eval_block(r#"return require("sibling")"#, ENOUGH)
-        .is_err());
+    assert!(
+        LuaEvaluator::new()
+            .eval_block(r#"return require("sibling")"#, ENOUGH)
+            .is_err()
+    );
 }
 
 /// The full polyglot path: a `lua eval` fence, routed through the
@@ -288,7 +354,84 @@ fn the_host_can_set_its_own_string_limit() {
 #[test]
 fn length_is_bytes_and_utf8_len_counts_characters() {
     let out = LuaEvaluator::new()
-        .eval_block("local s = 'h\u{e9}llo' return #s .. ' ' .. utf8.len(s)", ENOUGH)
+        .eval_block(
+            "local s = 'h\u{e9}llo' return #s .. ' ' .. utf8.len(s)",
+            ENOUGH,
+        )
         .unwrap();
     assert_eq!(out.text, "6 5");
+}
+
+const GROWTH: &str = "local t = {} local i = 0 while true do i = i + 1 t[i] = {} end";
+/// Finishes, but holds well over the default 16 MiB on the way.
+const BIG_BUT_FINITE: &str = "local t = {} for i = 1, 400000 do t[i] = {} end return #t";
+const PLENTY: u64 = 100_000_000;
+
+#[test]
+fn a_growing_table_is_refused_for_heap() {
+    let mut evaluator = LuaEvaluator::new();
+    let err = evaluator.eval_block(GROWTH, PLENTY).unwrap_err();
+    assert_eq!(
+        err,
+        format!(
+            "didgeridoo refused: the script used more than {DEFAULT_MAX_HEAP_BYTES} bytes of memory"
+        )
+    );
+    // The evaluator survives the refusal.
+    assert_eq!(
+        evaluator.eval_block("return 1 + 1", ENOUGH).unwrap().text,
+        "2"
+    );
+}
+
+#[test]
+fn a_host_ceiling_replaces_the_default() {
+    assert_eq!(LuaEvaluator::new().max_heap_bytes(), DEFAULT_MAX_HEAP_BYTES);
+    let err = LuaEvaluator::new()
+        .eval_block(BIG_BUT_FINITE, PLENTY)
+        .unwrap_err();
+    assert!(err.contains("bytes of memory"), "got: {err}");
+    let mut roomy = LuaEvaluator::new().with_max_heap_bytes(DEFAULT_MAX_HEAP_BYTES * 16);
+    assert_eq!(
+        roomy.eval_block(BIG_BUT_FINITE, PLENTY).unwrap().text,
+        "400000"
+    );
+    let err = LuaEvaluator::new()
+        .with_max_heap_bytes(1024)
+        .eval_block(GROWTH, PLENTY)
+        .unwrap_err();
+    assert!(err.contains("more than 1024 bytes"), "got: {err}");
+}
+
+#[test]
+fn drive_reports_fuel_spent_and_distinguishes_its_errors() {
+    let mut lua = sandbox(DEFAULT_MAX_STRING_BYTES);
+    let start = |lua: &mut Lua, source: &str| {
+        lua.try_enter(|ctx| {
+            let closure = Closure::load(ctx, None, source.as_bytes())?;
+            Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
+        })
+        .unwrap()
+    };
+    let executor = start(
+        &mut lua,
+        "local n = 0 for i = 1, 100 do n = n + i end return n",
+    );
+    let spent = drive(&mut lua, &executor, DriveLimits::new(None)).unwrap();
+    assert!(spent > 0);
+    let executor = start(&mut lua, "while true do end");
+    assert_eq!(
+        drive(&mut lua, &executor, DriveLimits::new(Some(SMALL))),
+        Err(DriveError::OutOfFuel { max_ops: SMALL })
+    );
+    let executor = start(&mut lua, GROWTH);
+    assert_eq!(
+        drive(&mut lua, &executor, DriveLimits::new(None)),
+        Err(DriveError::OverHeap {
+            max_heap_bytes: DEFAULT_MAX_HEAP_BYTES
+        })
+    );
+    // A script's own error is its result, read with `take_result`, not a drive error.
+    let executor = start(&mut lua, "error('boom')");
+    assert!(drive(&mut lua, &executor, DriveLimits::new(None)).is_ok());
 }

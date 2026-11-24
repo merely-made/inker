@@ -11,8 +11,8 @@
 //! script-rhai (L6). The Lua rule uses Lua's own `math` and `^` (D17), which
 //! didgeridoo computes with libm.
 
-use script_engine_api::{Budget, ScriptValue, ValueEngine, ValueError};
 use script_didge::LuaValueEngine;
+use script_engine_api::{Budget, ScriptValue, ValueEngine, ValueError};
 
 const COUNT: usize = 10_000;
 /// Recorded by the Rhai engine (`script-rhai/tests/support/rule_bits.rs`, retired

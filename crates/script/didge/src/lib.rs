@@ -26,7 +26,10 @@
 //! Fuel bounds work, not size, so the sandbox also sets didgeridoo's string
 //! limit: no string a fence builds may pass
 //! [`LuaEvaluator::max_string_bytes`], [`DEFAULT_MAX_STRING_BYTES`] unless the
-//! host sets another.
+//! host sets another. The heap is capped too: [`drive`] refuses a script whose
+//! state grows past [`LuaEvaluator::max_heap_bytes`],
+//! [`DEFAULT_MAX_HEAP_BYTES`] unless the host sets another, even when the
+//! operation budget is unbounded.
 //!
 //! ## Output convention
 //!
@@ -35,6 +38,8 @@
 //! `{ format = "gemtext", text = "## hi" }` to declare the format explicitly.
 //! A fence may be a bare value (`1 + 1`) or a full chunk that `return`s one;
 //! a chunk that returns nothing renders as empty plain text.
+
+use std::fmt;
 
 use inker::{BlockEvaluator, EvalOutput};
 use piccolo::{Closure, Context, Executor, Fuel, Lua, StashedExecutor, Value};
@@ -52,6 +57,10 @@ pub const DEFAULT_MAX_OPS: u64 = 1_000_000;
 /// The longest string a fence may build unless the host says otherwise: the
 /// size Knot allows a note.
 pub const DEFAULT_MAX_STRING_BYTES: usize = 64 * 1024;
+
+/// The most memory, in bytes, a script's Lua state may hold unless the host
+/// says otherwise.
+pub const DEFAULT_MAX_HEAP_BYTES: usize = 16 * 1024 * 1024;
 
 /// Fuel handed to one `Executor::step` call. Between steps the arena is left,
 /// which lets the collector run during a long evaluation.
@@ -71,12 +80,14 @@ const RETURN_PREFIX: &str = "return ";
 #[derive(Debug, Clone, Copy)]
 pub struct LuaEvaluator {
     max_string_bytes: usize,
+    max_heap_bytes: usize,
 }
 
 impl Default for LuaEvaluator {
     fn default() -> Self {
         Self {
             max_string_bytes: DEFAULT_MAX_STRING_BYTES,
+            max_heap_bytes: DEFAULT_MAX_HEAP_BYTES,
         }
     }
 }
@@ -94,6 +105,17 @@ impl LuaEvaluator {
     /// Replace the string limit with the host's own.
     pub fn with_max_string_bytes(mut self, bytes: usize) -> Self {
         self.max_string_bytes = bytes;
+        self
+    }
+
+    /// The most memory, in bytes, a fence's state may hold.
+    pub fn max_heap_bytes(&self) -> usize {
+        self.max_heap_bytes
+    }
+
+    /// Replace the heap ceiling with the host's own.
+    pub fn with_max_heap_bytes(mut self, bytes: usize) -> Self {
+        self.max_heap_bytes = bytes;
         self
     }
 }
@@ -121,7 +143,11 @@ impl BlockEvaluator for LuaEvaluator {
     }
 
     fn eval_block(&mut self, source: &str, max_ops: u64) -> Result<EvalOutput, String> {
-        let budget = if max_ops == 0 { DEFAULT_MAX_OPS } else { max_ops };
+        let budget = if max_ops == 0 {
+            DEFAULT_MAX_OPS
+        } else {
+            max_ops
+        };
         let mut lua = sandbox(self.max_string_bytes);
         let executor = lua
             .try_enter(|ctx| {
@@ -136,7 +162,11 @@ impl BlockEvaluator for LuaEvaluator {
                 Ok(ctx.stash(Executor::start(ctx, closure.into(), ())))
             })
             .map_err(|e| e.to_string())?;
-        run_bounded(&mut lua, &executor, budget)?;
+        let limits = DriveLimits {
+            max_ops: Some(budget),
+            max_heap_bytes: self.max_heap_bytes,
+        };
+        drive(&mut lua, &executor, limits).map_err(|e| e.to_string())?;
         lua.try_enter(|ctx| {
             let value = ctx.fetch(&executor).take_result::<Value>(ctx);
             // A main chunk that yields leaves the executor suspended, not
@@ -148,27 +178,99 @@ impl BlockEvaluator for LuaEvaluator {
     }
 }
 
-/// Step `executor` until it finishes or `budget` fuel is spent. Running out is
-/// a refusal, reported as an error.
-fn run_bounded(lua: &mut Lua, executor: &StashedExecutor, budget: u64) -> Result<(), String> {
-    let mut left = budget;
+/// What bounds one [`drive`]: fuel and heap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DriveLimits {
+    /// Fuel the run may spend; `None` has no fuel limit.
+    pub max_ops: Option<u64>,
+    /// The most memory, in bytes, the Lua state may hold. Checked even when
+    /// `max_ops` is `None`.
+    pub max_heap_bytes: usize,
+}
+
+impl DriveLimits {
+    /// `max_ops` of fuel and the default heap ceiling.
+    pub fn new(max_ops: Option<u64>) -> Self {
+        Self {
+            max_ops,
+            max_heap_bytes: DEFAULT_MAX_HEAP_BYTES,
+        }
+    }
+}
+
+/// Why [`drive`] stopped without a finished run.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DriveError {
+    /// The fuel ran out; carries the budget.
+    OutOfFuel { max_ops: u64 },
+    /// The state grew past the ceiling; carries the ceiling.
+    OverHeap { max_heap_bytes: usize },
+    /// The VM failed to step, in its words. A script's own error is not this:
+    /// it finishes the run and is read from the executor.
+    Runtime(String),
+}
+
+impl fmt::Display for DriveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OutOfFuel { max_ops } => write!(
+                f,
+                "didgeridoo refused: the script ran past its budget of {max_ops} operations"
+            ),
+            Self::OverHeap { max_heap_bytes } => write!(
+                f,
+                "didgeridoo refused: the script used more than {max_heap_bytes} bytes of memory"
+            ),
+            Self::Runtime(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for DriveError {}
+
+/// Step `executor` until it finishes, spends `limits.max_ops` fuel or grows the
+/// heap past `limits.max_heap_bytes`. Returns the fuel spent.
+///
+/// # Errors
+///
+/// [`DriveError`]: out of fuel, over the heap ceiling, or a script error.
+pub fn drive(
+    lua: &mut Lua,
+    executor: &StashedExecutor,
+    limits: DriveLimits,
+) -> Result<u64, DriveError> {
+    let mut left = limits.max_ops;
+    if left == Some(0) {
+        return Err(DriveError::OutOfFuel { max_ops: 0 });
+    }
+    let mut used: u64 = 0;
     loop {
-        let slice = i32::try_from(left).unwrap_or(FUEL_PER_STEP).min(FUEL_PER_STEP);
+        let slice = left
+            .and_then(|left| i32::try_from(left).ok())
+            .unwrap_or(FUEL_PER_STEP)
+            .min(FUEL_PER_STEP);
         let mut fuel = Fuel::with(slice);
         let finished = lua
             .enter(|ctx| ctx.fetch(executor).step(ctx, &mut fuel))
-            .map_err(|e| e.to_string())?;
-        if finished {
-            return Ok(());
-        }
+            .map_err(|e| DriveError::Runtime(e.to_string()))?;
         // A callback may overdraw the slice, so remaining fuel can be negative.
-        // Count at least one unit per step so an interrupt cannot spin forever.
-        let spent = i64::from(slice) - i64::from(fuel.remaining());
-        left = left.saturating_sub(u64::try_from(spent.max(1)).unwrap_or(1));
-        if left == 0 {
-            return Err(format!(
-                "didgeridoo refused: the script ran past its budget of {budget} operations"
-            ));
+        let spent = u64::try_from(i64::from(slice) - i64::from(fuel.remaining())).unwrap_or(0);
+        used = used.saturating_add(spent);
+        if finished {
+            return Ok(used);
+        }
+        if lua.total_memory() > limits.max_heap_bytes {
+            return Err(DriveError::OverHeap {
+                max_heap_bytes: limits.max_heap_bytes,
+            });
+        }
+        if let (Some(remaining), Some(max_ops)) = (left, limits.max_ops) {
+            // At least one unit a step, so an interrupt cannot spin forever.
+            let remaining = remaining.saturating_sub(spent.max(1));
+            if remaining == 0 {
+                return Err(DriveError::OutOfFuel { max_ops });
+            }
+            left = Some(remaining);
         }
     }
 }
@@ -191,7 +293,7 @@ fn to_output<'gc>(ctx: Context<'gc>, value: Value<'gc>) -> EvalOutput {
                     text,
                 },
             }
-        }
+        },
         other => EvalOutput::detect(other.display().to_string()),
     }
 }

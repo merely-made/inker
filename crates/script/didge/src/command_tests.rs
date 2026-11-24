@@ -395,3 +395,37 @@ fn denied_fences_remain_source_and_failed_scripts_add_only_an_error_block() {
     ));
     assert!(outcome.provenance.get(0).is_none());
 }
+
+const GROWTH: &str = "local t = {} local i = 0 while true do i = i + 1 t[i] = {} end";
+const BIG_BUT_FINITE: &str = "local t = {} for i = 1, 400000 do t[i] = {} end";
+
+#[test]
+fn a_growing_table_is_refused_for_heap_even_when_unbounded() {
+    let limits = CommandLimits::default();
+    for budget in [Budget::Unbounded, Budget::Steps(100_000_000)] {
+        let err = collect_invocations(GROWTH, &offered(), SCHEMA, budget, limits).unwrap_err();
+        assert_eq!(
+            err,
+            format!(
+                "didgeridoo refused: the script used more than {DEFAULT_MAX_HEAP_BYTES} bytes of memory"
+            )
+        );
+    }
+    let mut evaluator = LuaCommandEvaluator::new(offered(), SCHEMA, limits);
+    assert_eq!(evaluator.max_heap_bytes(), DEFAULT_MAX_HEAP_BYTES);
+    let err = evaluator.eval_block(GROWTH, 100_000_000).unwrap_err();
+    assert!(err.contains("bytes of memory"), "got: {err}");
+}
+
+#[test]
+fn a_host_heap_ceiling_lets_a_big_script_finish() {
+    let limits = CommandLimits::default();
+    let mut stock = LuaCommandEvaluator::new(offered(), SCHEMA, limits);
+    assert!(stock.eval_block(BIG_BUT_FINITE, 100_000_000).is_err());
+    let mut roomy = LuaCommandEvaluator::new(offered(), SCHEMA, limits)
+        .with_max_heap_bytes(DEFAULT_MAX_HEAP_BYTES * 16);
+    assert_eq!(
+        roomy.eval_block(BIG_BUT_FINITE, 100_000_000).unwrap().text,
+        "[]"
+    );
+}
